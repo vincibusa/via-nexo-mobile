@@ -152,8 +152,8 @@ export function SignUpForm() {
               {isLoading ? <ActivityIndicator color="white" /> : <Text>Continue</Text>}
             </Button>
           </View>
-          <Text className="text-center text-sm">
-            Already have an account?{' '}
+          <View className="flex-row items-center justify-center">
+            <Text className="text-center text-sm">Already have an account? </Text>
             <Pressable
               onPress={() => {
                 router.push('/(auth)/login');
@@ -161,7 +161,7 @@ export function SignUpForm() {
               disabled={isLoading}>
               <Text className="text-sm underline underline-offset-4">Sign in</Text>
             </Pressable>
-          </Text>
+          </View>
           <View className="flex-row items-center">
             <Separator className="flex-1" />
             <Text className="text-muted-foreground px-4 text-sm">or</Text>
