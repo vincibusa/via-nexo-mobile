@@ -39,7 +39,7 @@ class SuggestionsService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as any;
         return {
           error: {
             code: response.status.toString(),
@@ -225,7 +225,7 @@ class SuggestionsService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as any;
         return {
           error: {
             code: response.status.toString(),
@@ -234,7 +234,7 @@ class SuggestionsService {
         };
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return { data: data.places || [] };
     } catch (error) {
       return {

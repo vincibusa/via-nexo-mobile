@@ -53,13 +53,13 @@ class QuickSuggestionsService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as any;
         return {
           error: errorData.error || 'Failed to fetch quick suggestions',
         };
       }
 
-      const data = await response.json();
+      const data = await response.json() as QuickSuggestionsResponse;
       return { data };
     } catch (error) {
       console.error('Error fetching quick suggestions:', error);

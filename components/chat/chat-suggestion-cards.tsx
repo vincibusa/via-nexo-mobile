@@ -1,4 +1,4 @@
-import { Text } from '@/components/ui/text';
+import {Text} from '../../components/ui/text'
 import { Button } from '@/components/ui/button';
 import { View, Image, Pressable } from 'react-native';
 import { MapPin, Phone, Globe, Heart } from 'lucide-react-native';

@@ -15,10 +15,10 @@ class AuthService {
         },
       });
 
-      const data = await response.json();
+      const data = await response.json() as T;
 
       if (!response.ok) {
-        return { error: data.error || { code: 'UNKNOWN_ERROR', message: 'An error occurred' } };
+        return { error: (data as any).error || { code: 'UNKNOWN_ERROR', message: 'An error occurred' } };
       }
 
       return { data };

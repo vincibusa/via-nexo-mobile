@@ -45,7 +45,7 @@ class ChatService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         throw new Error(error.error || 'Failed to get chat suggestions');
       }
 
