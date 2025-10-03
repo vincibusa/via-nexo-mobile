@@ -24,7 +24,10 @@ export default function RootLayout() {
           backgroundColor={NAV_THEME[colorScheme ?? 'light'].colors.background}
           translucent={false}
         />
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack screenOptions={{
+          headerShown: false,
+          headerBackTitle: ''
+        }} />
         <PortalHost />
       </AuthProvider>
     </ThemeProvider>

@@ -265,6 +265,8 @@ export default function ChatSearchScreen() {
         options={{
           title: mode === 'guided' ? 'Ricerca Guidata' : 'Ricerca Libera',
           headerShown: true,
+          headerBackTitle: ' ',
+          headerBackTitleStyle: { fontSize: 0 },
         }}
       />
       <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
@@ -281,11 +283,12 @@ export default function ChatSearchScreen() {
             <ScrollView
               ref={scrollViewRef}
               className="flex-1 px-4"
-              contentContainerClassName="py-4"
+              contentContainerClassName="py-6"
+              showsVerticalScrollIndicator={false}
               onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
-              {messages.map((msg) => (
-                <View key={msg.id}>
+              {messages.map((msg, index) => (
+                <View key={msg.id} className="mb-6">
                   <ChatBubble
                     message={msg.content}
                     isUser={msg.isUser}
@@ -293,12 +296,18 @@ export default function ChatSearchScreen() {
                   />
                   {/* Show suggestions inline with AI messages */}
                   {!msg.isUser && msg.suggestions && msg.suggestions.length > 0 && (
-                    <ChatSuggestionCards suggestions={msg.suggestions} />
+                    <View className="mt-4">
+                      <ChatSuggestionCards suggestions={msg.suggestions} />
+                    </View>
                   )}
                 </View>
               ))}
 
-              {isTyping && <TypingIndicator />}
+              {isTyping && (
+                <View className="mb-6">
+                  <TypingIndicator />
+                </View>
+              )}
             </ScrollView>
 
             {/* Quick Suggestions (shown only if no messages yet or few messages) */}

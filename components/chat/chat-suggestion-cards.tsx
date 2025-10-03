@@ -40,103 +40,111 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
     router.push(`/(app)/places/${place.id}` as any);
   };
 
+  const handleFavorite = () => {
+    // TODO: Implementare logica favoriti
+    console.log('Add to favorites:', place.id);
+  };
+
+  // Determina se abbiamo un'immagine da mostrare
+  const imageUrl = place.cover_image || place.gallery_images?.[0];
+
   return (
     <Pressable
       onPress={handlePress}
-      className="overflow-hidden rounded-xl border border-border bg-card active:opacity-90"
+      className="overflow-hidden rounded-2xl border-2 border-border bg-card shadow-lg active:opacity-90"
     >
-      {/* Image */}
-      {place.cover_image && (
-        <Image
-          source={{ uri: place.cover_image }}
-          className="h-40 w-full bg-muted"
-          resizeMode="cover"
-        />
+      {/* Image with gradient overlay */}
+      {imageUrl ? (
+        <View className="relative h-48 w-full">
+          <Image
+            source={{ uri: imageUrl }}
+            className="h-full w-full"
+            resizeMode="cover"
+          />
+          {/* Gradient overlay for better text visibility */}
+          <View className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
+
+          {/* Floating badge on image */}
+          {place.verified && (
+            <View className="absolute right-3 top-3 rounded-full bg-green-500 px-3 py-1">
+              <Text className="text-xs font-bold text-white">✓ Verificato</Text>
+            </View>
+          )}
+
+          {/* Price badge */}
+          {place.price_range && (
+            <View className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1.5">
+              <Text className="text-sm font-bold text-primary-foreground">{place.price_range}</Text>
+            </View>
+          )}
+        </View>
+      ) : (
+        /* Placeholder quando non c'è immagine */
+        <View className="h-48 w-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+          <Text className="text-6xl opacity-30">📍</Text>
+          <Text className="mt-2 text-sm text-muted-foreground">Nessuna foto disponibile</Text>
+        </View>
       )}
 
       {/* Content */}
-      <View className="gap-3 p-4">
-        {/* Title & Type */}
-        <View className="gap-1">
-          <Text className="text-lg font-bold">{place.name}</Text>
-          <View className="flex-row items-center gap-2">
-            <Text className="text-sm capitalize text-muted-foreground">
-              {place.category?.replace('_', ' ')}
-            </Text>
-            {place.price_range && (
-              <>
-                <Text className="text-muted-foreground">•</Text>
-                <Text className="text-sm font-semibold text-primary">{place.price_range}</Text>
-              </>
-            )}
-            {place.verified && (
-              <>
-                <Text className="text-muted-foreground">•</Text>
-                <Text className="text-sm">✓ Verificato</Text>
-              </>
-            )}
-          </View>
+      <View className="gap-4 p-4">
+        {/* Title & Category */}
+        <View className="gap-1.5">
+          <Text className="text-xl font-bold leading-tight">{place.name}</Text>
+          <Text className="text-sm capitalize text-muted-foreground">
+            {place.category?.replace('_', ' ')}
+          </Text>
         </View>
 
-        {/* AI Reason */}
+        {/* AI Reason - Highlighted */}
         {place.ai_reason && (
-          <View className="rounded-lg bg-primary/10 p-3">
-            <Text className="text-sm italic leading-relaxed text-foreground">
-              "{place.ai_reason}"
+          <View className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary p-3">
+            <Text className="text-sm font-medium leading-relaxed text-foreground">
+              💭 {place.ai_reason}
             </Text>
           </View>
         )}
 
-        {/* Info Row */}
-        <View className="gap-2">
-          {place.address && (
-            <View className="flex-row items-center gap-2">
-              <MapPin size={14} className="text-muted-foreground" />
-              <Text className="flex-1 text-sm text-muted-foreground" numberOfLines={1}>
-                {place.address}, {place.city}
-              </Text>
-            </View>
-          )}
-          {place.phone && (
-            <View className="flex-row items-center gap-2">
-              <Phone size={14} className="text-muted-foreground" />
-              <Text className="text-sm text-muted-foreground">{place.phone}</Text>
-            </View>
-          )}
-          {place.website && (
-            <View className="flex-row items-center gap-2">
-              <Globe size={14} className="text-muted-foreground" />
-              <Text className="text-sm text-primary" numberOfLines={1}>
-                {place.website}
-              </Text>
-            </View>
-          )}
-        </View>
+        {/* Location Info */}
+        {place.address && (
+          <View className="flex-row items-start gap-2">
+            <MapPin size={16} className="text-primary mt-0.5" />
+            <Text className="flex-1 text-sm text-foreground" numberOfLines={2}>
+              {place.address}, {place.city}
+            </Text>
+          </View>
+        )}
 
         {/* Tags */}
         {(place.ambience_tags || place.music_genre) && (
           <View className="flex-row flex-wrap gap-2">
             {place.ambience_tags?.slice(0, 3).map((tag) => (
-              <View key={tag} className="rounded-full bg-muted px-2 py-1">
-                <Text className="text-xs text-muted-foreground capitalize">{tag}</Text>
+              <View key={tag} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5">
+                <Text className="text-xs font-medium text-primary capitalize">{tag}</Text>
               </View>
             ))}
             {place.music_genre?.slice(0, 2).map((genre) => (
-              <View key={genre} className="rounded-full bg-muted px-2 py-1">
-                <Text className="text-xs text-muted-foreground">🎵 {genre}</Text>
+              <View key={genre} className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1.5">
+                <Text className="text-xs font-medium text-purple-600 dark:text-purple-400">🎵 {genre}</Text>
               </View>
             ))}
           </View>
         )}
 
         {/* Actions */}
-        <View className="flex-row gap-2">
-          <Button onPress={handlePress} className="flex-1">
-            <Text className="font-semibold">Dettagli</Text>
+        <View className="flex-row gap-3 pt-2">
+          <Button
+            onPress={handlePress}
+            className="flex-1 h-12 bg-primary"
+          >
+            <Text className="font-bold text-primary-foreground">Scopri di più</Text>
           </Button>
-          <Button variant="outline" className="px-4">
-            <Heart size={18} className="text-foreground" />
-          </Button>
+          <Pressable
+            onPress={handleFavorite}
+            className="h-12 w-12 items-center justify-center rounded-xl border-2 border-red-500/30 bg-red-500/10 active:bg-red-500/20"
+          >
+            <Heart size={22} className="text-red-500" fill="transparent" />
+          </Pressable>
         </View>
       </View>
     </Pressable>

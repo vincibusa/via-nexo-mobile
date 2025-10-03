@@ -5,7 +5,16 @@ export default function AppLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        headerBackTitle: ''
       }}
-    />
+    >
+      <Stack.Screen
+        name="(tabs)"
+        options={{
+          headerShown: false,
+          title: ''
+        }}
+      />
+    </Stack>
   );
 }

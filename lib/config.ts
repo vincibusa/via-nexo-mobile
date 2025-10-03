@@ -1,6 +1,6 @@
 export const API_CONFIG = {
   // Cambia con l'URL del tuo backend in produzione
-  BASE_URL: __DEV__ ? 'http://localhost:3000' : 'https://your-production-url.com',
+  BASE_URL: __DEV__ ? 'http://localhost:3000' : 'https://via-nexo-new-vq5d.vercel.app/',
   ENDPOINTS: {
     // Auth
     LOGIN: '/api/auth/login',
