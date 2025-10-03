@@ -31,13 +31,6 @@ export default function GuidedSearchScreen() {
     getLocation();
   }, []);
 
-  // Auto-search when filters change (if we have location and at least one filter selected)
-  useEffect(() => {
-    if (location && (filters.companionship.length > 0 || filters.mood.length > 0)) {
-      handleSearch();
-    }
-  }, [filters, location]);
-
   const getLocation = async () => {
     try {
       const loc = await getCurrentLocation();

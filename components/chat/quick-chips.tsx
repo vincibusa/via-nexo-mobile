@@ -20,17 +20,16 @@ export function QuickChips({ suggestions, onSelect }: QuickChipsProps) {
         contentContainerClassName="gap-2 px-4"
       >
         {suggestions.map((suggestion, index) => (
-          <Pressable
+          <Badge
             key={index}
-            onPress={() => onSelect(suggestion)}
+            variant="secondary"
+            className="px-4 py-2"
+            asChild
           >
-            <Badge
-              variant="secondary"
-              className="px-4 py-2"
-            >
+            <Pressable onPress={() => onSelect(suggestion)}>
               <Text className="text-sm">{suggestion}</Text>
-            </Badge>
-          </Pressable>
+            </Pressable>
+          </Badge>
         ))}
       </ScrollView>
     </View>

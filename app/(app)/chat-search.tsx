@@ -77,6 +77,11 @@ export default function ChatSearchScreen() {
   }, [messages, isTyping]);
 
   const handleSendMessage = async (message: string) => {
+    console.log('[ChatSearch] Sending message:', message);
+    console.log('[ChatSearch] Location:', location);
+    console.log('[ChatSearch] Session exists:', !!session);
+    console.log('[ChatSearch] Access token exists:', !!session?.accessToken);
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -92,9 +97,17 @@ export default function ChatSearchScreen() {
 
     try {
       // Check if we have location and session
-      if (!location || !session?.accessToken) {
-        throw new Error('Location or authentication not available');
+      if (!location) {
+        console.error('[ChatSearch] No location available');
+        throw new Error('Posizione non disponibile');
       }
+
+      if (!session?.accessToken) {
+        console.error('[ChatSearch] No access token available');
+        throw new Error('Autenticazione non disponibile');
+      }
+
+      console.log('[ChatSearch] Calling chat API...');
 
       // Call actual AI API endpoint
       const response = await chatService.getChatSuggestions(

@@ -49,39 +49,54 @@ class SuggestionsService {
       }
 
       // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        return {
-          error: {
-            code: 'STREAM_ERROR',
-            message: 'Unable to read stream',
-          },
-        };
-      }
-
+      // React Native doesn't fully support ReadableStream, so we read as text
       let fullText = '';
 
-      // Read stream chunks
-      while (true) {
-        const { done, value } = await reader.read();
+      try {
+        // Try to use getReader if available (web/newer RN versions)
+        if (response.body?.getReader) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
 
-        if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        fullText += chunk;
+            const chunk = decoder.decode(value, { stream: true });
+            fullText += chunk;
 
-        // Callback for progress updates (optional)
-        if (onProgress) {
-          onProgress(chunk);
+            if (onProgress) {
+              onProgress(chunk);
+            }
+          }
+        } else {
+          // Fallback: read entire response as text (React Native default)
+          fullText = await response.text();
+        }
+      } catch (streamError) {
+        console.error('Stream reading error:', streamError);
+        // Last resort fallback: try to read as text
+        try {
+          fullText = await response.text();
+        } catch (textError) {
+          return {
+            error: {
+              code: 'STREAM_ERROR',
+              message: 'Unable to read stream response',
+            },
+          };
         }
       }
 
       // Parse the final result
+      console.log('[SuggestionsService] Received stream text length:', fullText.length);
+      console.log('[SuggestionsService] First 200 chars:', fullText.substring(0, 200));
+
       const streamResult = this.parseStreamResponse(fullText);
 
       if (!streamResult || !streamResult.suggestions.length) {
+        console.warn('[SuggestionsService] No suggestions found in stream result');
+        console.log('[SuggestionsService] Stream result:', streamResult);
         return {
           data: {
             suggestions: [],
@@ -145,19 +160,29 @@ class SuggestionsService {
   }
 
   /**
-   * Parse streaming response (handles newline-delimited JSON from AI SDK)
+   * Parse streaming response (handles both streaming and complete JSON)
    */
   private parseStreamResponse(fullText: string): StreamResponse | null {
     try {
-      // The AI SDK stream returns newline-delimited JSON
-      // Each line is prefixed with "0:" for the object stream
+      // First, try to parse as complete JSON (cached or complete response)
+      try {
+        const parsed = JSON.parse(fullText);
+        if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
+          console.log('[SuggestionsService] Parsed complete JSON response');
+          return parsed;
+        }
+      } catch (e) {
+        // Not a complete JSON, try newline-delimited format
+      }
+
+      // Try newline-delimited JSON format (streaming response)
       const lines = fullText.trim().split('\n');
       let result: StreamResponse | null = null;
 
       for (const line of lines) {
         if (!line.trim()) continue;
 
-        // Remove "0:" prefix that AI SDK adds
+        // Remove "0:" prefix that AI SDK might add
         const cleanedLine = line.replace(/^\d+:/, '').trim();
 
         try {
@@ -168,9 +193,13 @@ class SuggestionsService {
             result = parsed;
           }
         } catch (e) {
-          // Skip invalid JSON lines
-          console.warn('Failed to parse stream line:', line);
+          // Skip invalid JSON lines (only log in development)
+          // console.warn('Failed to parse stream line:', line);
         }
+      }
+
+      if (result) {
+        console.log('[SuggestionsService] Parsed newline-delimited response');
       }
 
       return result;

@@ -103,14 +103,15 @@ export function QuickFilters({ filters, onFiltersChange }: QuickFiltersProps) {
 
     return (
       <Animated.View style={animatedStyle}>
-        <Pressable onPress={onPress}>
-          <Badge
-            variant={isSelected ? 'default' : 'outline'}
-            className={className}
-          >
+        <Badge
+          variant={isSelected ? 'default' : 'outline'}
+          className={className}
+          asChild
+        >
+          <Pressable onPress={onPress}>
             {children}
-          </Badge>
-        </Pressable>
+          </Pressable>
+        </Badge>
       </Animated.View>
     );
   };

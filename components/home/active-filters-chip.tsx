@@ -44,34 +44,32 @@ export function ActiveFiltersChip({ filters, onRemoveFilter }: ActiveFiltersChip
       >
         {/* Companionship Filters */}
         {filters.companionship.map((value) => (
-          <Pressable
+          <Badge
             key={`comp-${value}`}
-            onPress={() => onRemoveFilter('companionship', value)}
+            variant="secondary"
+            className="flex-row items-center gap-1 px-3 py-1.5"
+            asChild
           >
-            <Badge
-              variant="secondary"
-              className="flex-row items-center gap-1 px-3 py-1.5"
-            >
+            <Pressable onPress={() => onRemoveFilter('companionship', value)}>
               <Text className="text-sm">{COMPANIONSHIP_LABELS[value]}</Text>
               <X size={14} className="text-foreground" />
-            </Badge>
-          </Pressable>
+            </Pressable>
+          </Badge>
         ))}
 
         {/* Mood Filters */}
         {filters.mood.map((value) => (
-          <Pressable
+          <Badge
             key={`mood-${value}`}
-            onPress={() => onRemoveFilter('mood', value)}
+            variant="secondary"
+            className="flex-row items-center gap-1 px-3 py-1.5"
+            asChild
           >
-            <Badge
-              variant="secondary"
-              className="flex-row items-center gap-1 px-3 py-1.5"
-            >
+            <Pressable onPress={() => onRemoveFilter('mood', value)}>
               <Text className="text-sm">{MOOD_LABELS[value]}</Text>
               <X size={14} className="text-foreground" />
-            </Badge>
-          </Pressable>
+            </Pressable>
+          </Badge>
         ))}
 
         {/* Budget & Time (non-removable, just info) */}
