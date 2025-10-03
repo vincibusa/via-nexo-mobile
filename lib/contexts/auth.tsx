@@ -37,8 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Redirect to login if not authenticated
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
-      // Redirect to app if authenticated
-      router.replace('/(app)');
+      // Redirect to app tabs after login
+      router.replace('/(app)/(tabs)');
     }
   }, [user, segments, isLoading]);
 

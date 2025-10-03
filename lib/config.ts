@@ -14,6 +14,7 @@ export const API_CONFIG = {
     // Places
     PLACES: '/api/places',
     PLACES_NEARBY: '/api/places/nearby',
+    PLACES_BATCH: '/api/places/batch',
     PLACE_BY_ID: (id: string) => `/api/places/${id}`,
 
     // Events

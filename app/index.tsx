@@ -11,6 +11,7 @@ export default function Index() {
   }
 
   // Redirect based on auth state
+  // This is just the initial redirect, AuthContext will handle further navigation
   if (user) {
     return <Redirect href="/(app)/(tabs)" />;
   }
