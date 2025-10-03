@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle } from 'lucide-react-native';
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { quickSuggestionsService, type QuickSuggestion } from '@/lib/services/quick-suggestions';
 import * as Location from 'expo-location';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -14,7 +14,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [isNavigating, setIsNavigating] = useState(false);
   const [quickSuggestions, setQuickSuggestions] = useState<QuickSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -50,13 +49,6 @@ export default function HomeScreen() {
     return `Ciao ${userName} 🌃, ancora in giro?`;
   }, [userName]);
 
-  // Navigation handler with loading state
-  const handleNavigation = useCallback((route: string) => {
-    setIsNavigating(true);
-    router.push(route as any);
-    // Reset loading state after navigation
-    setTimeout(() => setIsNavigating(false), 100);
-  }, [router]);
 
   // Fetch location and quick suggestions
   useEffect(() => {
@@ -124,10 +116,9 @@ export default function HomeScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="gap-3 p-6">
-          <Text 
+          <Text
             className="text-2xl font-bold leading-tight"
             accessibilityRole="header"
-            accessibilityLevel={1}
           >
             {greeting}
           </Text>
@@ -143,10 +134,7 @@ export default function HomeScreen() {
             icon={Search}
             title="Ricerca Guidata"
             description="Trova rapidamente con filtri: compagnia, mood, budget e orario"
-            onPress={() => handleNavigation('/(app)/guided-search')}
-            accessibilityLabel="Ricerca Guidata. Trova rapidamente con filtri: compagnia, mood, budget e orario"
-            accessibilityHint="Tocca per aprire la ricerca con filtri"
-            disabled={isNavigating}
+            onPress={() => router.push('/(app)/chat-search?mode=guided' as any)}
           />
 
           {/* Ricerca Libera (Chat) */}
@@ -154,10 +142,7 @@ export default function HomeScreen() {
             icon={MessageCircle}
             title="Ricerca Libera (Chat)"
             description="Descrivi la tua serata ideale e il nostro AI ti aiuterà"
-            onPress={() => handleNavigation('/(app)/chat-search')}
-            accessibilityLabel="Ricerca Libera con Chat. Descrivi la tua serata ideale e il nostro AI ti aiuterà"
-            accessibilityHint="Tocca per aprire la ricerca con chat AI"
-            disabled={isNavigating}
+            onPress={() => router.push('/(app)/chat-search?mode=free' as any)}
           />
         </View>
 
@@ -167,7 +152,6 @@ export default function HomeScreen() {
             <Text
               className="text-lg font-semibold"
               accessibilityRole="header"
-              accessibilityLevel={2}
             >
               Suggerimenti Rapidi
             </Text>

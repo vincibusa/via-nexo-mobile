@@ -2,13 +2,13 @@ import { ChatBubble } from '@/components/chat/chat-bubble';
 import { ChatInput } from '@/components/chat/chat-input';
 import { TypingIndicator } from '@/components/chat/typing-indicator';
 import { QuickChips } from '@/components/chat/quick-chips';
-import { SuggestionCard } from '@/components/home/suggestion-card';
+import { FilterPanel, type GuidedFilters } from '@/components/chat/filter-panel';
+import { ChatSuggestionCards } from '@/components/chat/chat-suggestion-cards';
 import { Text } from '@/components/ui/text';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { SuggestedPlace } from '@/lib/types/suggestion';
 import { chatService } from '@/lib/services/chat';
 import { API_CONFIG } from '@/lib/config';
@@ -20,6 +20,7 @@ interface Message {
   content: string;
   isUser: boolean;
   timestamp: Date;
+  suggestions?: SuggestedPlace[]; // AI messages can include suggestions
 }
 
 const QUICK_SUGGESTIONS = [
@@ -32,17 +33,21 @@ const QUICK_SUGGESTIONS = [
 
 export default function ChatSearchScreen() {
   const { session } = useAuth();
+  const params = useLocalSearchParams();
+  const mode = (params.mode as 'guided' | 'free') || 'free';
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       content:
-        'Ciao! 👋 Sono qui per aiutarti a trovare il posto perfetto. Raccontami cosa stai cercando per stasera!',
+        mode === 'guided'
+          ? 'Ciao! 👋 Seleziona i filtri sopra per trovare il posto perfetto, oppure scrivi liberamente cosa cerchi!'
+          : 'Ciao! 👋 Sono qui per aiutarti a trovare il posto perfetto. Raccontami cosa stai cercando per stasera!',
       isUser: false,
       timestamp: new Date(),
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
-  const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -119,17 +124,9 @@ export default function ChatSearchScreen() {
         session.accessToken
       );
 
-      // Add AI response
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response.conversationalResponse,
-        isUser: false,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-
       // Fetch full place details for suggestions
+      let suggestedPlaces: SuggestedPlace[] = [];
+
       if (response.suggestions.length > 0) {
         const placeIds = response.suggestions.map((s) => s.placeId);
 
@@ -144,11 +141,11 @@ export default function ChatSearchScreen() {
         });
 
         if (placesResponse.ok) {
-          const placesData = await placesResponse.json();
+          const placesData = (await placesResponse.json()) as { places: any[] };
           const places = placesData.places || [];
 
           // Map places with AI reasons
-          const suggestedPlaces: SuggestedPlace[] = response.suggestions.map((suggestion) => {
+          suggestedPlaces = response.suggestions.map((suggestion) => {
             const place = places.find((p: any) => p.id === suggestion.placeId);
 
             if (!place) {
@@ -161,14 +158,19 @@ export default function ChatSearchScreen() {
               similarity_score: suggestion.matchScore,
             };
           }).filter((p): p is SuggestedPlace => p !== null);
-
-          setSuggestions(suggestedPlaces);
-        } else {
-          setSuggestions([]);
         }
-      } else {
-        setSuggestions([]);
       }
+
+      // Add AI response with suggestions embedded
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: response.conversationalResponse,
+        isUser: false,
+        timestamp: new Date(),
+        suggestions: suggestedPlaces,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error getting chat suggestions:', error);
 
@@ -188,6 +190,49 @@ export default function ChatSearchScreen() {
 
   const handleQuickSuggestion = (suggestion: string) => {
     handleSendMessage(suggestion);
+  };
+
+  const handleGuidedSearch = (filters: GuidedFilters) => {
+    // Generate natural language message from filters
+    const parts: string[] = [];
+
+    if (filters.companionship.length > 0) {
+      const compMap = {
+        alone: 'da solo',
+        partner: 'con il partner',
+        friends: 'con amici',
+        family: 'con la famiglia',
+      };
+      parts.push(compMap[filters.companionship[0]]);
+    }
+
+    if (filters.mood.length > 0) {
+      const moodMap = {
+        relaxed: 'atmosfera rilassata',
+        energetic: 'atmosfera energica',
+        cultural: 'atmosfera culturale',
+        romantic: 'atmosfera romantica',
+      };
+      parts.push(moodMap[filters.mood[0]]);
+    }
+
+    parts.push(`budget ${filters.budget}`);
+
+    const timeMap = {
+      now: 'adesso',
+      tonight: 'stasera',
+      morning: 'domani mattina',
+      afternoon: 'domani pomeriggio',
+      evening: 'domani sera',
+      night: 'stanotte',
+      weekend: 'questo weekend',
+    };
+    parts.push(timeMap[filters.time]);
+
+    const message = `Cerco un locale ${parts.join(', ')}`;
+
+    // Send the generated message
+    handleSendMessage(message);
   };
 
   // Mock AI response generator
@@ -218,11 +263,14 @@ export default function ChatSearchScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Ricerca Libera',
+          title: mode === 'guided' ? 'Ricerca Guidata' : 'Ricerca Libera',
           headerShown: true,
         }}
       />
       <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+        {/* Filter Panel (only in guided mode) */}
+        {mode === 'guided' && <FilterPanel onSearch={handleGuidedSearch} />}
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="flex-1"
@@ -237,39 +285,24 @@ export default function ChatSearchScreen() {
               onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
               {messages.map((msg) => (
-                <ChatBubble
-                  key={msg.id}
-                  message={msg.content}
-                  isUser={msg.isUser}
-                  timestamp={msg.timestamp}
-                />
+                <View key={msg.id}>
+                  <ChatBubble
+                    message={msg.content}
+                    isUser={msg.isUser}
+                    timestamp={msg.timestamp}
+                  />
+                  {/* Show suggestions inline with AI messages */}
+                  {!msg.isUser && msg.suggestions && msg.suggestions.length > 0 && (
+                    <ChatSuggestionCards suggestions={msg.suggestions} />
+                  )}
+                </View>
               ))}
 
               {isTyping && <TypingIndicator />}
-
-              {/* Suggestions Results */}
-              {suggestions.length > 0 && !isTyping && (
-                <View className="mt-4 gap-4">
-                  <Text className="text-lg font-semibold">
-                    Ho trovato {suggestions.length}{' '}
-                    {suggestions.length === 1 ? 'posto' : 'posti'} per te:
-                  </Text>
-                  {suggestions.map((place, index) => (
-                    <Animated.View
-                      key={place.id}
-                      entering={FadeInDown.delay(index * 100)
-                        .duration(300)
-                        .springify()}
-                    >
-                      <SuggestionCard place={place} />
-                    </Animated.View>
-                  ))}
-                </View>
-              )}
             </ScrollView>
 
             {/* Quick Suggestions (shown only if no messages yet or few messages) */}
-            {messages.length <= 2 && !isTyping && (
+            {mode === 'free' && messages.length <= 2 && !isTyping && (
               <QuickChips suggestions={QUICK_SUGGESTIONS} onSelect={handleQuickSuggestion} />
             )}
 
