@@ -1,13 +1,13 @@
-import { SearchModeCard } from '@/components/home/search-mode-card';
-import { QuickSuggestionCard } from '@/components/home/quick-suggestion-card';
-import { Text } from '@/components/ui/text';
-import { useAuth } from '@/lib/contexts/auth';
+import { SearchModeCard } from '../../../components/home/search-mode-card';
+import { QuickSuggestionCard } from '../../../components/home/quick-suggestion-card';
+import { Text } from '../../../components/ui/text';
+import { useAuth } from '../../../lib/contexts/auth';
 import { useRouter } from 'expo-router';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MessageCircle } from 'lucide-react-native';
 import { useMemo, useState, useEffect } from 'react';
-import { quickSuggestionsService, type QuickSuggestion } from '@/lib/services/quick-suggestions';
+import { quickSuggestionsService, type QuickSuggestion } from '../../../lib/services/quick-suggestions';
 import * as Location from 'expo-location';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 

@@ -1,4 +1,4 @@
-import { API_CONFIG } from '@/lib/config';
+import { API_CONFIG } from '../../lib/config';
 
 export interface ChatSuggestionRequest {
   message: string;

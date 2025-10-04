@@ -1,5 +1,5 @@
-import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
+import { Badge } from '../../components/ui/badge';
+import { Text } from '../../components/ui/text';
 import { View, ScrollView, Pressable } from 'react-native';
 import { X } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';

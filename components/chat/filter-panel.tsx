@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
+import { Button } from '../../components/ui/button';
+import { Text } from '../../components/ui/text';
 import { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';

@@ -1,7 +1,7 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Text } from '@/components/ui/text';
-import { useAuth } from '@/lib/contexts/auth';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Text } from '../../../components/ui/text';
+import { useAuth } from '../../../lib/contexts/auth';
 import { Alert, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

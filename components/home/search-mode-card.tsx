@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { LucideIcon } from 'lucide-react-native';
-import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardTitle, CardDescription } from '../../components/ui/card';
 
 interface SearchModeCardProps {
   icon: LucideIcon;

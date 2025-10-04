@@ -1,18 +1,18 @@
-import { ChatBubble } from '@/components/chat/chat-bubble';
-import { ChatInput } from '@/components/chat/chat-input';
-import { TypingIndicator } from '@/components/chat/typing-indicator';
-import { QuickChips } from '@/components/chat/quick-chips';
-import { FilterPanel, type GuidedFilters } from '@/components/chat/filter-panel';
-import { ChatSuggestionCards } from '@/components/chat/chat-suggestion-cards';
-import { Text } from '@/components/ui/text';
+import { ChatBubble } from '../../components/chat/chat-bubble';
+import { ChatInput } from '../../components/chat/chat-input';
+import { TypingIndicator } from '../../components/chat/typing-indicator';
+import { QuickChips } from '../../components/chat/quick-chips';
+import { FilterPanel, type GuidedFilters } from '../../components/chat/filter-panel';
+import { ChatSuggestionCards } from '../../components/chat/chat-suggestion-cards';
+
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { SuggestedPlace } from '@/lib/types/suggestion';
-import { chatService } from '@/lib/services/chat';
-import { API_CONFIG } from '@/lib/config';
-import { useAuth } from '@/lib/contexts/auth';
+import type { SuggestedPlace } from '../../lib/types/suggestion';
+import { chatService } from '../../lib/services/chat';
+import { API_CONFIG } from '../../lib/config';
+import { useAuth } from '../../lib/contexts/auth';
 import * as Location from 'expo-location';
 
 interface Message {

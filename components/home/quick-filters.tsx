@@ -1,10 +1,10 @@
-import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Text } from '../../components/ui/text';
+import { Button } from '../../components/ui/button';
 import { View, Pressable } from 'react-native';
 import { useState } from 'react';
 import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { ChevronDown, ChevronUp } from 'lucide-react-native';
+
 
 export interface Filters {
   companionship: string[];

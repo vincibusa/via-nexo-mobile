@@ -1,8 +1,8 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Text } from '@/components/ui/text';
-import type { SuggestedPlace } from '@/lib/types/suggestion';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
+import { Text } from '../../components/ui/text';
+import type { SuggestedPlace } from '../../lib/types/suggestion';
 import { useRouter } from 'expo-router';
 import { Heart, Share2, MapPin, Clock } from 'lucide-react-native';
 import { View, Image, Pressable } from 'react-native';

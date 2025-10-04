@@ -1,5 +1,5 @@
-import { API_CONFIG } from '@/lib/config';
-import type { LoginResponse, SignupResponse, User } from '@/lib/types/auth';
+import { API_CONFIG } from '../../lib/config';
+import type { LoginResponse, SignupResponse, User } from '../../lib/types/auth';
 
 class AuthService {
   private async request<T>(

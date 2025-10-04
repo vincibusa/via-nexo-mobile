@@ -1,5 +1,5 @@
-import { API_CONFIG } from '@/lib/config';
-import type { SuggestParams, SuggestResponse, SuggestedPlace, Place } from '@/lib/types/suggestion';
+import { API_CONFIG } from '../../lib/config';
+import type { SuggestParams, SuggestResponse, SuggestedPlace, Place } from '../../lib/types/suggestion';
 
 interface StreamSuggestion {
   placeId: string;

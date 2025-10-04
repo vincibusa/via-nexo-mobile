@@ -1,7 +1,7 @@
-import '@/global.css';
+import '../global.css';
 
-import { AuthProvider } from '@/lib/contexts/auth';
-import { NAV_THEME } from '@/lib/theme';
+import { AuthProvider } from '../lib/contexts/auth';
+import { NAV_THEME } from '../lib/theme';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';

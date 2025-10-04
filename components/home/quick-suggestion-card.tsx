@@ -1,4 +1,4 @@
-import { Text } from '@/components/ui/text';
+import { Text } from '../../components/ui/text';
 import { Pressable, View, Image } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { MapPin } from 'lucide-react-native';

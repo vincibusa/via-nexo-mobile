@@ -1,9 +1,9 @@
-import {Text} from '../../components/ui/text'
-import { Button } from '@/components/ui/button';
+import { Text } from '../../components/ui/text';
+import { Button } from '../../components/ui/button';
 import { View, Image, Pressable } from 'react-native';
-import { MapPin, Phone, Globe, Heart } from 'lucide-react-native';
+import { MapPin,  Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import type { SuggestedPlace } from '@/lib/types/suggestion';
+import type { SuggestedPlace } from '../../lib/types/suggestion';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface ChatSuggestionCardsProps {

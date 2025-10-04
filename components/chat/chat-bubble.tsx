@@ -1,4 +1,4 @@
-import { Text } from '@/components/ui/text';
+import { Text } from '../../components/ui/text';
 import { View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 

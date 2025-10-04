@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { useAuth } from '@/lib/contexts/auth';
+import { Button } from '../../components/ui/button';
+import { Text } from '../../components/ui/text';
+import { useAuth } from '../../lib/contexts/auth';
 import { View } from 'react-native';
 
 export default function HomeScreen() {

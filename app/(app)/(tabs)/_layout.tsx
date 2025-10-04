@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Home, Calendar, Heart, User } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import { NAV_THEME } from '@/lib/theme';
+import { NAV_THEME } from '../../../lib/theme';
 
 export default function TabLayout() {
   const { colorScheme } = useColorScheme();
