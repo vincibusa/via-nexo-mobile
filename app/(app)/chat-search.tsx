@@ -124,40 +124,94 @@ export default function ChatSearchScreen() {
         session.accessToken
       );
 
-      // Fetch full place details for suggestions
+      // Fetch full details for suggestions (both places and events)
       let suggestedPlaces: SuggestedPlace[] = [];
 
       if (response.suggestions.length > 0) {
-        const placeIds = response.suggestions.map((s) => s.placeId);
+        // Separate place and event suggestions
+        const placeSuggestions = response.suggestions.filter((s) => s.type === 'place');
+        const eventSuggestions = response.suggestions.filter((s) => s.type === 'event');
+        
+        console.log('[ChatSearch] Suggestions - Places:', placeSuggestions.length, 'Events:', eventSuggestions.length);
+        
+        // Fetch places if any
+        if (placeSuggestions.length > 0) {
+          const placeIds = placeSuggestions.map((s) => s.id);
 
-        // Fetch places using batch endpoint
-        const placesResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PLACES_BATCH}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.accessToken}`,
-          },
-          body: JSON.stringify({ ids: placeIds }),
-        });
+          const placesResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PLACES_BATCH}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.accessToken}`,
+            },
+            body: JSON.stringify({ ids: placeIds }),
+          });
 
-        if (placesResponse.ok) {
-          const placesData = (await placesResponse.json()) as { places: any[] };
-          const places = placesData.places || [];
+          if (placesResponse.ok) {
+            const placesData = (await placesResponse.json()) as { places: any[] };
+            const places = placesData.places || [];
 
-          // Map places with AI reasons
-          suggestedPlaces = response.suggestions.map((suggestion) => {
-            const place = places.find((p: any) => p.id === suggestion.placeId);
+            // Map places with AI reasons
+            const mappedPlaces = placeSuggestions.map((suggestion) => {
+              const place = places.find((p: any) => p.id === suggestion.id);
+              if (!place) return null;
 
-            if (!place) {
-              return null;
-            }
+              return {
+                ...place,
+                ai_reason: suggestion.reason,
+                similarity_score: suggestion.matchScore,
+              };
+            }).filter((p): p is SuggestedPlace => p !== null);
 
-            return {
-              ...place,
-              ai_reason: suggestion.reason,
-              similarity_score: suggestion.matchScore,
-            };
-          }).filter((p): p is SuggestedPlace => p !== null);
+            suggestedPlaces.push(...mappedPlaces);
+          }
+        }
+
+        // Fetch events if any
+        if (eventSuggestions.length > 0) {
+          const eventIds = eventSuggestions.map((s) => s.id);
+
+          const eventsResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EVENTS_BATCH}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.accessToken}`,
+            },
+            body: JSON.stringify({ ids: eventIds }),
+          });
+
+          if (eventsResponse.ok) {
+            const eventsData = (await eventsResponse.json()) as { events: any[] };
+            const events = eventsData.events || [];
+
+            // Map events with AI reasons (convert to place-like format for display)
+            const mappedEvents = eventSuggestions.map((suggestion) => {
+              const event = events.find((e: any) => e.id === suggestion.id);
+              if (!event || !event.place) return null;
+
+              // Convert event to place-like structure for ChatSuggestionCards
+              return {
+                id: event.id,
+                name: event.title,
+                category: event.event_type,
+                description: event.description,
+                cover_image: event.cover_image,
+                address: event.place.address,
+                city: event.place.city,
+                latitude: event.place.latitude,
+                longitude: event.place.longitude,
+                price_range: event.place.price_range,
+                verified: event.place.verified,
+                ai_reason: suggestion.reason,
+                similarity_score: suggestion.matchScore,
+                // Mark as event for navigation
+                _isEvent: true,
+                _eventData: event,
+              } as any;
+            }).filter((e): e is SuggestedPlace => e !== null);
+
+            suggestedPlaces.push(...mappedEvents);
+          }
         }
       }
 

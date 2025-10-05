@@ -37,12 +37,23 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
   const router = useRouter();
 
   const handlePress = () => {
-    router.push({
-      pathname: `/place/${place.id}` as any,
-      params: {
-        ai_reason: place.ai_reason,
-      },
-    });
+    // Check if this is an event (marked with _isEvent flag)
+    const isEvent = (place as any)._isEvent;
+    
+    if (isEvent) {
+      // Navigate to event detail
+      router.push({
+        pathname: `/event/${place.id}` as any,
+      });
+    } else {
+      // Navigate to place detail
+      router.push({
+        pathname: `/place/${place.id}` as any,
+        params: {
+          ai_reason: place.ai_reason,
+        },
+      });
+    }
   };
 
   const handleFavorite = () => {

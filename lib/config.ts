@@ -19,6 +19,7 @@ export const API_CONFIG = {
 
     // Events
     EVENTS: '/api/events',
+    EVENTS_BATCH: '/api/events/batch',
     EVENT_BY_ID: (id: string) => `/api/events/${id}`,
 
     // Favorites
