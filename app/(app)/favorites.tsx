@@ -25,6 +25,7 @@ export default function FavoritesScreen() {
     id: place.id,
     name: place.name,
     category: place.category,
+    description: place.description,
     address: place.address,
     city: place.city,
     latitude: place.latitude,
@@ -32,8 +33,8 @@ export default function FavoritesScreen() {
     cover_image: place.cover_image,
     price_range: place.price_range,
     verified: place.verified,
-    distance_km: place.distance_km,
-    events_count: place.events_count,
+    is_published: true,
+    is_listed: true,
   }));
 
   const transformedEvents = events.map((event) => ({
@@ -43,10 +44,19 @@ export default function FavoritesScreen() {
     event_type: event.event_type,
     start_datetime: event.start_datetime,
     end_datetime: event.end_datetime,
-    cover_image_url: event.cover_image,
+    cover_image: event.cover_image,
     ticket_price_min: event.ticket_price_min,
     ticket_price_max: event.ticket_price_max,
-    place: event.place,
+    place: event.place ? {
+      id: event.place.id,
+      name: event.place.name,
+      category: '',
+      address: event.place.address,
+      city: event.place.city,
+      latitude: 0,
+      longitude: 0,
+      verified: false,
+    } : undefined,
   }));
 
   const renderEmptyState = (type: 'places' | 'events') => (
