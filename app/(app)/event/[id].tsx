@@ -5,20 +5,29 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { ExpandableText } from '../../../components/common/expandable-text';
 import { ShareButton } from '../../../components/common/share-button';
 import { eventsService, type EventDetail } from '../../../lib/services/events';
+import { useFavorites } from '../../../lib/contexts/favorites';
+import { useAuth } from '../../../lib/contexts/auth';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Image, Pressable, Linking } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Image, Pressable, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Calendar, Clock, MapPin, Music, Ticket } from 'lucide-react-native';
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { session } = useAuth();
+  const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
+  
   const id = params.id as string;
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  
+  const isEventFavorite = isFavorite('event', id);
+  const favoriteId = getFavoriteId('event', id);
 
   useEffect(() => {
     loadEvent();
@@ -37,6 +46,26 @@ export default function EventDetailScreen() {
     }
 
     setLoading(false);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!session) {
+      Alert.alert('Login Richiesto', 'Devi effettuare il login per salvare i preferiti');
+      return;
+    }
+
+    setFavoriteLoading(true);
+    try {
+      if (isEventFavorite && favoriteId) {
+        await removeFavorite(favoriteId, 'event');
+      } else {
+        await addFavorite({ resource_type: 'event', resource_id: id });
+      }
+    } catch (error) {
+      Alert.alert('Errore', 'Impossibile aggiornare i preferiti');
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   const getTimeUntilEvent = (startDatetime: string) => {
@@ -297,9 +326,23 @@ export default function EventDetailScreen() {
 
           {/* Bottom Actions */}
           <View className="flex-row gap-3 pb-4">
-            <Button className="flex-1 flex-row gap-2" variant="default">
-              <Heart size={18} />
-              <Text>Salva</Text>
+            <Button 
+              className="flex-1 flex-row gap-2" 
+              variant="default"
+              onPress={handleToggleFavorite}
+              disabled={favoriteLoading}
+            >
+              {favoriteLoading ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <>
+                  <Heart 
+                    size={18} 
+                    fill={isEventFavorite ? "currentColor" : "none"}
+                  />
+                  <Text>Salva</Text>
+                </>
+              )}
             </Button>
             <ShareButton
               className="flex-1"

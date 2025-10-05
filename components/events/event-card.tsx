@@ -30,65 +30,59 @@ export const EventCard = React.memo(({ event }: EventCardProps) => {
   const { day, month, time } = formatDate(event.start_datetime);
 
   return (
-    <Pressable onPress={handlePress} className="mb-4 active:opacity-80">
-      <Card className="overflow-hidden p-0 border-0">
+    <Pressable onPress={handlePress} className="mb-3 active:opacity-80">
+      <Card className="flex-row overflow-hidden p-0 border-0" style={{ height: 136 }}>
         {/* Image with date overlay */}
-        <View className="w-full aspect-[16/9] relative">
+        <View className="w-[160px] h-full relative">
           {event.cover_image ? (
             <Image source={{ uri: event.cover_image }} className="w-full h-full" resizeMode="cover" />
           ) : (
             <View className="w-full h-full bg-muted items-center justify-center">
-              <Text className="text-6xl opacity-30">🎉</Text>
+              <Text className="text-4xl opacity-30">🎉</Text>
             </View>
           )}
 
           {/* Date badge overlay */}
-          <View className="absolute top-3 left-3 bg-background/95 rounded-lg p-2 min-w-[56px] items-center">
-            <Text className="text-2xl font-bold leading-tight">{day}</Text>
-            <Text variant="muted" className="text-xs uppercase">
+          <View className="absolute top-2 left-2 bg-background/95 rounded-lg p-1.5 min-w-[48px] items-center">
+            <Text className="text-xl font-bold leading-tight">{day}</Text>
+            <Text variant="muted" className="text-[10px] uppercase leading-tight">
               {month}
             </Text>
           </View>
         </View>
 
         {/* Content */}
-        <View className="p-4">
-          {/* Title */}
-          <Text className="text-lg font-semibold mb-2" numberOfLines={2}>
-            {event.title}
-          </Text>
+        <View className="flex-1 p-3 justify-between">
+          {/* Top section */}
+          <View>
+            <Text className="text-base font-semibold mb-1" numberOfLines={1}>
+              {event.title}
+            </Text>
 
-          {/* Time and event type */}
-          <View className="flex-row items-center mb-2">
-            <Calendar size={14} className="text-muted-foreground" />
-            <Text variant="muted" className="ml-1.5">
-              {time}
-            </Text>
-            <Text variant="muted" className="mx-1.5">
-              •
-            </Text>
-            <Text variant="muted" className="capitalize">
-              {event.event_type}
-            </Text>
-          </View>
-
-          {/* Place */}
-          {event.place && (
-            <View className="flex-row items-center mb-3">
-              <MapPin size={14} className="text-muted-foreground" />
-              <Text variant="muted" className="ml-1.5" numberOfLines={1}>
-                {event.place.name}
-                {event.distance_km !== undefined &&
-                  ` • ${
-                    event.distance_km < 1
-                      ? `${Math.round(event.distance_km * 1000)} m`
-                      : `${event.distance_km.toFixed(1)} km`
-                  }`}
+            <View className="flex-row items-center mb-1">
+              <Calendar size={12} className="text-muted-foreground" />
+              <Text variant="muted" className="ml-1 text-xs">
+                {time}
+              </Text>
+              <Text variant="muted" className="mx-1 text-xs">
+                •
+              </Text>
+              <Text variant="muted" className="capitalize text-xs">
+                {event.event_type}
               </Text>
             </View>
-          )}
 
-          {/* Price and music genre */}
+            {event.place && (
+              <View className="flex-row items-center">
+                <MapPin size={12} className="text-muted-foreground" />
+                <Text variant="muted" className="ml-1 text-xs" numberOfLines={1}>
+                  {event.place.name}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom section */}
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               {event.ticket_price_min !== undefined && event.ticket_price_min !== null && (
@@ -102,17 +96,17 @@ export const EventCard = React.memo(({ event }: EventCardProps) => {
                   </Text>
                 </Badge>
               )}
-              {event.music_genre && event.music_genre.length > 0 && (
-                <Badge variant="secondary">
-                  <Text>{event.music_genre[0]}</Text>
-                </Badge>
-              )}
             </View>
 
-            {event.place?.verified && (
-              <Badge variant="default">
-                <Text>✓</Text>
-              </Badge>
+            {event.distance_km !== undefined && (
+              <View className="flex-row items-center">
+                <MapPin size={12} className="text-muted-foreground" />
+                <Text variant="muted" className="ml-1 text-xs">
+                  {event.distance_km < 1
+                    ? `${Math.round(event.distance_km * 1000)} m`
+                    : `${event.distance_km.toFixed(1)} km`}
+                </Text>
+              </View>
             )}
           </View>
         </View>

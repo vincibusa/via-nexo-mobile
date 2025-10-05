@@ -1,6 +1,8 @@
 import '../global.css';
 
 import { AuthProvider } from '../lib/contexts/auth';
+import { SettingsProvider } from '../lib/contexts/settings';
+import { FavoritesProvider } from '../lib/contexts/favorites';
 import { NAV_THEME } from '../lib/theme';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
@@ -19,16 +21,20 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
       <AuthProvider>
-        <StatusBar 
-          style={colorScheme === 'dark' ? 'light' : 'dark'} 
-          backgroundColor={NAV_THEME[colorScheme ?? 'light'].colors.background}
-          translucent={false}
-        />
-        <Stack screenOptions={{
-          headerShown: false,
-          headerBackTitle: ''
-        }} />
-        <PortalHost />
+        <SettingsProvider>
+          <FavoritesProvider>
+            <StatusBar 
+              style={colorScheme === 'dark' ? 'light' : 'dark'} 
+              backgroundColor={NAV_THEME[colorScheme ?? 'light'].colors.background}
+              translucent={false}
+            />
+            <Stack screenOptions={{
+              headerShown: false,
+              headerBackTitle: ''
+            }} />
+            <PortalHost />
+          </FavoritesProvider>
+        </SettingsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

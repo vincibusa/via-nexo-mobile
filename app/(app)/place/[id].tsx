@@ -7,9 +7,11 @@ import { ExpandableText } from '../../../components/common/expandable-text';
 import { ShareButton } from '../../../components/common/share-button';
 import { MapLinkButton } from '../../../components/common/map-link-button';
 import { placesService, type PlaceDetail } from '../../../lib/services/places';
+import { useFavorites } from '../../../lib/contexts/favorites';
+import { useAuth } from '../../../lib/contexts/auth';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Linking, Pressable } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Linking, Pressable, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Phone, Globe, Instagram, Facebook, MapPin, Clock, Euro } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -17,6 +19,9 @@ import * as Location from 'expo-location';
 export default function PlaceDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { session } = useAuth();
+  const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
+  
   const id = params.id as string;
   const aiReason = params.ai_reason as string | undefined;
 
@@ -24,6 +29,10 @@ export default function PlaceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  
+  const isPlaceFavorite = isFavorite('place', id);
+  const favoriteId = getFavoriteId('place', id);
 
   useEffect(() => {
     loadPlace();
@@ -56,6 +65,26 @@ export default function PlaceDetailScreen() {
     }
 
     setLoading(false);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!session) {
+      Alert.alert('Login Richiesto', 'Devi effettuare il login per salvare i preferiti');
+      return;
+    }
+
+    setFavoriteLoading(true);
+    try {
+      if (isPlaceFavorite && favoriteId) {
+        await removeFavorite(favoriteId, 'place');
+      } else {
+        await addFavorite({ resource_type: 'place', resource_id: id });
+      }
+    } catch (error) {
+      Alert.alert('Errore', 'Impossibile aggiornare i preferiti');
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   const openLink = async (url: string) => {
@@ -332,9 +361,23 @@ export default function PlaceDetailScreen() {
 
           {/* Bottom Actions */}
           <View className="flex-row gap-3 pb-4">
-            <Button className="flex-1 flex-row gap-2" variant="default">
-              <Heart size={18} />
-              <Text>Salva</Text>
+            <Button 
+              className="flex-1 flex-row gap-2" 
+              variant="default"
+              onPress={handleToggleFavorite}
+              disabled={favoriteLoading}
+            >
+              {favoriteLoading ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <>
+                  <Heart 
+                    size={18} 
+                    fill={isPlaceFavorite ? "currentColor" : "none"}
+                  />
+                  <Text>Salva</Text>
+                </>
+              )}
             </Button>
             <ShareButton
               className="flex-1"
