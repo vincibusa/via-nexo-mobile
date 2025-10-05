@@ -37,7 +37,12 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
   const router = useRouter();
 
   const handlePress = () => {
-    router.push(`/(app)/places/${place.id}` as any);
+    router.push({
+      pathname: `/place/${place.id}` as any,
+      params: {
+        ai_reason: place.ai_reason,
+      },
+    });
   };
 
   const handleFavorite = () => {

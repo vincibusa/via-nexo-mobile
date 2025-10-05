@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Calendar, Heart, User } from 'lucide-react-native';
+import { Home, Calendar, MapPin, User } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { NAV_THEME } from '../../../lib/theme';
 
@@ -28,17 +28,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="places"
+        options={{
+          title: 'Luoghi',
+         
+          tabBarIcon: ({ color, size }) => <MapPin size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="events"
         options={{
           title: 'Eventi',
           tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="favorites"
-        options={{
-          title: 'Preferiti',
-          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
         }}
       />
       <Tabs.Screen

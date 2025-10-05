@@ -10,7 +10,8 @@ export interface ChatSuggestionRequest {
 }
 
 export interface ChatSuggestion {
-  placeId: string;
+  id: string; // Can be placeId or eventId
+  type: 'place' | 'event';
   reason: string;
   matchScore: number;
   confidence: 'high' | 'medium' | 'low';
@@ -21,6 +22,8 @@ export interface ChatSuggestionResponse {
   suggestions: ChatSuggestion[];
   searchMetadata: {
     totalCandidates: number;
+    totalPlaces: number;
+    totalEvents: number;
     processingTime: number;
     cacheUsed: boolean;
   };

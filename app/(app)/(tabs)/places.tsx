@@ -4,23 +4,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import * as Location from 'expo-location';
 import { useFiltersStore } from '../../../lib/stores/filters-store';
-import { eventsListService, type EventListItem } from '../../../lib/services/events-list';
-import { EventCard } from '../../../components/events/event-card';
+import { placesListService } from '../../../lib/services/places-list';
+import type { Place } from '../../../lib/types/suggestion';
+import { PlaceCard } from '../../../components/places/place-card';
 import { SearchBar } from '../../../components/common/search-bar';
 import { FilterPills, type FilterPill } from '../../../components/common/filter-pills';
 import { Text } from '../../../components/ui/text';
 
-const TIME_FILTERS: FilterPill[] = [
-  { id: 'upcoming', label: 'In arrivo', value: 'upcoming' },
-  { id: 'today', label: 'Oggi', value: 'today' },
-  { id: 'this_week', label: 'Questa settimana', value: 'this_week' },
-  { id: 'this_weekend', label: 'Weekend', value: 'this_weekend' },
-  { id: 'this_month', label: 'Questo mese', value: 'this_month' },
+const CATEGORY_FILTERS: FilterPill[] = [
+  { id: 'all', label: 'Tutti', value: null },
+  { id: 'bar', label: 'Bar', value: 'bar' },
+  { id: 'ristorante', label: 'Ristorante', value: 'ristorante' },
+  { id: 'club', label: 'Club', value: 'club' },
+  { id: 'pub', label: 'Pub', value: 'pub' },
+  { id: 'lounge', label: 'Lounge', value: 'lounge' },
 ];
 
-export default function EventsScreen() {
-  const { eventsFilters, setEventsFilters } = useFiltersStore();
-  const [events, setEvents] = useState<EventListItem[]>([]);
+type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
+
+export default function PlacesScreen() {
+  const { placesFilters, setPlacesFilters } = useFiltersStore();
+  const [places, setPlaces] = useState<PlaceWithExtras[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,7 +32,7 @@ export default function EventsScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTimeId, setSelectedTimeId] = useState('upcoming');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('all');
 
   // Get user location
   useEffect(() => {
@@ -46,8 +50,8 @@ export default function EventsScreen() {
     })();
   }, []);
 
-  // Fetch events
-  const fetchEvents = useCallback(
+  // Fetch places
+  const fetchPlaces = useCallback(
     async (cursor: string | null = null, isRefresh = false) => {
       if (isRefresh) {
         setRefreshing(true);
@@ -58,11 +62,11 @@ export default function EventsScreen() {
       }
 
       const filters = {
-        ...eventsFilters,
+        ...placesFilters,
         search: searchQuery || undefined,
       };
 
-      const { data, error } = await eventsListService.getEvents(filters, location || undefined, cursor);
+      const { data, error } = await placesListService.getPlaces(filters, location || undefined, cursor);
 
       if (isRefresh) {
         setRefreshing(false);
@@ -73,32 +77,32 @@ export default function EventsScreen() {
       }
 
       if (error) {
-        console.error('Error fetching events:', error);
+        console.error('Error fetching places:', error);
         return;
       }
 
       if (data) {
         if (cursor) {
-          setEvents((prev) => [...prev, ...data.data]);
+          setPlaces((prev) => [...prev, ...data.data]);
         } else {
-          setEvents(data.data);
+          setPlaces(data.data);
         }
         setNextCursor(data.nextCursor);
         setHasMore(data.hasMore);
       }
     },
-    [eventsFilters, searchQuery, location]
+    [placesFilters, searchQuery, location]
   );
 
   // Initial fetch
   useEffect(() => {
-    fetchEvents();
-  }, [eventsFilters, location]);
+    fetchPlaces();
+  }, [placesFilters, location]);
 
   // Search debounce
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchEvents();
+      fetchPlaces();
     }, 300);
 
     return () => clearTimeout(timer);
@@ -107,32 +111,32 @@ export default function EventsScreen() {
   // Handle load more
   const handleLoadMore = useCallback(() => {
     if (!loadingMore && hasMore && nextCursor) {
-      fetchEvents(nextCursor);
+      fetchPlaces(nextCursor);
     }
-  }, [loadingMore, hasMore, nextCursor, fetchEvents]);
+  }, [loadingMore, hasMore, nextCursor, fetchPlaces]);
 
   // Handle refresh
   const handleRefresh = useCallback(() => {
-    fetchEvents(null, true);
-  }, [fetchEvents]);
+    fetchPlaces(null, true);
+  }, [fetchPlaces]);
 
-  // Handle time filter
-  const handleTimeSelect = useCallback(
+  // Handle category filter
+  const handleCategorySelect = useCallback(
     (pill: FilterPill) => {
-      console.log('Time filter selected:', pill);
-      setSelectedTimeId(pill.id);
-      setEventsFilters({ time_filter: pill.value });
+      console.log('Filter selected:', pill);
+      setSelectedCategoryId(pill.id);
+      setPlacesFilters({ category: pill.value || undefined });
       // Reset data when filter changes
-      setEvents([]);
+      setPlaces([]);
       setNextCursor(null);
       setHasMore(true);
     },
-    [setEventsFilters]
+    [setPlacesFilters]
   );
 
   // Render item
-  const renderItem = useCallback(({ item }: { item: EventListItem }) => {
-    return <EventCard event={item} />;
+  const renderItem = useCallback(({ item }: { item: PlaceWithExtras }) => {
+    return <PlaceCard place={item} />;
   }, []);
 
   // Render footer
@@ -151,7 +155,7 @@ export default function EventsScreen() {
     return (
       <View className="flex-1 items-center justify-center py-12">
         <Text variant="muted" className="text-center">
-          Nessun evento trovato
+          Nessun locale trovato
         </Text>
       </View>
     );
@@ -162,22 +166,30 @@ export default function EventsScreen() {
       {/* Header */}
       <View className="pb-3">
         <Text variant="h2" className="px-4 mb-4 border-0">
-          Eventi
+          Luoghi
         </Text>
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder="Cerca un evento..." />
-        <FilterPills filters={TIME_FILTERS} selectedId={selectedTimeId} onSelect={handleTimeSelect} />
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Cerca un locale..."
+        />
+        <FilterPills
+          filters={CATEGORY_FILTERS}
+          selectedId={selectedCategoryId}
+          onSelect={handleCategorySelect}
+        />
       </View>
 
       {/* List */}
-      {loading && events.length === 0 ? (
+      {loading && places.length === 0 ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" />
         </View>
       ) : (
         <FlashList
-          data={events}
+          data={places}
           renderItem={renderItem}
-          estimatedItemSize={300}
+          estimatedItemSize={136}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
           onEndReached={handleLoadMore}

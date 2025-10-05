@@ -47,7 +47,7 @@ export function QuickSuggestionCard({
   };
 
   const handlePress = () => {
-    router.push(`/(app)/places/${id}` as any);
+    router.push(`/place/${id}` as any);
   };
 
   // Get primary photo or first photo

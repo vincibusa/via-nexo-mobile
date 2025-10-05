@@ -15,7 +15,12 @@ export function SuggestionCard({ place }: SuggestionCardProps) {
   const router = useRouter();
 
   const handleDetails = () => {
-    router.push(`/place/${place.id}` as any);
+    router.push({
+      pathname: `/place/${place.id}` as any,
+      params: {
+        ai_reason: place.ai_reason,
+      },
+    });
   };
 
   const handleSave = () => {
