@@ -1,6 +1,18 @@
+// Funzione per ottenere l'IP locale del computer di sviluppo
+const getLocalIP = (): string => {
+  // In produzione, usa l'URL di produzione
+  if (!__DEV__) return 'https://via-nexo-new-vq5d.vercel.app/';
+  
+  // In sviluppo, usa l'IP locale del computer
+  // Puoi ottenere il tuo IP locale con: ipconfig (Windows) o ifconfig (Mac/Linux)
+  // Sostituisci con il tuo IP locale
+  return 'http://192.168.1.109:3000';
+};
+
 export const API_CONFIG = {
   // Cambia con l'URL del tuo backend in produzione
-  BASE_URL: __DEV__ ? 'http://localhost:3000' : 'https://via-nexo-new-vq5d.vercel.app/',
+  // In sviluppo usa l'IP locale del computer invece di localhost
+  BASE_URL: getLocalIP(),
   ENDPOINTS: {
     // Auth
     LOGIN: '/api/auth/login',

@@ -1,5 +1,8 @@
 import '../global.css';
 
+// Import React Native Reanimated at the top of the app
+import 'react-native-reanimated';
+
 import { AuthProvider } from '../lib/contexts/auth';
 import { SettingsProvider } from '../lib/contexts/settings';
 import { FavoritesProvider } from '../lib/contexts/favorites';
@@ -9,6 +12,8 @@ import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
+import { useEffect } from 'react';
+import { notificationsService } from '../lib/services/notifications';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -17,6 +22,17 @@ export {
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
+
+  useEffect(() => {
+    // Configure notification handling on app start
+    const cleanup = notificationsService.configureNotifications();
+    
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []);
 
   return (
     <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>

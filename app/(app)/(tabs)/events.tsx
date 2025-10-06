@@ -177,7 +177,6 @@ export default function EventsScreen() {
         <FlashList
           data={events}
           renderItem={renderItem}
-          estimatedItemSize={300}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
           onEndReached={handleLoadMore}

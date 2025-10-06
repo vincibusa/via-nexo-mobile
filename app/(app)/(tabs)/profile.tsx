@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avat
 import { useAuth } from '../../../lib/contexts/auth';
 import { useSettings } from '../../../lib/contexts/settings';
 import { useFavorites } from '../../../lib/contexts/favorites';
+import { usePushNotifications } from '../../../lib/hooks/usePushNotifications';
 import { Alert, View, ScrollView, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, Heart, Bell, Globe, Moon, MapPin, Info, FileText, Shield } from 'lucide-react-native';
@@ -16,6 +17,11 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { settings, isLoading, updateSettings } = useSettings();
   const { places, events } = useFavorites();
+  const { 
+    hasPermission, 
+    isLoading: notificationsLoading, 
+    toggleNotifications 
+  } = usePushNotifications();
   const router = useRouter();
   
   const totalFavorites = places.length + events.length;
@@ -33,9 +39,18 @@ export default function ProfileScreen() {
 
   const handleTogglePushNotifications = async () => {
     try {
-      await updateSettings({ push_enabled: !settings?.push_enabled });
+      const success = await toggleNotifications();
+      if (!success && !hasPermission) {
+        Alert.alert(
+          'Permessi Notifiche',
+          'Per ricevere notifiche, devi abilitare i permessi nelle impostazioni del dispositivo.',
+          [
+            { text: 'OK', style: 'default' },
+          ]
+        );
+      }
     } catch (error) {
-      Alert.alert('Errore', 'Impossibile aggiornare le impostazioni');
+      Alert.alert('Errore', 'Impossibile aggiornare le impostazioni delle notifiche');
     }
   };
 
@@ -200,14 +215,22 @@ export default function ProfileScreen() {
                       <View className="flex-1">
                         <Text className="font-medium">Notifiche Push</Text>
                         <Text className="text-xs text-muted-foreground">
-                          Ricevi aggiornamenti su eventi
+                          {hasPermission 
+                            ? (settings?.push_enabled ? 'Attive' : 'Disattivate')
+                            : 'Permessi richiesti'
+                          }
                         </Text>
                       </View>
                     </View>
-                    <Switch
-                      checked={settings?.push_enabled ?? true}
-                      onCheckedChange={handleTogglePushNotifications}
-                    />
+                    {notificationsLoading ? (
+                      <ActivityIndicator size="small" />
+                    ) : (
+                      <Switch
+                        checked={!!(settings?.push_enabled && hasPermission)}
+                        onCheckedChange={handleTogglePushNotifications}
+                        disabled={!hasPermission && !!settings?.push_enabled}
+                      />
+                    )}
                   </View>
 
                   {/* Language */}

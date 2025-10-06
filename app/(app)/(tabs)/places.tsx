@@ -189,7 +189,6 @@ export default function PlacesScreen() {
         <FlashList
           data={places}
           renderItem={renderItem}
-          estimatedItemSize={136}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
           onEndReached={handleLoadMore}

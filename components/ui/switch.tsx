@@ -1,36 +1,38 @@
 import { cn } from '../../lib/utils';
-import * as SwitchPrimitives from '@rn-primitives/switch';
-import { Platform } from 'react-native';
+import { Switch as NativeSwitch } from 'react-native';
+import React from 'react';
 
-function Switch({
+interface SwitchProps {
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}
+
+const Switch = React.forwardRef<any, SwitchProps>(({
+  checked = false,
+  onCheckedChange,
+  disabled = false,
   className,
   ...props
-}: SwitchPrimitives.RootProps & React.RefAttributes<SwitchPrimitives.RootRef>) {
+}, ref) => {
   return (
-    <SwitchPrimitives.Root
-      className={cn(
-        'flex h-[1.15rem] w-8 shrink-0 flex-row items-center rounded-full border border-transparent shadow-sm shadow-black/5',
-        Platform.select({
-          web: 'focus-visible:border-ring focus-visible:ring-ring/50 peer inline-flex outline-none transition-all focus-visible:ring-[3px] disabled:cursor-not-allowed',
-        }),
-        props.checked ? 'bg-primary' : 'bg-input dark:bg-input/80',
-        props.disabled && 'opacity-50',
-        className
-      )}
-      {...props}>
-      <SwitchPrimitives.Thumb
-        className={cn(
-          'bg-background size-4 rounded-full transition-transform',
-          Platform.select({
-            web: 'pointer-events-none block ring-0',
-          }),
-          props.checked
-            ? 'dark:bg-primary-foreground translate-x-3.5'
-            : 'dark:bg-foreground translate-x-0'
-        )}
-      />
-    </SwitchPrimitives.Root>
+    <NativeSwitch
+      ref={ref}
+      value={checked}
+      onValueChange={onCheckedChange}
+      disabled={disabled}
+      trackColor={{ false: '#f4f4f5', true: '#3b82f6' }}
+      thumbColor={checked ? '#ffffff' : '#ffffff'}
+      ios_backgroundColor="#f4f4f5"
+      style={{
+        transform: [{ scale: 0.8 }],
+      }}
+      {...props}
+    />
   );
-}
+});
+
+Switch.displayName = 'Switch';
 
 export { Switch };

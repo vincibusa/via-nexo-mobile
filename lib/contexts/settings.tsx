@@ -89,6 +89,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       
       // Update cache
       await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(serverSettings));
+
+      // Handle push notification registration if push_enabled is being updated
+      if (updates.push_enabled !== undefined) {
+        if (updates.push_enabled) {
+          // Enable push notifications - register token
+          try {
+            const { notificationsService } = await import('../services/notifications');
+            await notificationsService.requestPermissions();
+            await notificationsService.registerPushToken(session.accessToken);
+          } catch (error) {
+            console.error('Error registering push token:', error);
+            // Don't throw error here - settings update should still succeed
+          }
+        }
+        // If disabling push, we don't need to do anything special
+        // The token will remain on the server but won't be used
+      }
     } catch (error) {
       console.error('Error updating settings:', error);
       // Rollback on error

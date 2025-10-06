@@ -28,10 +28,6 @@
     },
     "android": {
       "edgeToEdgeEnabled": false,
-      "statusBar": {
-        "style": "dark",
-        "backgroundColor": "#ffffff"
-      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -56,6 +52,14 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Nexo utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ]
     ],
