@@ -44,5 +44,10 @@ export const API_CONFIG = {
 
     // Notifications
     NOTIFICATIONS_REGISTER: '/api/notifications/register',
+
+    // Chat History
+    CHAT_CONVERSATIONS: '/api/chat/conversations',
+    CHAT_CONVERSATION_BY_ID: (id: string) => `/api/chat/conversations/${id}`,
+    CHAT_CONVERSATION_MESSAGES: (id: string) => `/api/chat/conversations/${id}/messages`,
   },
 } as const;

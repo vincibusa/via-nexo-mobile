@@ -9,7 +9,7 @@ import { useFavorites } from '../../../lib/contexts/favorites';
 import { usePushNotifications } from '../../../lib/hooks/usePushNotifications';
 import { Alert, View, ScrollView, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, Heart, Bell, Globe, Moon, MapPin, Info, FileText, Shield } from 'lucide-react-native';
+import { ChevronRight, Heart, Bell, Globe, Moon, MapPin, Info, FileText, Shield, MessageSquare } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 
@@ -191,6 +191,26 @@ export default function ProfileScreen() {
                         {totalFavorites} {totalFavorites === 1 ? 'salvato' : 'salvati'}
                       </Text>
                     )}
+                  </View>
+                </View>
+                <ChevronRight className="text-muted-foreground" size={20} />
+              </CardContent>
+            </Card>
+          </TouchableOpacity>
+
+          {/* Storico Conversazioni */}
+          <TouchableOpacity
+            onPress={() => router.push('/chat-history' as any)}
+          >
+            <Card>
+              <CardContent className="flex-row items-center justify-between py-4">
+                <View className="flex-row items-center gap-3">
+                  <MessageSquare className="text-primary" size={20} />
+                  <View>
+                    <Text className="font-medium">Storico Chat</Text>
+                    <Text className="text-xs text-muted-foreground">
+                      Le tue conversazioni salvate
+                    </Text>
                   </View>
                 </View>
                 <ChevronRight className="text-muted-foreground" size={20} />

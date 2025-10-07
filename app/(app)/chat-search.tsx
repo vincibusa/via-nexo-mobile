@@ -7,13 +7,17 @@ import { ChatSuggestionCards } from '../../components/chat/chat-suggestion-cards
 
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SuggestedPlace } from '../../lib/types/suggestion';
 import { chatService } from '../../lib/services/chat';
+import { chatHistoryService } from '../../lib/services/chat-history';
 import { API_CONFIG } from '../../lib/config';
 import { useAuth } from '../../lib/contexts/auth';
 import * as Location from 'expo-location';
+import type { ChatConversationWithMessages } from '../../lib/types/chat-history';
+import { Button } from '../../components/ui/button';
+import { Text } from '../../components/ui/text';
 
 interface Message {
   id: string;
@@ -35,6 +39,7 @@ export default function ChatSearchScreen() {
   const { session } = useAuth();
   const params = useLocalSearchParams();
   const mode = (params.mode as 'guided' | 'free') || 'free';
+  const conversationId = params.conversation_id as string;
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -49,7 +54,16 @@ export default function ChatSearchScreen() {
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [currentConversation, setCurrentConversation] = useState<ChatConversationWithMessages | null>(null);
+  const [loadingConversation, setLoadingConversation] = useState(!!conversationId);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Load existing conversation if conversation_id is provided
+  useEffect(() => {
+    if (conversationId && session?.accessToken) {
+      loadExistingConversation(conversationId);
+    }
+  }, [conversationId, session?.accessToken]);
 
   // Request location permission and get current location
   useEffect(() => {
@@ -81,6 +95,78 @@ export default function ChatSearchScreen() {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages, isTyping]);
 
+  // Auto-save conversation after 3+ messages
+  useEffect(() => {
+    if (messages.length >= 3 && !currentConversation && session?.accessToken) {
+      // Only auto-save if we have at least 3 messages and no existing conversation
+      autoSaveConversation();
+    }
+  }, [messages.length, currentConversation, session?.accessToken]);
+
+  const loadExistingConversation = async (id: string) => {
+    try {
+      if (!session?.accessToken) return;
+      
+      const conversation = await chatHistoryService.continueConversation(id, session.accessToken);
+      
+      // Convert database messages to UI messages
+      const uiMessages: Message[] = conversation.messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        isUser: msg.is_user,
+        timestamp: new Date(msg.timestamp),
+        suggestions: msg.suggestions_data || undefined,
+      }));
+      
+      setMessages(uiMessages);
+      setCurrentConversation(conversation);
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      Alert.alert('Errore', 'Impossibile caricare la conversazione');
+    } finally {
+      setLoadingConversation(false);
+    }
+  };
+
+  const autoSaveConversation = async () => {
+    try {
+      if (!session?.accessToken || messages.length < 3) return;
+      
+      const conversation = await chatHistoryService.saveConversation(messages, session.accessToken);
+      setCurrentConversation(conversation);
+      console.log('Conversation auto-saved:', conversation.id);
+    } catch (error) {
+      console.error('Error auto-saving conversation:', error);
+      // Don't show error to user for auto-save
+    }
+  };
+
+  const handleSaveConversation = async () => {
+    try {
+      if (!session?.accessToken) {
+        Alert.alert('Errore', 'Devi essere autenticato per salvare la conversazione');
+        return;
+      }
+
+      if (messages.length === 0) {
+        Alert.alert('Errore', 'Non ci sono messaggi da salvare');
+        return;
+      }
+
+      if (currentConversation) {
+        Alert.alert('Info', 'Questa conversazione è già salvata');
+        return;
+      }
+
+      const conversation = await chatHistoryService.saveConversation(messages, session.accessToken);
+      setCurrentConversation(conversation);
+      Alert.alert('Successo', 'Conversazione salvata con successo!');
+    } catch (error) {
+      console.error('Error saving conversation:', error);
+      Alert.alert('Errore', 'Impossibile salvare la conversazione');
+    }
+  };
+
   const handleSendMessage = async (message: string) => {
     console.log('[ChatSearch] Sending message:', message);
     console.log('[ChatSearch] Location:', location);
@@ -96,6 +182,19 @@ export default function ChatSearchScreen() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+
+    // If we have an existing conversation, save the message to it
+    if (currentConversation && session?.accessToken) {
+      try {
+        await chatHistoryService.addMessage(currentConversation.id, {
+          content: message,
+          is_user: true,
+        }, session.accessToken);
+      } catch (error) {
+        console.error('Error saving message to conversation:', error);
+        // Continue anyway, don't block user
+      }
+    }
 
     // Show typing indicator
     setIsTyping(true);
@@ -225,6 +324,20 @@ export default function ChatSearchScreen() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+
+      // If we have an existing conversation, save the AI message to it
+      if (currentConversation && session?.accessToken) {
+        try {
+          await chatHistoryService.addMessage(currentConversation.id, {
+            content: response.conversationalResponse,
+            is_user: false,
+            suggestions_data: suggestedPlaces,
+          }, session.accessToken);
+        } catch (error) {
+          console.error('Error saving AI message to conversation:', error);
+          // Continue anyway, don't block user
+        }
+      }
     } catch (error) {
       console.error('Error getting chat suggestions:', error);
 
@@ -244,6 +357,14 @@ export default function ChatSearchScreen() {
 
   const handleQuickSuggestion = (suggestion: string) => {
     handleSendMessage(suggestion);
+  };
+
+  // Determine header title based on context
+  const getHeaderTitle = () => {
+    if (currentConversation) {
+      return currentConversation.title || 'Conversazione';
+    }
+    return mode === 'guided' ? 'Ricerca Guidata' : 'Ricerca Libera';
   };
 
   const handleGuidedSearch = (filters: GuidedFilters) => {
@@ -317,13 +438,35 @@ export default function ChatSearchScreen() {
     <>
       <Stack.Screen
         options={{
-          title: mode === 'guided' ? 'Ricerca Guidata' : 'Ricerca Libera',
+          title: getHeaderTitle(),
           headerShown: true,
           headerBackTitle: ' ',
           headerBackTitleStyle: { fontSize: 0 },
+          headerRight: () => (
+            <View className="mr-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={handleSaveConversation}
+                disabled={loadingConversation || !!currentConversation || messages.length === 0}
+              >
+                <Text className="text-primary text-sm">
+                  {currentConversation ? '✓ Salvata' : 'Salva'}
+                </Text>
+              </Button>
+            </View>
+          ),
         }}
       />
       <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+        {/* Loading indicator for conversation */}
+        {loadingConversation && (
+          <View className="absolute inset-0 bg-background/80 z-50 justify-center items-center">
+            <ActivityIndicator size="large" />
+            <Text className="mt-4 text-muted-foreground">Caricamento conversazione...</Text>
+          </View>
+        )}
+
         {/* Filter Panel (only in guided mode) */}
         {mode === 'guided' && <FilterPanel onSearch={handleGuidedSearch} />}
 
