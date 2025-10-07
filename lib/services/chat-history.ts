@@ -180,22 +180,27 @@ class ChatHistoryService {
         throw new Error('Cannot save empty conversation');
       }
 
-      // Use first user message as initial message
-      const firstUserMessage = messages.find(msg => msg.isUser);
-      if (!firstUserMessage) {
-        throw new Error('No user messages found to save');
+      // Use first message as initial message (should be user's first message)
+      const firstMessage = messages[0];
+      if (!firstMessage) {
+        throw new Error('No messages found to save');
       }
 
       const request: CreateConversationRequest = {
-        initial_message: firstUserMessage.content,
+        initial_message: firstMessage.content,
       };
 
-      // Create conversation
+      // Create conversation (this creates the conversation with the first message)
       const { conversation } = await this.createConversation(request, accessToken);
 
-      // Add all remaining messages
-      for (const message of messages) {
-        if (message.id === firstUserMessage.id) continue; // Skip first message already added
+      // Add all remaining messages sequentially to maintain order
+      // Skip the first message since it was already added by createConversation
+      for (let i = 1; i < messages.length; i++) {
+        const message = messages[i];
+
+        // Add a small delay to ensure timestamp ordering (PostgreSQL now() has microsecond precision)
+        // This prevents race conditions when messages are inserted too quickly
+        await new Promise(resolve => setTimeout(resolve, 50)); // Increased to 50ms for better reliability
 
         await this.addMessage(conversation.id, {
           content: message.content,

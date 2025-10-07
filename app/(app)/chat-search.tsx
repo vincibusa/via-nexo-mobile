@@ -4,10 +4,11 @@ import { TypingIndicator } from '../../components/chat/typing-indicator';
 import { QuickChips } from '../../components/chat/quick-chips';
 import { FilterPanel, type GuidedFilters } from '../../components/chat/filter-panel';
 import { ChatSuggestionCards } from '../../components/chat/chat-suggestion-cards';
+import { ConversationHistoryMenu } from '../../components/chat/conversation-history-menu';
 
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SuggestedPlace } from '../../lib/types/suggestion';
 import { chatService } from '../../lib/services/chat';
@@ -56,6 +57,7 @@ export default function ChatSearchScreen() {
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [currentConversation, setCurrentConversation] = useState<ChatConversationWithMessages | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(!!conversationId);
+  const [showHistoryMenu, setShowHistoryMenu] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Load existing conversation if conversation_id is provided
@@ -109,14 +111,16 @@ export default function ChatSearchScreen() {
       
       const conversation = await chatHistoryService.continueConversation(id, session.accessToken);
       
-      // Convert database messages to UI messages
-      const uiMessages: Message[] = conversation.messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        isUser: msg.is_user,
-        timestamp: new Date(msg.timestamp),
-        suggestions: msg.suggestions_data || undefined,
-      }));
+      // Convert database messages to UI messages and ensure proper ordering
+      const uiMessages: Message[] = conversation.messages
+        .map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          isUser: msg.is_user,
+          timestamp: new Date(msg.timestamp),
+          suggestions: msg.suggestions_data || undefined,
+        }))
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()); // Ensure chronological order
       
       setMessages(uiMessages);
       setCurrentConversation(conversation);
@@ -134,6 +138,7 @@ export default function ChatSearchScreen() {
       
       const conversation = await chatHistoryService.saveConversation(messages, session.accessToken);
       setCurrentConversation(conversation);
+      setShowHistoryMenu(false); // Close menu if open
       console.log('Conversation auto-saved:', conversation.id);
     } catch (error) {
       console.error('Error auto-saving conversation:', error);
@@ -160,6 +165,7 @@ export default function ChatSearchScreen() {
 
       const conversation = await chatHistoryService.saveConversation(messages, session.accessToken);
       setCurrentConversation(conversation);
+      setShowHistoryMenu(false); // Close menu after saving
       Alert.alert('Successo', 'Conversazione salvata con successo!');
     } catch (error) {
       console.error('Error saving conversation:', error);
@@ -444,16 +450,17 @@ export default function ChatSearchScreen() {
           headerBackTitleStyle: { fontSize: 0 },
           headerRight: () => (
             <View className="mr-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={handleSaveConversation}
-                disabled={loadingConversation || !!currentConversation || messages.length === 0}
+              <Pressable
+                onPress={() => setShowHistoryMenu(!showHistoryMenu)}
+                className="flex-row items-center px-3 py-2 active:bg-muted/50 rounded-md"
               >
-                <Text className="text-primary text-sm">
-                  {currentConversation ? '✓ Salvata' : 'Salva'}
+                <Text className="text-primary text-sm font-medium mr-1">
+                  {currentConversation ? '✓ Salvata' : 'Storico'}
                 </Text>
-              </Button>
+                <Text className="text-primary text-base">
+                  {showHistoryMenu ? '▲' : '▼'}
+                </Text>
+              </Pressable>
             </View>
           ),
         }}
@@ -465,6 +472,35 @@ export default function ChatSearchScreen() {
             <ActivityIndicator size="large" />
             <Text className="mt-4 text-muted-foreground">Caricamento conversazione...</Text>
           </View>
+        )}
+
+        {/* Backdrop and Menu Overlay */}
+        {showHistoryMenu && (
+          <>
+            {/* Backdrop to close menu when clicking outside */}
+            <Pressable
+              onPress={() => setShowHistoryMenu(false)}
+              className="absolute inset-0"
+              style={{ 
+                zIndex: 9998,
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              }}
+            />
+
+            {/* History Menu Dropdown - Positioned at screen level */}
+            <View 
+              className="absolute top-0 right-0 left-0" 
+              style={{ zIndex: 9999 }}
+              pointerEvents="box-none"
+            >
+              <ConversationHistoryMenu
+                onClose={() => setShowHistoryMenu(false)}
+                currentConversationId={currentConversation?.id}
+                onSaveNewConversation={handleSaveConversation}
+                canSaveNew={!currentConversation && messages.length > 0 && !loadingConversation}
+              />
+            </View>
+          </>
         )}
 
         {/* Filter Panel (only in guided mode) */}
