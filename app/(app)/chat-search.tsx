@@ -42,17 +42,7 @@ export default function ChatSearchScreen() {
   const mode = (params.mode as 'guided' | 'free') || 'free';
   const conversationId = params.conversation_id as string;
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content:
-        mode === 'guided'
-          ? 'Ciao! 👋 Seleziona i filtri sopra per trovare il posto perfetto, oppure scrivi liberamente cosa cerchi!'
-          : 'Ciao! 👋 Sono qui per aiutarti a trovare il posto perfetto. Raccontami cosa stai cercando per stasera!',
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [currentConversation, setCurrentConversation] = useState<ChatConversationWithMessages | null>(null);
@@ -60,12 +50,33 @@ export default function ChatSearchScreen() {
   const [showHistoryMenu, setShowHistoryMenu] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Load existing conversation if conversation_id is provided
+  // Load existing conversation if conversation_id is provided, or create new one
   useEffect(() => {
     if (conversationId && session?.accessToken) {
       loadExistingConversation(conversationId);
+    } else if (!conversationId && session?.accessToken && !loadingConversation) {
+      // Create a new conversation immediately when entering chat without conversation_id
+      createNewConversation();
     }
   }, [conversationId, session?.accessToken]);
+
+  const createNewConversation = async () => {
+    try {
+      if (!session?.accessToken) return;
+      
+      setLoadingConversation(true);
+      console.log('[ChatSearch] Creating new conversation...');
+      
+      // We'll create the conversation when the first message is sent
+      // For now, just mark that we tried to create it
+      console.log('[ChatSearch] Ready to create conversation on first message');
+      
+    } catch (error) {
+      console.error('[ChatSearch] Error preparing new conversation:', error);
+    } finally {
+      setLoadingConversation(false);
+    }
+  };
 
   // Request location permission and get current location
   useEffect(() => {
@@ -97,10 +108,21 @@ export default function ChatSearchScreen() {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages, isTyping]);
 
-  // Auto-save conversation after 3+ messages
+  // DEBUG: Track currentConversation changes
   useEffect(() => {
-    if (messages.length >= 3 && !currentConversation && session?.accessToken) {
-      // Only auto-save if we have at least 3 messages and no existing conversation
+    console.log('[Debug] currentConversation changed:', {
+      id: currentConversation?.id,
+      title: currentConversation?.title,
+      messageCount: messages.length,
+      timestamp: new Date().toISOString()
+    });
+  }, [currentConversation, messages.length]);
+
+  // Auto-save conversation messages to existing conversation 
+  useEffect(() => {
+    if (messages.length >= 2 && currentConversation && session?.accessToken) {
+      // Auto-update conversation when we have messages and an existing conversation
+      // This handles updating the conversation title and last_message_preview
       autoSaveConversation();
     }
   }, [messages.length, currentConversation, session?.accessToken]);
@@ -123,7 +145,9 @@ export default function ChatSearchScreen() {
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()); // Ensure chronological order
       
       setMessages(uiMessages);
+      // PROTECTION: Always set for loaded conversations (this is intentional overwrite)
       setCurrentConversation(conversation);
+      console.log('Existing conversation loaded:', conversation.id);
     } catch (error) {
       console.error('Error loading conversation:', error);
       Alert.alert('Errore', 'Impossibile caricare la conversazione');
@@ -134,15 +158,24 @@ export default function ChatSearchScreen() {
 
   const autoSaveConversation = async () => {
     try {
-      if (!session?.accessToken || messages.length < 3) return;
+      if (!session?.accessToken || messages.length < 2) return;
       
-      const conversation = await chatHistoryService.saveConversation(messages, session.accessToken);
-      setCurrentConversation(conversation);
-      setShowHistoryMenu(false); // Close menu if open
-      console.log('Conversation auto-saved:', conversation.id);
+      if (!currentConversation) {
+        // Create new conversation if none exists
+        const result = await chatHistoryService.saveConversation(messages, session.accessToken);
+        const conversation = (result && 'conversation' in result) ? result.conversation : result;
+        
+        if (conversation && conversation.id) {
+          setCurrentConversation(conversation);
+          setShowHistoryMenu(false);
+          console.log('Conversation auto-created:', conversation.id);
+        }
+      } else {
+        // Update existing conversation (just update metadata like title and last message)
+        console.log('Conversation already exists, messages are saved individually:', currentConversation.id);
+      }
     } catch (error) {
       console.error('Error auto-saving conversation:', error);
-      // Don't show error to user for auto-save
     }
   };
 
@@ -189,8 +222,23 @@ export default function ChatSearchScreen() {
 
     setMessages((prev) => [...prev, userMessage]);
 
-    // If we have an existing conversation, save the message to it
-    if (currentConversation && session?.accessToken) {
+    // Create conversation on first message if none exists
+    if (!currentConversation && session?.accessToken) {
+      try {
+        console.log('[ChatSearch] Creating conversation for first message...');
+        const result = await chatHistoryService.saveConversation([userMessage], session.accessToken);
+        const conversation = (result && 'conversation' in result) ? result.conversation : result;
+        
+        if (conversation && conversation.id) {
+          setCurrentConversation(conversation);
+          console.log('[ChatSearch] Conversation created on first message:', conversation.id);
+        }
+      } catch (error) {
+        console.error('Error creating conversation on first message:', error);
+        // Continue anyway, don't block user
+      }
+    } else if (currentConversation && session?.accessToken) {
+      // If we have an existing conversation, save the message to it
       try {
         await chatHistoryService.addMessage(currentConversation.id, {
           content: message,
@@ -219,14 +267,43 @@ export default function ChatSearchScreen() {
 
       console.log('[ChatSearch] Calling chat API...');
 
-      // Call actual AI API endpoint
-      const response = await chatService.getChatSuggestions(
+      // Call streaming AI API endpoint with real-time updates
+      const response = await chatService.getChatSuggestionsStream(
         {
           message,
           location,
           radius_km: 5,
+          conversation_id: currentConversation?.id, // AGGIUNTO: Memoria conversazionale
         },
-        session.accessToken
+        session.accessToken,
+        (step, progressMessage) => {
+          console.log(`[ChatSearch Stream] Progress: ${step} - ${progressMessage}`);
+        },
+        (content) => {
+          // Update AI message content in real-time during streaming
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastMessage = updated[updated.length - 1];
+            
+            if (!lastMessage?.isUser) {
+              // Update existing AI message
+              updated[updated.length - 1] = {
+                ...lastMessage,
+                content: content,
+              };
+            } else {
+              // Create new AI message for first stream chunk
+              updated.push({
+                id: (Date.now() + 1).toString(),
+                content: content,
+                isUser: false,
+                timestamp: new Date(),
+              });
+            }
+            
+            return updated;
+          });
+        }
       );
 
       // Fetch full details for suggestions (both places and events)
@@ -320,16 +397,32 @@ export default function ChatSearchScreen() {
         }
       }
 
-      // Add AI response with suggestions embedded
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response.conversationalResponse,
-        isUser: false,
-        timestamp: new Date(),
-        suggestions: suggestedPlaces,
-      };
+      // Update the final AI message with suggestions
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastMessage = updated[updated.length - 1];
+        
+        if (!lastMessage?.isUser) {
+          // Update existing AI message with final content and suggestions
+          updated[updated.length - 1] = {
+            ...lastMessage,
+            content: response.conversationalResponse,
+            suggestions: suggestedPlaces,
+          };
+        } else {
+          // This shouldn't happen with streaming, but handle as fallback
+          updated.push({
+            id: (Date.now() + 1).toString(),
+            content: response.conversationalResponse,
+            isUser: false,
+            timestamp: new Date(),
+            suggestions: suggestedPlaces,
+          });
+        }
+        
+        return updated;
+      });
 
-      setMessages((prev) => [...prev, aiMessage]);
 
       // If we have an existing conversation, save the AI message to it
       if (currentConversation && session?.accessToken) {
@@ -474,6 +567,7 @@ export default function ChatSearchScreen() {
           </View>
         )}
 
+
         {/* Backdrop and Menu Overlay */}
         {showHistoryMenu && (
           <>
@@ -520,6 +614,21 @@ export default function ChatSearchScreen() {
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
+              {/* Centered placeholder when no messages */}
+              {messages.length === 0 && !isTyping && (
+                <View className="flex-1 justify-center items-center min-h-[300px]">
+                  <Text className="text-center text-lg text-muted-foreground mb-2">
+                    👋 Ciao!
+                  </Text>
+                  <Text className="text-center text-base text-muted-foreground max-w-[280px]">
+                    {mode === 'guided'
+                      ? 'Seleziona i filtri sopra per trovare il posto perfetto, oppure scrivi liberamente cosa cerchi!'
+                      : 'Sono qui per aiutarti a trovare il posto perfetto. Raccontami cosa stai cercando per stasera!'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Actual chat messages */}
               {messages.map((msg, index) => (
                 <View key={msg.id} className="mb-6">
                   <ChatBubble

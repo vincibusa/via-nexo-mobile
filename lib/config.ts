@@ -6,7 +6,7 @@ const getLocalIP = (): string => {
   // In sviluppo, usa l'IP locale del computer
   // Puoi ottenere il tuo IP locale con: ipconfig (Windows) o ifconfig (Mac/Linux)
   // Sostituisci con il tuo IP locale
-  return 'http://192.168.1.109:3000';
+  return 'http://192.168.1.70:3000';
 };
 
 export const API_CONFIG = {

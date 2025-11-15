@@ -12,6 +12,17 @@ export interface Session {
   expiresAt: number;
 }
 
+export interface SavedCredentials {
+  email: string;
+  password: string;
+  createdAt: number;
+}
+
+export interface BiometricPreference {
+  enabled: boolean;
+  lastUpdatedAt: number;
+}
+
 export interface LoginResponse {
   user: User;
   session: Session;

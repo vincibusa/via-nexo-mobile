@@ -1,9 +1,16 @@
 import * as SecureStore from 'expo-secure-store';
-import type { Session, User } from './types/auth';
+import type {
+  BiometricPreference,
+  SavedCredentials,
+  Session,
+  User,
+} from './types/auth';
 
 const KEYS = {
   SESSION: 'auth_session',
   USER: 'auth_user',
+  CREDENTIALS: 'auth_credentials',
+  BIOMETRIC: 'auth_biometric_pref',
 } as const;
 
 export const storage = {
@@ -38,5 +45,33 @@ export const storage = {
   // Clear all auth data
   async clear(): Promise<void> {
     await Promise.all([this.deleteSession(), this.deleteUser()]);
+  },
+
+  // Saved credentials for biometric login
+  async saveCredentials(credentials: SavedCredentials): Promise<void> {
+    await SecureStore.setItemAsync(KEYS.CREDENTIALS, JSON.stringify(credentials));
+  },
+
+  async getCredentials(): Promise<SavedCredentials | null> {
+    const credentials = await SecureStore.getItemAsync(KEYS.CREDENTIALS);
+    return credentials ? JSON.parse(credentials) : null;
+  },
+
+  async deleteCredentials(): Promise<void> {
+    await SecureStore.deleteItemAsync(KEYS.CREDENTIALS);
+  },
+
+  // Biometric preference
+  async saveBiometricPreference(preference: BiometricPreference): Promise<void> {
+    await SecureStore.setItemAsync(KEYS.BIOMETRIC, JSON.stringify(preference));
+  },
+
+  async getBiometricPreference(): Promise<BiometricPreference | null> {
+    const pref = await SecureStore.getItemAsync(KEYS.BIOMETRIC);
+    return pref ? JSON.parse(pref) : null;
+  },
+
+  async deleteBiometricPreference(): Promise<void> {
+    await SecureStore.deleteItemAsync(KEYS.BIOMETRIC);
   },
 };
