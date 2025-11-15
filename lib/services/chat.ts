@@ -37,7 +37,7 @@ export interface ChatSuggestionResponse {
 class ChatService {
   /**
    * Get AI-powered chat suggestions with Server-Sent Events streaming
-   * Uses react-native-sse for proper SSE support in React Native
+   * Uses fetch-based SSE implementation (EventSource doesn't support POST)
    */
   async getChatSuggestionsStream(
     request: ChatSuggestionRequest,
@@ -45,12 +45,7 @@ class ChatService {
     onProgress?: (step: string, message: string) => void,
     onStream?: (content: string) => void
   ): Promise<ChatSuggestionResponse> {
-    // Try native EventSource first (for React Native)
-    if (typeof EventSource !== 'undefined') {
-      return this.getChatSuggestionsStreamEventSource(request, accessToken, onProgress, onStream)
-    }
-    
-    // Fallback to fetch-based implementation
+    // Always use fetch-based implementation since EventSource doesn't support POST
     return this.getChatSuggestionsStreamFetch(request, accessToken, onProgress, onStream)
   }
 
@@ -65,11 +60,10 @@ class ChatService {
   ): Promise<ChatSuggestionResponse> {
     return new Promise((resolve, reject) => {
       try {
-        console.log(`[DEBUG] Using EventSource for SSE: ${API_CONFIG.BASE_URL}/api/chat/suggest-stream`)
-        
-        // EventSource doesn't support POST, so we need to use a GET-compatible approach
-        // or use fetch for POST then switch to EventSource
-        const url = `${API_CONFIG.BASE_URL}/api/chat/suggest-stream`
+        // NOTE: EventSource doesn't support POST natively, so this method is deprecated
+        // Use getChatSuggestionsStreamFetch instead
+        const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_SUGGEST_STREAM}`
+        console.log(`[DEBUG] Using EventSource for SSE: ${url}`)
         
         // Create EventSource with proper headers
         const eventSource = new EventSource(url, {
@@ -163,9 +157,10 @@ class ChatService {
     onStream?: (content: string) => void
   ): Promise<ChatSuggestionResponse> {
     try {
-      console.log(`[DEBUG] Making SSE request to: ${API_CONFIG.BASE_URL}/api/chat/suggest-stream`)
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_SUGGEST_STREAM}`
+      console.log(`[DEBUG] Making SSE request to: ${url}`)
       
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/suggest-stream`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +186,25 @@ class ChatService {
 
       if (!response.ok) {
         console.error(`[DEBUG] Response not ok: ${response.status} ${response.statusText}`)
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        console.error(`[DEBUG] Response headers:`, Object.fromEntries(response.headers.entries()))
+        
+        // Try to read error message from response
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        try {
+          const errorText = await response.text()
+          if (errorText) {
+            try {
+              const errorJson = JSON.parse(errorText)
+              errorMessage = errorJson.error?.message || errorJson.error || errorMessage
+            } catch {
+              errorMessage = errorText || errorMessage
+            }
+          }
+        } catch (e) {
+          console.warn('[DEBUG] Could not read error response body:', e)
+        }
+        
+        throw new Error(errorMessage)
       }
 
       // React Native compatibility: check if body is available
@@ -407,7 +420,8 @@ class ChatService {
     accessToken: string
   ): Promise<ChatSuggestionResponse> {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/suggest`, {
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_SUGGEST}`
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

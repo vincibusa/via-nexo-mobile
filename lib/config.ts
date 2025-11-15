@@ -1,12 +1,12 @@
 // Funzione per ottenere l'IP locale del computer di sviluppo
 const getLocalIP = (): string => {
   // In produzione, usa l'URL di produzione
-  if (!__DEV__) return 'https://via-nexo-new.vercel.app/';
+  if (!__DEV__) return 'https://via-nexo-new.vercel.app';
   
   // In sviluppo, usa l'IP locale del computer
   // Puoi ottenere il tuo IP locale con: ipconfig (Windows) o ifconfig (Mac/Linux)
   // Sostituisci con il tuo IP locale
-  return 'https://via-nexo-new.vercel.app/';
+  return 'https://via-nexo-new.vercel.app';
 };
 
 export const API_CONFIG = {
@@ -22,6 +22,11 @@ export const API_CONFIG = {
 
     // Suggestions (AI)
     SUGGEST: '/api/suggest',
+    SUGGEST_STREAM: '/api/suggest/stream',
+
+    // Chat (AI)
+    CHAT_SUGGEST: '/api/chat/suggest',
+    CHAT_SUGGEST_STREAM: '/api/chat/suggest-stream',
 
     // Places
     PLACES: '/api/places',

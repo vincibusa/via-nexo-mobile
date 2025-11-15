@@ -17,8 +17,8 @@ class ChatHistoryService {
     offset: number = 0
   ): Promise<ChatConversationsResponse> {
     try {
-      const response = await fetch(
-        `${API_CONFIG.BASE_URL}/api/chat/conversations?limit=${limit}&offset=${offset}`,
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATIONS}?limit=${limit}&offset=${offset}`
+      const response = await fetch(url,
         {
           method: 'GET',
           headers: {
@@ -49,7 +49,8 @@ class ChatHistoryService {
     accessToken: string
   ): Promise<{ conversation: ChatConversationWithMessages; message: string }> {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/conversations`, {
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATIONS}`
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,8 +80,8 @@ class ChatHistoryService {
     accessToken: string
   ): Promise<ChatConversationWithMessages> {
     try {
-      const response = await fetch(
-        `${API_CONFIG.BASE_URL}/api/chat/conversations/${conversationId}`,
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATION_BY_ID(conversationId)}`
+      const response = await fetch(url,
         {
           method: 'GET',
           headers: {
@@ -144,8 +145,8 @@ class ChatHistoryService {
     accessToken: string
   ): Promise<{ message: string }> {
     try {
-      const response = await fetch(
-        `${API_CONFIG.BASE_URL}/api/chat/conversations/${conversationId}`,
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATION_BY_ID(conversationId)}`
+      const response = await fetch(url,
         {
           method: 'DELETE',
           headers: {

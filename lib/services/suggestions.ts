@@ -30,7 +30,7 @@ class SuggestionsService {
       // Map mobile filter format to backend format
       const backendParams = this.mapParamsToBackend(params);
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/suggest/stream`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SUGGEST_STREAM}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
