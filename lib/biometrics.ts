@@ -47,7 +47,7 @@ export async function promptBiometricAuth(promptMessage?: string) {
 
   return {
     success: result.success,
-    error: result.error,
+    ...(result.success === false && { error: result.error }),
   };
 }
 
@@ -68,4 +68,5 @@ export function resolvePrimaryBiometricType(
 
   return null;
 }
+
 
