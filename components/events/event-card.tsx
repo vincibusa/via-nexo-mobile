@@ -6,12 +6,17 @@ import type { EventListItem } from '../../lib/services/events-list';
 import { Card } from '../ui/card';
 import { Text } from '../ui/text';
 import { Badge } from '../ui/badge';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface EventCardProps {
   event: EventListItem;
 }
 
 export const EventCard = React.memo(({ event }: EventCardProps) => {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const router = useRouter();
 
   const handlePress = () => {
@@ -60,7 +65,7 @@ export const EventCard = React.memo(({ event }: EventCardProps) => {
             </Text>
 
             <View className="flex-row items-center mb-1">
-              <Calendar size={12} className="text-muted-foreground" />
+              <Calendar size={12} color={themeColors.mutedForeground} />
               <Text variant="muted" className="ml-1 text-xs">
                 {time}
               </Text>
@@ -74,7 +79,7 @@ export const EventCard = React.memo(({ event }: EventCardProps) => {
 
             {event.place && (
               <View className="flex-row items-center">
-                <MapPin size={12} className="text-muted-foreground" />
+                <MapPin size={12} color={themeColors.mutedForeground} />
                 <Text variant="muted" className="ml-1 text-xs" numberOfLines={1}>
                   {event.place.name}
                 </Text>
@@ -100,7 +105,7 @@ export const EventCard = React.memo(({ event }: EventCardProps) => {
 
             {event.distance_km !== undefined && (
               <View className="flex-row items-center">
-                <MapPin size={12} className="text-muted-foreground" />
+                <MapPin size={12} color={themeColors.mutedForeground} />
                 <Text variant="muted" className="ml-1 text-xs">
                   {event.distance_km < 1
                     ? `${Math.round(event.distance_km * 1000)} m`

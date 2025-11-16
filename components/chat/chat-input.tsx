@@ -1,6 +1,8 @@
-import { View, TextInput, Pressable, useColorScheme } from 'react-native';
+import { View, TextInput, Pressable } from 'react-native';
 import { Send } from 'lucide-react-native';
 import { useState } from 'react';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -13,11 +15,10 @@ export function ChatInput({
   placeholder = 'Scrivi un messaggio...',
   disabled = false,
 }: ChatInputProps) {
-  const [message, setMessage] = useState('');
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
 
-  // Placeholder color based on theme
-  const placeholderColor = colorScheme === 'dark' ? '#9CA3AF' : '#6B7280';
+  const [message, setMessage] = useState('');
 
   const handleSend = () => {
     if (message.trim() && !disabled) {
@@ -32,8 +33,7 @@ export function ChatInput({
         value={message}
         onChangeText={setMessage}
         placeholder={placeholder}
-        placeholderTextColor={placeholderColor}
-        className="flex-1 rounded-full border border-border bg-card px-4 py-3 text-base text-foreground"
+        className="flex-1 rounded-full border border-border bg-card px-4 py-3 text-base text-foreground placeholder:text-muted-foreground"
         multiline
         maxLength={500}
         editable={!disabled}
@@ -49,7 +49,7 @@ export function ChatInput({
       >
         <Send
           size={20}
-          className={message.trim() && !disabled ? 'text-primary-foreground' : 'text-muted-foreground'}
+          color={message.trim() && !disabled ? themeColors.primaryForeground : themeColors.mutedForeground}
         />
       </Pressable>
     </View>

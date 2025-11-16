@@ -6,12 +6,17 @@ import type { SuggestedPlace } from '../../lib/types/suggestion';
 import { useRouter } from 'expo-router';
 import { Heart, Share2, MapPin, Clock } from 'lucide-react-native';
 import { View, Image, Pressable } from 'react-native';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface SuggestionCardProps {
   place: SuggestedPlace;
 }
 
 export function SuggestionCard({ place }: SuggestionCardProps) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const router = useRouter();
 
   const handleDetails = () => {
@@ -61,7 +66,7 @@ export function SuggestionCard({ place }: SuggestionCardProps) {
         <View className="flex-row items-center gap-4">
           {place.distance_km && (
             <View className="flex-row items-center gap-1">
-              <MapPin size={14} className="text-muted-foreground" />
+              <MapPin size={14} color={themeColors.mutedForeground} />
               <Text className="text-sm text-muted-foreground">
                 {place.distance_km.toFixed(1)} km
               </Text>

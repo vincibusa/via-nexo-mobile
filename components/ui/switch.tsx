@@ -22,9 +22,9 @@ const Switch = React.forwardRef<any, SwitchProps>(({
       value={checked}
       onValueChange={onCheckedChange}
       disabled={disabled}
-      trackColor={{ false: '#f4f4f5', true: '#3b82f6' }}
-      thumbColor={checked ? '#ffffff' : '#ffffff'}
-      ios_backgroundColor="#f4f4f5"
+      trackColor={{ false: 'rgba(156, 163, 175, 0.2)', true: 'rgb(59, 130, 246)' }}
+      thumbColor={checked ? 'rgb(255, 255, 255)' : 'rgb(255, 255, 255)'}
+      ios_backgroundColor="rgba(156, 163, 175, 0.2)"
       style={{
         transform: [{ scale: 0.8 }],
       }}

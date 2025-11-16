@@ -4,6 +4,8 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { X } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import type { Filters } from './quick-filters';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface ActiveFiltersChipProps {
   filters: Filters;
@@ -25,6 +27,9 @@ const MOOD_LABELS: Record<string, string> = {
 };
 
 export function ActiveFiltersChip({ filters, onRemoveFilter }: ActiveFiltersChipProps) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const hasActiveFilters = filters.companionship.length > 0 || filters.mood.length > 0;
 
   if (!hasActiveFilters) {
@@ -52,7 +57,7 @@ export function ActiveFiltersChip({ filters, onRemoveFilter }: ActiveFiltersChip
           >
             <Pressable onPress={() => onRemoveFilter('companionship', value)}>
               <Text className="text-sm">{COMPANIONSHIP_LABELS[value]}</Text>
-              <X size={14} className="text-foreground" />
+              <X size={14} color={themeColors.foreground} />
             </Pressable>
           </Badge>
         ))}
@@ -67,7 +72,7 @@ export function ActiveFiltersChip({ filters, onRemoveFilter }: ActiveFiltersChip
           >
             <Pressable onPress={() => onRemoveFilter('mood', value)}>
               <Text className="text-sm">{MOOD_LABELS[value]}</Text>
-              <X size={14} className="text-foreground" />
+              <X size={14} color={themeColors.foreground} />
             </Pressable>
           </Badge>
         ))}

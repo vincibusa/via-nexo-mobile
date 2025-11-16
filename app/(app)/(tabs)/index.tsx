@@ -2,6 +2,8 @@ import { SearchModeCard } from '../../../components/home/search-mode-card';
 import { QuickSuggestionCard } from '../../../components/home/quick-suggestion-card';
 import { Text } from '../../../components/ui/text';
 import { useAuth } from '../../../lib/contexts/auth';
+import { cn } from '../../../lib/utils';
+import { useColorScheme } from 'nativewind';
 import { useRouter } from 'expo-router';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,9 +12,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { quickSuggestionsService, type QuickSuggestion } from '../../../lib/services/quick-suggestions';
 import * as Location from 'expo-location';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { API_CONFIG } from '../../../lib/config';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { colorScheme } = useColorScheme();
   const router = useRouter();
   const [quickSuggestions, setQuickSuggestions] = useState<QuickSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
@@ -70,12 +74,12 @@ export default function HomeScreen() {
             };
           } catch (error) {
             console.warn('Error getting location:', error);
-            // Fallback to Rome center
-            userLocation = { lat: 41.9028, lon: 12.4964 };
+            // Fallback to default location
+            userLocation = API_CONFIG.DEFAULT_LOCATION;
           }
         } else {
-          // Fallback to Rome center if permission denied
-          userLocation = { lat: 41.9028, lon: 12.4964 };
+          // Fallback to default location if permission denied
+          userLocation = API_CONFIG.DEFAULT_LOCATION;
         }
 
         if (!mounted) return;
@@ -112,7 +116,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['top']}>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="gap-3 p-6">

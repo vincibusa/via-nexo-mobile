@@ -19,6 +19,8 @@ import * as Location from 'expo-location';
 import type { ChatConversationWithMessages } from '../../lib/types/chat-history';
 import { Button } from '../../components/ui/button';
 import { Text } from '../../components/ui/text';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../../lib/utils';
 
 interface Message {
   id: string;
@@ -39,6 +41,7 @@ const QUICK_SUGGESTIONS = [
 export default function ChatSearchScreen() {
   const { session } = useAuth();
   const params = useLocalSearchParams();
+  const { colorScheme } = useColorScheme();
   const mode = (params.mode as 'guided' | 'free') || 'free';
   const conversationId = params.conversation_id as string;
 
@@ -84,8 +87,8 @@ export default function ChatSearchScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.warn('Location permission not granted');
-        // Fallback to Rome center
-        setLocation({ lat: 41.9028, lon: 12.4964 });
+        // Fallback to default location
+        setLocation(API_CONFIG.DEFAULT_LOCATION);
         return;
       }
 
@@ -97,8 +100,8 @@ export default function ChatSearchScreen() {
         });
       } catch (error) {
         console.error('Error getting location:', error);
-        // Fallback to Rome center
-        setLocation({ lat: 41.9028, lon: 12.4964 });
+        // Fallback to default location
+        setLocation(API_CONFIG.DEFAULT_LOCATION);
       }
     })();
   }, []);
@@ -547,10 +550,10 @@ export default function ChatSearchScreen() {
                 onPress={() => setShowHistoryMenu(!showHistoryMenu)}
                 className="flex-row items-center px-3 py-2 active:bg-muted/50 rounded-md"
               >
-                <Text className="text-primary text-sm font-medium mr-1">
+                <Text className="text-foreground text-sm font-medium mr-1">
                   {currentConversation ? '✓ Salvata' : 'Storico'}
                 </Text>
-                <Text className="text-primary text-base">
+                <Text className="text-foreground text-base">
                   {showHistoryMenu ? '▲' : '▼'}
                 </Text>
               </Pressable>
@@ -558,7 +561,7 @@ export default function ChatSearchScreen() {
           ),
         }}
       />
-      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
         {/* Loading indicator for conversation */}
         {loadingConversation && (
           <View className="absolute inset-0 bg-background/80 z-50 justify-center items-center">

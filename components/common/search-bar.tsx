@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Search, X } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
 import { Input } from '../ui/input';
 
 interface SearchBarProps {
@@ -11,13 +10,10 @@ interface SearchBarProps {
 }
 
 export const SearchBar = React.memo(({ value, onChangeText, placeholder }: SearchBarProps) => {
-  const { colorScheme } = useColorScheme();
-  const iconColor = colorScheme === 'dark' ? '#9CA3AF' : '#6B7280';
-
   return (
     <View className="relative px-4 mb-3">
       <View className="absolute left-7 top-0 bottom-0 justify-center z-10">
-        <Search size={18} color={iconColor} />
+        <Search size={18} className="text-muted-foreground" />
       </View>
       <Input
         value={value}
@@ -30,7 +26,7 @@ export const SearchBar = React.memo(({ value, onChangeText, placeholder }: Searc
           onPress={() => onChangeText('')}
           className="absolute right-7 top-0 bottom-0 justify-center z-10"
         >
-          <X size={18} color={iconColor} />
+          <X size={18} className="text-muted-foreground" />
         </Pressable>
       )}
     </View>

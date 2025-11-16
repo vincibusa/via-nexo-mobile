@@ -2,12 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserSettings, settingsService } from '../services/settings';
 import { useAuth } from './auth';
+import { useColorScheme } from 'nativewind';
 
 interface SettingsContextType {
   settings: UserSettings | null;
   isLoading: boolean;
   updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
   refreshSettings: () => Promise<void>;
+  currentTheme: 'light' | 'dark';
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -25,8 +27,29 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
+  const { colorScheme: systemColorScheme, setColorScheme } = useColorScheme();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Calculate current theme based on user preference and system
+  const currentTheme = React.useMemo(() => {
+    if (!settings?.theme || settings.theme === 'system') {
+      return systemColorScheme || 'light';
+    }
+    return settings.theme;
+  }, [settings?.theme, systemColorScheme]);
+
+  // Sync user theme preference with NativeWind
+  useEffect(() => {
+    if (settings?.theme) {
+      if (settings.theme === 'system') {
+        // Reset to system color scheme
+        setColorScheme(systemColorScheme || 'light');
+      } else {
+        setColorScheme(settings.theme);
+      }
+    }
+  }, [settings?.theme, setColorScheme, systemColorScheme]);
 
   // Load settings on mount
   useEffect(() => {
@@ -81,6 +104,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const newSettings = { ...settings, ...updates } as UserSettings;
       setSettings(newSettings);
 
+      // Update NativeWind color scheme if theme is being updated
+      if (updates.theme) {
+        if (updates.theme === 'system') {
+          setColorScheme(systemColorScheme || 'light');
+        } else {
+          setColorScheme(updates.theme);
+        }
+      }
+
       // Update server
       const serverSettings = await settingsService.updateSettings(updates, session.accessToken);
       
@@ -125,6 +157,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         updateSettings,
         refreshSettings,
+        currentTheme,
       }}
     >
       {children}

@@ -3,6 +3,8 @@ import { Pressable, View, Image } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface QuickSuggestionCardProps {
   id: string;
@@ -25,6 +27,9 @@ export function QuickSuggestionCard({
   photos,
   badge,
 }: QuickSuggestionCardProps) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const router = useRouter();
   const scale = useSharedValue(1);
 
@@ -84,7 +89,7 @@ export function QuickSuggestionCard({
 
           {/* Distance */}
           <View className="absolute bottom-2 right-2 flex-row items-center gap-1 rounded-full bg-background/90 px-2 py-1">
-            <MapPin size={10} className="text-muted-foreground" />
+            <MapPin size={10} color={themeColors.mutedForeground} />
             <Text className="text-xs text-muted-foreground">{distance_km} km</Text>
           </View>
         </View>

@@ -13,6 +13,12 @@ export const API_CONFIG = {
   // Cambia con l'URL del tuo backend in produzione
   // In sviluppo usa l'IP locale del computer invece di localhost
   BASE_URL: getLocalIP(),
+  
+  // Default location fallback (Rome center)
+  DEFAULT_LOCATION: {
+    lat: 41.9028,
+    lon: 12.4964
+  },
   ENDPOINTS: {
     // Auth
     LOGIN: '/api/auth/login',

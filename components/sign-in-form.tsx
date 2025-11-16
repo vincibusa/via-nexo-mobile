@@ -12,11 +12,14 @@ import { Label } from '../components/ui/label';
 import { Separator } from '../components/ui/separator';
 import { Text } from '../components/ui/text';
 import { useAuth } from '../lib/contexts/auth';
+import { cn } from '../lib/utils';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, type TextInput, View } from 'react-native';
+import { useColorScheme } from 'nativewind';
 
 export function SignInForm() {
+  const { colorScheme } = useColorScheme();
   const {
     login,
     savedCredentials,
@@ -158,7 +161,7 @@ export function SignInForm() {
 
   return (
     <View className="gap-6">
-      <Card className="border-border/0 sm:border-border shadow-none sm:shadow-sm sm:shadow-black/5">
+      <Card className={cn("border-border/0 sm:border-border shadow-none sm:shadow-sm", colorScheme === 'dark' ? 'sm:shadow-white/5' : 'sm:shadow-black/5')}>
         <CardHeader>
           <CardTitle className="text-center text-xl sm:text-left">Sign in to your app</CardTitle>
           <CardDescription className="text-center sm:text-left">
@@ -214,7 +217,7 @@ export function SignInForm() {
               />
             </View>
             <Button className="w-full" onPress={onSubmit} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator color="white" /> : <Text>Continue</Text>}
+              {isLoading ? <ActivityIndicator /> : <Text>Continue</Text>}
             </Button>
             {hasBiometricShortcut ? (
               <View className="space-y-2">

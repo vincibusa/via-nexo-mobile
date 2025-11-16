@@ -4,7 +4,7 @@ import '../global.css';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '../lib/contexts/auth';
-import { SettingsProvider } from '../lib/contexts/settings';
+import { SettingsProvider, useSettings } from '../lib/contexts/settings';
 import { FavoritesProvider } from '../lib/contexts/favorites';
 import { NAV_THEME } from '../lib/theme';
 import { ThemeProvider } from '@react-navigation/native';
@@ -20,9 +20,30 @@ export {
   ErrorBoundary,
 } from 'expo-router';
 
-export default function RootLayout() {
-  const { colorScheme } = useColorScheme();
+function AppContent() {
+  const { currentTheme } = useSettings();
+  const { colorScheme: systemColorScheme } = useColorScheme();
 
+  // Use user's theme preference, fallback to system
+  const effectiveTheme = currentTheme || systemColorScheme || 'light';
+
+  return (
+    <ThemeProvider value={NAV_THEME[effectiveTheme]}>
+      <StatusBar 
+        style={effectiveTheme === 'dark' ? 'light' : 'dark'} 
+        backgroundColor={NAV_THEME[effectiveTheme].colors.background}
+        translucent={false}
+      />
+      <Stack screenOptions={{
+        headerShown: false,
+        headerBackTitle: ''
+      }} />
+      <PortalHost />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
   useEffect(() => {
     // Configure notification handling on app start
     const cleanup = notificationsService.configureNotifications();
@@ -35,23 +56,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
-      <AuthProvider>
-        <SettingsProvider>
-          <FavoritesProvider>
-            <StatusBar 
-              style={colorScheme === 'dark' ? 'light' : 'dark'} 
-              backgroundColor={NAV_THEME[colorScheme ?? 'light'].colors.background}
-              translucent={false}
-            />
-            <Stack screenOptions={{
-              headerShown: false,
-              headerBackTitle: ''
-            }} />
-            <PortalHost />
-          </FavoritesProvider>
-        </SettingsProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <SettingsProvider>
+        <FavoritesProvider>
+          <AppContent />
+        </FavoritesProvider>
+      </SettingsProvider>
+    </AuthProvider>
   );
 }

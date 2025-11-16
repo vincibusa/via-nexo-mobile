@@ -110,7 +110,7 @@ export function ConversationHistoryMenu({
         className="w-80 max-h-96 bg-card border border-border rounded-xl shadow-2xl"
         pointerEvents="auto"
         style={{
-          shadowColor: '#000',
+          shadowColor: 'rgba(0, 0, 0, 0.3)',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,
           shadowRadius: 8,

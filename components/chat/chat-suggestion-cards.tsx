@@ -5,12 +5,17 @@ import { MapPin,  Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import type { SuggestedPlace } from '../../lib/types/suggestion';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface ChatSuggestionCardsProps {
   suggestions: SuggestedPlace[];
 }
 
 export function ChatSuggestionCards({ suggestions }: ChatSuggestionCardsProps) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const router = useRouter();
 
   if (suggestions.length === 0) {
@@ -78,12 +83,12 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
             resizeMode="cover"
           />
           {/* Gradient overlay for better text visibility */}
-          <View className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
+          <View className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
 
           {/* Floating badge on image */}
           {place.verified && (
             <View className="absolute right-3 top-3 rounded-full bg-green-500 px-3 py-1">
-              <Text className="text-xs font-bold text-white">✓ Verificato</Text>
+              <Text className="text-xs font-bold text-primary-foreground">✓ Verificato</Text>
             </View>
           )}
 
@@ -124,7 +129,7 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
         {/* Location Info */}
         {place.address && (
           <View className="flex-row items-start gap-2">
-            <MapPin size={16} className="text-primary mt-0.5" />
+            <MapPin size={16} color={themeColors.foreground} />
             <Text className="flex-1 text-sm text-foreground" numberOfLines={2}>
               {place.address}, {place.city}
             </Text>
@@ -136,7 +141,7 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
           <View className="flex-row flex-wrap gap-2">
             {place.ambience_tags?.slice(0, 3).map((tag) => (
               <View key={tag} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5">
-                <Text className="text-xs font-medium text-primary capitalize">{tag}</Text>
+                <Text className="text-xs font-medium text-foreground capitalize">{tag}</Text>
               </View>
             ))}
             {place.music_genre?.slice(0, 2).map((genre) => (
@@ -159,7 +164,7 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
             onPress={handleFavorite}
             className="h-12 w-12 items-center justify-center rounded-xl border-2 border-red-500/30 bg-red-500/10 active:bg-red-500/20"
           >
-            <Heart size={22} className="text-red-500" fill="transparent" />
+            <Heart size={22} color="#ef4444" fill="transparent" />
           </Pressable>
         </View>
       </View>

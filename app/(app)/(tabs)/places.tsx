@@ -10,6 +10,9 @@ import { PlaceCard } from '../../../components/places/place-card';
 import { SearchBar } from '../../../components/common/search-bar';
 import { FilterPills, type FilterPill } from '../../../components/common/filter-pills';
 import { Text } from '../../../components/ui/text';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../../../lib/utils';
+import { API_CONFIG } from '../../../lib/config';
 
 const CATEGORY_FILTERS: FilterPill[] = [
   { id: 'all', label: 'Tutti', value: null },
@@ -24,6 +27,7 @@ type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
 
 export default function PlacesScreen() {
   const { placesFilters, setPlacesFilters } = useFiltersStore();
+  const { colorScheme } = useColorScheme();
   const [places, setPlaces] = useState<PlaceWithExtras[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -38,15 +42,26 @@ export default function PlacesScreen() {
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        return;
+      let userLocation: { lat: number; lon: number };
+
+      if (status === 'granted') {
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({});
+          userLocation = {
+            lat: currentLocation.coords.latitude,
+            lon: currentLocation.coords.longitude,
+          };
+        } catch (error) {
+          console.warn('Error getting location:', error);
+          // Fallback to default location
+          userLocation = API_CONFIG.DEFAULT_LOCATION;
+        }
+      } else {
+        // Fallback to default location if permission denied
+        userLocation = API_CONFIG.DEFAULT_LOCATION;
       }
 
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation({
-        lat: loc.coords.latitude,
-        lon: loc.coords.longitude,
-      });
+      setLocation(userLocation);
     })();
   }, []);
 
@@ -162,7 +177,7 @@ export default function PlacesScreen() {
   }, [loading]);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-background">
+    <SafeAreaView edges={['top']} className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
       {/* Header */}
       <View className="pb-3">
         <Text variant="h2" className="px-4 mb-4 border-0">

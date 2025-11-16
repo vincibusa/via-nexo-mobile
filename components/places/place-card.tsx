@@ -6,12 +6,17 @@ import type { Place } from '../../lib/types/suggestion';
 import { Card } from '../ui/card';
 import { Text } from '../ui/text';
 import { Badge } from '../ui/badge';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface PlaceCardProps {
   place: Place & { distance_km?: number; events_count?: number };
 }
 
 export const PlaceCard = React.memo(({ place }: PlaceCardProps) => {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const router = useRouter();
 
   const handlePress = () => {
@@ -74,7 +79,7 @@ export const PlaceCard = React.memo(({ place }: PlaceCardProps) => {
           <View className="flex-row items-center justify-between">
             {place.distance_km !== undefined && (
               <View className="flex-row items-center">
-                <MapPin size={12} className="text-muted-foreground" />
+                <MapPin size={12} color={themeColors.mutedForeground} />
                 <Text variant="muted" className="ml-1">
                   {place.distance_km < 1
                     ? `${Math.round(place.distance_km * 1000)} m`

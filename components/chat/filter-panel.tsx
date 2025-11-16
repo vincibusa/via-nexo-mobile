@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 export interface GuidedFilters {
   companionship: ('alone' | 'partner' | 'friends' | 'family')[];
@@ -47,6 +49,9 @@ const TIME_OPTIONS = [
 ] as const;
 
 export function FilterPanel({ onSearch, initialExpanded = true }: FilterPanelProps) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [filters, setFilters] = useState<GuidedFilters>({
     companionship: [],
@@ -101,9 +106,9 @@ export function FilterPanel({ onSearch, initialExpanded = true }: FilterPanelPro
           )}
         </View>
         {isExpanded ? (
-          <ChevronUp size={20} className="text-muted-foreground" />
+          <ChevronUp size={20} color={themeColors.mutedForeground} />
         ) : (
-          <ChevronDown size={20} className="text-muted-foreground" />
+          <ChevronDown size={20} color={themeColors.mutedForeground} />
         )}
       </Pressable>
 

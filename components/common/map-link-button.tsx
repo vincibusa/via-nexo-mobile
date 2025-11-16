@@ -2,6 +2,8 @@ import { Button } from '../../components/ui/button';
 import { Text } from '../../components/ui/text';
 import { MapPin } from 'lucide-react-native';
 import { Linking, Platform, Alert } from 'react-native';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../lib/theme';
 
 interface MapLinkButtonProps {
   latitude: number;
@@ -11,6 +13,9 @@ interface MapLinkButtonProps {
 }
 
 export function MapLinkButton({ latitude, longitude, label, address }: MapLinkButtonProps) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const openMaps = async () => {
     const scheme = Platform.select({
       ios: 'maps:',
@@ -41,7 +46,7 @@ export function MapLinkButton({ latitude, longitude, label, address }: MapLinkBu
 
   return (
     <Button variant="outline" onPress={openMaps} className="flex-row gap-2">
-      <MapPin size={18} className="text-foreground" />
+      <MapPin size={18} color={themeColors.foreground} />
       <Text>Apri in Maps</Text>
     </Button>
   );

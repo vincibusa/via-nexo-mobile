@@ -9,20 +9,26 @@ import { useFavorites } from '../../../lib/contexts/favorites';
 import { usePushNotifications } from '../../../lib/hooks/usePushNotifications';
 import { Alert, View, ScrollView, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, Heart, Bell, Globe, Moon, MapPin, Info, FileText, Shield, MessageSquare } from 'lucide-react-native';
+import { ChevronRight, Heart, Bell, Globe, Moon, Sun, MapPin, Info, FileText, Shield, MessageSquare } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
+import { useColorScheme } from 'nativewind';
+import { THEME } from '../../../lib/theme';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { settings, isLoading, updateSettings } = useSettings();
   const { places, events } = useFavorites();
-  const { 
-    hasPermission, 
-    isLoading: notificationsLoading, 
-    toggleNotifications 
+  const {
+    hasPermission,
+    isLoading: notificationsLoading,
+    toggleNotifications
   } = usePushNotifications();
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+
+  // Get dynamic colors for icons
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
   
   const totalFavorites = places.length + events.length;
 
@@ -126,6 +132,26 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleToggleTheme = async () => {
+    try {
+      const currentTheme = settings?.theme || 'system';
+      let newTheme: 'light' | 'dark' | 'system';
+      
+      // Cycle through themes: light -> dark -> system -> light
+      if (currentTheme === 'light') {
+        newTheme = 'dark';
+      } else if (currentTheme === 'dark') {
+        newTheme = 'system';
+      } else {
+        newTheme = 'light';
+      }
+      
+      await updateSettings({ theme: newTheme });
+    } catch (error) {
+      Alert.alert('Errore', 'Impossibile cambiare tema');
+    }
+  };
+
   const handleOpenPrivacyPolicy = () => {
     Linking.openURL('https://nexo.app/privacy');
   };
@@ -144,6 +170,30 @@ export default function ProfileScreen() {
         .slice(0, 2);
     }
     return user?.email?.[0].toUpperCase() || 'U';
+  };
+
+  const getThemeDisplayText = () => {
+    switch (settings?.theme) {
+      case 'light':
+        return 'Chiaro';
+      case 'dark':
+        return 'Scuro';
+      case 'system':
+      default:
+        return 'Sistema';
+    }
+  };
+
+  const getThemeIcon = () => {
+    switch (settings?.theme) {
+      case 'light':
+        return <Sun size={20} color={themeColors.foreground} />;
+      case 'dark':
+        return <Moon size={20} color={themeColors.foreground} />;
+      case 'system':
+      default:
+        return <Moon size={20} color={themeColors.foreground} />;
+    }
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
@@ -183,7 +233,7 @@ export default function ProfileScreen() {
             <Card>
               <CardContent className="flex-row items-center justify-between py-4">
                 <View className="flex-row items-center gap-3">
-                  <Heart className="text-primary" size={20} fill="rgb(239 68 68)" />
+                  <Heart size={20} color={themeColors.foreground} fill={themeColors.foreground} />
                   <View>
                     <Text className="font-medium">I Miei Preferiti</Text>
                     {totalFavorites > 0 && (
@@ -193,7 +243,7 @@ export default function ProfileScreen() {
                     )}
                   </View>
                 </View>
-                <ChevronRight className="text-muted-foreground" size={20} />
+                <ChevronRight size={20} color={themeColors.mutedForeground} />
               </CardContent>
             </Card>
           </TouchableOpacity>
@@ -205,7 +255,7 @@ export default function ProfileScreen() {
             <Card>
               <CardContent className="flex-row items-center justify-between py-4">
                 <View className="flex-row items-center gap-3">
-                  <MessageSquare className="text-primary" size={20} />
+                  <MessageSquare size={20} color={themeColors.foreground} />
                   <View>
                     <Text className="font-medium">Storico Chat</Text>
                     <Text className="text-xs text-muted-foreground">
@@ -213,7 +263,7 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                 </View>
-                <ChevronRight className="text-muted-foreground" size={20} />
+                <ChevronRight size={20} color={themeColors.mutedForeground} />
               </CardContent>
             </Card>
           </TouchableOpacity>
@@ -231,7 +281,7 @@ export default function ProfileScreen() {
                   {/* Push Notifications */}
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-3 flex-1">
-                      <Bell className="text-foreground" size={20} />
+                      <Bell size={20} color={themeColors.foreground} />
                       <View className="flex-1">
                         <Text className="font-medium">Notifiche Push</Text>
                         <Text className="text-xs text-muted-foreground">
@@ -259,7 +309,7 @@ export default function ProfileScreen() {
                     className="flex-row items-center justify-between"
                   >
                     <View className="flex-row items-center gap-3 flex-1">
-                      <Globe className="text-foreground" size={20} />
+                      <Globe size={20} color={themeColors.foreground} />
                       <View className="flex-1">
                         <Text className="font-medium">Lingua</Text>
                         <Text className="text-xs text-muted-foreground">
@@ -267,8 +317,25 @@ export default function ProfileScreen() {
                         </Text>
                       </View>
                     </View>
-                    <ChevronRight className="text-muted-foreground" size={20} />
+                    <ChevronRight size={20} color={themeColors.mutedForeground} />
                   </TouchableOpacity>
+
+                  {/* Theme */}
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-3 flex-1">
+                      {getThemeIcon()}
+                      <View className="flex-1">
+                        <Text className="font-medium">Tema</Text>
+                        <Text className="text-xs text-muted-foreground">
+                          {getThemeDisplayText()}
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      checked={settings?.theme === 'dark'}
+                      onCheckedChange={handleToggleTheme}
+                    />
+                  </View>
 
                   {/* Default Radius */}
                   <TouchableOpacity
@@ -276,7 +343,7 @@ export default function ProfileScreen() {
                     className="flex-row items-center justify-between"
                   >
                     <View className="flex-row items-center gap-3 flex-1">
-                      <MapPin className="text-foreground" size={20} />
+                      <MapPin size={20} color={themeColors.foreground} />
                       <View className="flex-1">
                         <Text className="font-medium">Distanza Predefinita</Text>
                         <Text className="text-xs text-muted-foreground">
@@ -284,7 +351,7 @@ export default function ProfileScreen() {
                         </Text>
                       </View>
                     </View>
-                    <ChevronRight className="text-muted-foreground" size={20} />
+                    <ChevronRight size={20} color={themeColors.mutedForeground} />
                   </TouchableOpacity>
                 </>
               )}
@@ -299,7 +366,7 @@ export default function ProfileScreen() {
             <CardContent className="gap-4">
               {/* App Version */}
               <View className="flex-row items-center gap-3">
-                <Info className="text-foreground" size={20} />
+                <Info size={20} color={themeColors.foreground} />
                 <View className="flex-1">
                   <Text className="font-medium">Versione App</Text>
                   <Text className="text-xs text-muted-foreground">{appVersion}</Text>
@@ -312,10 +379,10 @@ export default function ProfileScreen() {
                 className="flex-row items-center justify-between"
               >
                 <View className="flex-row items-center gap-3 flex-1">
-                  <Shield className="text-foreground" size={20} />
+                  <Shield size={20} color={themeColors.foreground} />
                   <Text className="font-medium">Privacy Policy</Text>
                 </View>
-                <ChevronRight className="text-muted-foreground" size={20} />
+                <ChevronRight size={20} color={themeColors.mutedForeground} />
               </TouchableOpacity>
 
               {/* Terms of Service */}
@@ -324,10 +391,10 @@ export default function ProfileScreen() {
                 className="flex-row items-center justify-between"
               >
                 <View className="flex-row items-center gap-3 flex-1">
-                  <FileText className="text-foreground" size={20} />
+                  <FileText size={20} color={themeColors.foreground} />
                   <Text className="font-medium">Termini di Servizio</Text>
                 </View>
-                <ChevronRight className="text-muted-foreground" size={20} />
+                <ChevronRight size={20} color={themeColors.mutedForeground} />
               </TouchableOpacity>
             </CardContent>
           </Card>

@@ -47,6 +47,8 @@ The app uses a custom authentication system with:
 - **shadcn/ui** design system adapted for React Native
 - CSS variables for theming in `global.css`
 - Dark/light theme support with automatic color scheme detection
+- User preferences for theme selection (light/dark/system) with persistence
+- Theme toggle in profile screen with cycle: light → dark → system → light
 
 ### Key Configuration Files
 
@@ -54,6 +56,8 @@ The app uses a custom authentication system with:
 - `babel.config.js` - Babel preset for Expo with NativeWind
 - `metro.config.js` - Metro bundler configuration for NativeWind
 - `tsconfig.json` - TypeScript configuration with strict mode
+- `lib/config.ts` - API configuration with default location coordinates
+- `lib/contexts/settings.tsx` - User settings and theme management
 
 ## Development Notes
 
@@ -63,6 +67,9 @@ The app uses a custom authentication system with:
 - Type definitions are centralized in `lib/types/`
 - Uses Expo Router for file-based navigation
 - Supports iOS, Android, and Web platforms
+- Theme-aware icons use `text-foreground` or `text-muted-foreground` classes
+- No hardcoded colors - all colors use Tailwind CSS variables
+- Location coordinates centralized in `API_CONFIG.DEFAULT_LOCATION`
 
 ## Adding Components
 

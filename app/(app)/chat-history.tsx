@@ -10,10 +10,13 @@ import { useAuth } from '../../lib/contexts/auth';
 import { chatHistoryService } from '../../lib/services/chat-history';
 import type { ChatConversation } from '../../lib/types/chat-history';
 import { MessageSquare, Trash2, Calendar, MessageCircle } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../../lib/utils';
 
 export default function ChatHistoryScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
   
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,20 +149,20 @@ export default function ChatHistoryScreen() {
             onPress={() => handleDeleteConversation(item)}
             className="p-2"
           >
-            <Trash2 size={16} className="text-destructive" />
+            <Trash2 size={16} className="text-foreground" />
           </Button>
         </View>
 
         <View className="flex-row justify-between items-center">
           <View className="flex-row items-center gap-4">
             <View className="flex-row items-center gap-1">
-              <MessageSquare size={14} className="text-muted-foreground" />
+              <MessageSquare size={14} className="text-foreground" />
               <Text className="text-xs text-muted-foreground">
                 {item.message_count} messaggi
               </Text>
             </View>
             <View className="flex-row items-center gap-1">
-              <Calendar size={14} className="text-muted-foreground" />
+              <Calendar size={14} className="text-foreground" />
               <Text className="text-xs text-muted-foreground">
                 {formatDate(item.updated_at)}
               </Text>
@@ -171,7 +174,7 @@ export default function ChatHistoryScreen() {
             size="sm"
             onPress={() => handleContinueConversation(item.id)}
           >
-            <MessageCircle size={16} className="mr-1" />
+            <MessageCircle size={16} className="mr-1 text-foreground" />
             <Text className="text-xs">Continua</Text>
           </Button>
         </View>
@@ -181,7 +184,7 @@ export default function ChatHistoryScreen() {
 
   const renderEmptyState = () => (
     <View className="flex-1 justify-center items-center p-8">
-      <MessageSquare size={64} className="text-muted-foreground mb-4" />
+      <MessageSquare size={64} className="text-foreground mb-4" />
       <Text className="text-xl font-semibold text-center mb-2">
         Nessuna conversazione
       </Text>
@@ -192,7 +195,7 @@ export default function ChatHistoryScreen() {
         variant="default"
         onPress={() => router.push('/chat-search?mode=free' as any)}
       >
-        <MessageCircle size={16} className="mr-2" />
+        <MessageCircle size={16} className="mr-2 text-foreground" />
         Inizia una nuova conversazione
       </Button>
     </View>
@@ -207,7 +210,7 @@ export default function ChatHistoryScreen() {
           headerBackTitle: ' ',
         }}
       />
-      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
         {loading && conversations.length === 0 ? (
           <View className="flex-1 justify-center items-center">
             <ActivityIndicator size="large" />

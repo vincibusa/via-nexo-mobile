@@ -12,13 +12,20 @@ import { useState, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, Image, Pressable, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Calendar, Clock, MapPin, Music, Ticket } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../../../lib/utils';
+import { THEME } from '../../../lib/theme';
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { session } = useAuth();
   const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
-  
+  const { colorScheme } = useColorScheme();
+
+  // Get dynamic colors for icons
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const id = params.id as string;
 
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -98,7 +105,7 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
         <Stack.Screen options={{ title: 'Dettaglio', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" />
@@ -109,7 +116,7 @@ export default function EventDetailScreen() {
 
   if (error || !event) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
         <Stack.Screen options={{ title: 'Errore', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-center text-lg text-muted-foreground">
@@ -127,7 +134,7 @@ export default function EventDetailScreen() {
   const isSoldOut = event.ticket_availability === 'sold_out';
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
       <Stack.Screen
         options={{
           title: event.title,
@@ -145,7 +152,7 @@ export default function EventDetailScreen() {
               className="h-full w-full"
               resizeMode="cover"
             />
-            <View className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60" />
+            <View className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80" />
             {eventIsPast && (
               <View className="absolute right-4 top-4 rounded-full bg-muted px-4 py-2">
                 <Text className="text-sm font-bold">Evento concluso</Text>
@@ -153,7 +160,7 @@ export default function EventDetailScreen() {
             )}
           </View>
         ) : (
-          <View className="h-80 w-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+          <View className="h-80 w-full items-center justify-center bg-muted/30">
             <Text className="text-6xl opacity-30">🎉</Text>
           </View>
         )}
@@ -183,7 +190,7 @@ export default function EventDetailScreen() {
           <Card>
             <CardContent className="p-4 gap-3">
               <View className="flex-row items-center gap-3">
-                <Calendar size={20} />
+                <Calendar size={20} color={themeColors.foreground} />
                 <View className="flex-1">
                   <Text className="text-sm text-muted-foreground">Data</Text>
                   <Text className="font-semibold">
@@ -198,7 +205,7 @@ export default function EventDetailScreen() {
               </View>
 
               <View className="flex-row items-center gap-3">
-                <Clock size={20} />
+                <Clock size={20} color={themeColors.foreground} />
                 <View className="flex-1">
                   <Text className="text-sm text-muted-foreground">Orario</Text>
                   <Text className="font-semibold">
@@ -236,7 +243,7 @@ export default function EventDetailScreen() {
                 )}
                 <View className="flex-1 p-3">
                   <View className="flex-row items-center gap-2">
-                    <MapPin size={16} />
+                    <MapPin size={16} color={themeColors.foreground} />
                     <Text className="text-xs text-muted-foreground">Locale</Text>
                   </View>
                   <Text className="mt-1 font-semibold">{event.place.name}</Text>
@@ -268,7 +275,7 @@ export default function EventDetailScreen() {
               <View className="gap-2">
                 {event.lineup.map((performer, index) => (
                   <View key={index} className="flex-row items-center gap-3 rounded-lg bg-muted/30 p-3">
-                    <Music size={18} />
+                    <Music size={18} color={themeColors.foreground} />
                     <Text className="flex-1">{performer}</Text>
                   </View>
                 ))}
@@ -294,7 +301,7 @@ export default function EventDetailScreen() {
           <Card>
             <CardContent className="p-4 gap-3">
               <View className="flex-row items-center gap-2">
-                <Ticket size={20} />
+                <Ticket size={20} color={themeColors.foreground} />
                 <Text className="text-lg font-semibold">Biglietti</Text>
               </View>
 
@@ -336,9 +343,10 @@ export default function EventDetailScreen() {
                 <ActivityIndicator size="small" />
               ) : (
                 <>
-                  <Heart 
-                    size={18} 
-                    fill={isEventFavorite ? "currentColor" : "none"}
+                  <Heart
+                    size={18}
+                    color={themeColors.primaryForeground}
+                    fill={isEventFavorite ? themeColors.primaryForeground : "none"}
                   />
                   <Text>Salva</Text>
                 </>

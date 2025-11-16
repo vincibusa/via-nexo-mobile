@@ -58,7 +58,7 @@ export function ImageGallery({ images, height = 300 }: ImageGalleryProps) {
             <View
               key={index}
               className={`h-2 w-2 rounded-full ${
-                index === activeIndex ? 'bg-white' : 'bg-white/50'
+                index === activeIndex ? 'bg-foreground' : 'bg-foreground/50'
               }`}
             />
           ))}

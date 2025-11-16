@@ -15,8 +15,11 @@ import { useAuth } from '../lib/contexts/auth';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../lib/utils';
 
 export function SignUpForm() {
+  const { colorScheme } = useColorScheme();
   const { signup } = useAuth();
   const router = useRouter();
   const passwordInputRef = React.useRef<TextInput>(null);
@@ -78,7 +81,7 @@ export function SignUpForm() {
 
   return (
     <View className="gap-6">
-      <Card className="border-border/0 sm:border-border shadow-none sm:shadow-sm sm:shadow-black/5">
+      <Card className={cn("border-border/0 sm:border-border shadow-none sm:shadow-sm", colorScheme === 'dark' ? 'sm:shadow-white/5' : 'sm:shadow-black/5')}>
         <CardHeader>
           <CardTitle className="text-center text-xl sm:text-left">Create your account</CardTitle>
           <CardDescription className="text-center sm:text-left">
@@ -149,7 +152,7 @@ export function SignUpForm() {
               />
             </View>
             <Button className="w-full" onPress={onSubmit} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator color="white" /> : <Text>Continue</Text>}
+              {isLoading ? <ActivityIndicator /> : <Text>Continue</Text>}
             </Button>
           </View>
           <View className="flex-row items-center justify-center">

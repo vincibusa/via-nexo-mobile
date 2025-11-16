@@ -7,8 +7,11 @@ import { EventCard } from '../../components/events/event-card';
 import { useRouter, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Heart } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../../lib/utils';
 
 export default function FavoritesScreen() {
+  const { colorScheme } = useColorScheme();
   const { places, events, isLoading, removeFavorite, refreshFavorites } = useFavorites();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'places' | 'events'>('places');
@@ -90,7 +93,7 @@ export default function FavoritesScreen() {
           headerBackTitle: ' ',
         }}
       />
-      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
         {/* Tabs */}
         <View className="flex-row border-b border-border">
           <TouchableOpacity

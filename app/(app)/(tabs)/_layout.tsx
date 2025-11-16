@@ -1,17 +1,17 @@
 import { Tabs } from 'expo-router';
 import { Home, Calendar, MapPin, User } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
+import { useSettings } from '../../../lib/contexts/settings';
 import { NAV_THEME } from '../../../lib/theme';
 
 export default function TabLayout() {
-  const { colorScheme } = useColorScheme();
-  const theme = NAV_THEME[colorScheme ?? 'light'];
+  const { currentTheme } = useSettings();
+  const theme = NAV_THEME[currentTheme ?? 'light'];
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: colorScheme === 'dark' ? '#6b7280' : 'hsl(0 0% 45.1%)',
+        tabBarInactiveTintColor: theme.colors.text,
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.colors.background,

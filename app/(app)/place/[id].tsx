@@ -15,13 +15,21 @@ import { View, ScrollView, ActivityIndicator, Linking, Pressable, Alert, Touchab
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Phone, Globe, Instagram, Facebook, MapPin, Clock, Euro } from 'lucide-react-native';
 import * as Location from 'expo-location';
+import { useColorScheme } from 'nativewind';
+import { cn } from '../../../lib/utils';
+import { API_CONFIG } from '../../../lib/config';
+import { THEME } from '../../../lib/theme';
 
 export default function PlaceDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { session } = useAuth();
   const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
-  
+  const { colorScheme } = useColorScheme();
+
+  // Get dynamic colors for icons
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+
   const id = params.id as string;
   const aiReason = params.ai_reason as string | undefined;
 
@@ -45,13 +53,26 @@ export default function PlaceDetailScreen() {
     // Try to get user location for distance calculation
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
+      let userLocation: { lat: number; lon: number };
+
       if (status === 'granted') {
-        const currentLocation = await Location.getCurrentPositionAsync({});
-        setLocation({
-          lat: currentLocation.coords.latitude,
-          lon: currentLocation.coords.longitude,
-        });
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({});
+          userLocation = {
+            lat: currentLocation.coords.latitude,
+            lon: currentLocation.coords.longitude,
+          };
+        } catch (error) {
+          console.warn('Error getting location:', error);
+          // Fallback to default location
+          userLocation = API_CONFIG.DEFAULT_LOCATION;
+        }
+      } else {
+        // Fallback to default location if permission denied
+        userLocation = API_CONFIG.DEFAULT_LOCATION;
       }
+
+      setLocation(userLocation);
     } catch (err) {
       console.log('Could not get location for distance calculation');
     }
@@ -100,7 +121,7 @@ export default function PlaceDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
         <Stack.Screen options={{ title: 'Dettaglio', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" />
@@ -111,7 +132,7 @@ export default function PlaceDetailScreen() {
 
   if (error || !place) {
     return (
-      <SafeAreaView className="flex-1 bg-background">
+      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
         <Stack.Screen options={{ title: 'Errore', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-center text-lg text-muted-foreground">
@@ -132,7 +153,7 @@ export default function PlaceDetailScreen() {
     : [];
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
       <Stack.Screen
         options={{
           title: place.name,
@@ -198,7 +219,9 @@ export default function PlaceDetailScreen() {
 
             {/* Address */}
             <View className="flex-row items-start gap-3">
-              <MapPin size={20} className="mt-1 text-muted-foreground" />
+              <View className="mt-1">
+                <MapPin size={20} color={themeColors.mutedForeground} />
+              </View>
               <View className="flex-1">
                 <Text className="font-medium">Indirizzo</Text>
                 <Text className="text-sm text-muted-foreground">
@@ -272,7 +295,7 @@ export default function PlaceDetailScreen() {
                   onPress={() => openLink(`tel:${place.phone}`)}
                   className="flex-row items-center gap-3 rounded-lg bg-muted/30 p-3"
                 >
-                  <Phone size={20} />
+                  <Phone size={20} color={themeColors.foreground} />
                   <Text className="flex-1">{place.phone}</Text>
                 </Pressable>
               )}
@@ -282,7 +305,7 @@ export default function PlaceDetailScreen() {
                   onPress={() => openLink(place.website!)}
                   className="flex-row items-center gap-3 rounded-lg bg-muted/30 p-3"
                 >
-                  <Globe size={20} />
+                  <Globe size={20} color={themeColors.foreground} />
                   <Text className="flex-1 text-primary">Visita sito web</Text>
                 </Pressable>
               )}
@@ -292,7 +315,7 @@ export default function PlaceDetailScreen() {
                   onPress={() => openLink(`https://instagram.com/${place.instagram!.replace('@', '')}`)}
                   className="flex-row items-center gap-3 rounded-lg bg-muted/30 p-3"
                 >
-                  <Instagram size={20} />
+                  <Instagram size={20} color={themeColors.foreground} />
                   <Text className="flex-1">{place.instagram}</Text>
                 </Pressable>
               )}
@@ -302,7 +325,7 @@ export default function PlaceDetailScreen() {
                   onPress={() => openLink(place.facebook!)}
                   className="flex-row items-center gap-3 rounded-lg bg-muted/30 p-3"
                 >
-                  <Facebook size={20} />
+                  <Facebook size={20} color={themeColors.foreground} />
                   <Text className="flex-1 text-primary">Facebook</Text>
                 </Pressable>
               )}
@@ -371,9 +394,10 @@ export default function PlaceDetailScreen() {
                 <ActivityIndicator size="small" />
               ) : (
                 <>
-                  <Heart 
-                    size={18} 
-                    fill={isPlaceFavorite ? "currentColor" : "none"}
+                  <Heart
+                    size={18}
+                    color={themeColors.primaryForeground}
+                    fill={isPlaceFavorite ? themeColors.primaryForeground : "none"}
                   />
                   <Text>Salva</Text>
                 </>
