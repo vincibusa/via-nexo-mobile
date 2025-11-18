@@ -39,6 +39,8 @@ export function ChatSuggestionCards({ suggestions }: ChatSuggestionCardsProps) {
 }
 
 function SuggestionCard({ place }: { place: SuggestedPlace }) {
+  const { colorScheme } = useColorScheme();
+  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
   const router = useRouter();
 
   const handlePress = () => {
