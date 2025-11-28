@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { API_CONFIG } from '../../lib/config';
 import { StoryViewer } from './story-viewer';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
 
 interface StoryGroup {
   user_id: string;
@@ -39,9 +41,16 @@ export function CreateMenuSheet({
   const router = useRouter();
   const { user } = useAuth();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const [userStories, setUserStories] = useState<StoryGroup | null>(null);
   const [isLoadingStories, setIsLoadingStories] = useState(false);
   const [isViewingStories, setIsViewingStories] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   useEffect(() => {
     if (isOpen) {
@@ -133,7 +142,7 @@ export function CreateMenuSheet({
           {/* Loading indicator */}
           {isLoadingStories ? (
             <View className="items-center py-4">
-              <ActivityIndicator size="small" />
+              <ActivityIndicator size="small" color={themeColors.foreground} />
             </View>
           ) : (
             <>
@@ -142,7 +151,7 @@ export function CreateMenuSheet({
                 onPress={handleCreateStory}
                 className="flex-row items-center gap-3 px-4 py-4"
               >
-                <Camera size={24} className="text-primary" />
+                <Camera size={24} color={themeColors.primary} />
                 <View className="flex-1">
                   <Text className="font-semibold text-base">Crea Storia</Text>
                   <Text className="text-xs text-muted-foreground">
@@ -157,7 +166,7 @@ export function CreateMenuSheet({
                   onPress={handleViewStories}
                   className="flex-row items-center gap-3 px-4 py-4"
                 >
-                  <Camera size={24} className="text-primary" />
+                  <Camera size={24} color={themeColors.primary} />
                   <View className="flex-1">
                     <Text className="font-semibold text-base">
                       Visualizza tua storia
@@ -171,7 +180,7 @@ export function CreateMenuSheet({
                 onPress={onClose}
                 className="flex-row items-center gap-3 px-4 py-4 mt-2"
               >
-                <X size={24} className="text-muted-foreground" />
+                <X size={24} color={themeColors.mutedForeground} />
                 <Text className="font-semibold text-muted-foreground">
                   Annulla
                 </Text>

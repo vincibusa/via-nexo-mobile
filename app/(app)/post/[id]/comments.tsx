@@ -9,6 +9,8 @@ import { X, Heart, Send } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { cn } from '../../../../lib/utils';
 import { useColorScheme } from 'nativewind';
+import { THEME } from '../../../../lib/theme';
+import { useSettings } from '../../../../lib/contexts/settings';
 
 interface Comment {
   id: string;
@@ -27,12 +29,19 @@ export default function CommentsScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const { id } = useLocalSearchParams();
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const fetchComments = async () => {
     // TODO: Fetch comments from API
@@ -102,7 +111,7 @@ export default function CommentsScreen() {
         <Text className="mt-1 text-sm leading-relaxed">{item.content}</Text>
         <View className="mt-2 flex-row items-center gap-4">
           <TouchableOpacity className="flex-row items-center gap-1">
-            <Heart size={14} className="text-muted-foreground" />
+            <Heart size={14} color={themeColors.mutedForeground} />
             <Text className="text-xs text-muted-foreground">
               {item.likes_count}
             </Text>
@@ -118,7 +127,7 @@ export default function CommentsScreen() {
       <TouchableOpacity onPress={() => handleLikeComment(item.id)}>
         <Heart
           size={16}
-          className={item.is_liked ? 'text-red-500' : 'text-muted-foreground'}
+          color={item.is_liked ? '#ef4444' : themeColors.mutedForeground}
           fill={item.is_liked ? '#ef4444' : 'none'}
         />
       </TouchableOpacity>
@@ -134,7 +143,7 @@ export default function CommentsScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
           <TouchableOpacity onPress={() => router.back()}>
-            <X size={24} className="text-foreground" />
+            <X size={24} color={themeColors.foreground} />
           </TouchableOpacity>
           <Text className="text-lg font-semibold">Commenti</Text>
           <View className="w-6" />
@@ -143,7 +152,7 @@ export default function CommentsScreen() {
         {/* Comments List */}
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={themeColors.foreground} />
           </View>
         ) : (
           <>
@@ -153,7 +162,12 @@ export default function CommentsScreen() {
               keyExtractor={(item) => item.id}
               className="flex-1"
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                <RefreshControl 
+                  refreshing={refreshing} 
+                  onRefresh={onRefresh}
+                  tintColor={themeColors.foreground}
+                  colors={[themeColors.primary]}
+                />
               }
               ListEmptyComponent={
                 <View className="flex-1 items-center justify-center">
@@ -188,15 +202,11 @@ export default function CommentsScreen() {
                     disabled={!newComment.trim() || isPosting}
                   >
                     {isPosting ? (
-                      <ActivityIndicator size="small" />
+                      <ActivityIndicator size="small" color={themeColors.foreground} />
                     ) : (
                       <Send
                         size={16}
-                        className={cn(
-                          newComment.trim()
-                            ? 'text-primary'
-                            : 'text-muted-foreground'
-                        )}
+                        color={newComment.trim() ? themeColors.primary : themeColors.mutedForeground}
                       />
                     )}
                   </TouchableOpacity>

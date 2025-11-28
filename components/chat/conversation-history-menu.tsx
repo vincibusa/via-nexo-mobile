@@ -7,6 +7,9 @@ import { useAuth } from '../../lib/contexts/auth';
 import type { ChatConversation } from '../../lib/types/chat-history';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 interface ConversationHistoryMenuProps {
   onClose: () => void;
@@ -22,9 +25,17 @@ export function ConversationHistoryMenu({
   canSaveNew,
 }: ConversationHistoryMenuProps) {
   const { session } = useAuth();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   useEffect(() => {
     loadConversations();
@@ -216,7 +227,7 @@ export function ConversationHistoryMenu({
                       className="p-2 active:bg-destructive/10 rounded-md"
                     >
                       {isDeleting ? (
-                        <ActivityIndicator size="small" />
+                        <ActivityIndicator size="small" color={themeColors.foreground} />
                       ) : (
                         <Text className="text-destructive text-base">🗑️</Text>
                       )}

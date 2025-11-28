@@ -2,6 +2,9 @@ import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { LucideIcon } from 'lucide-react-native';
 import { Card, CardContent, CardTitle, CardDescription } from '../../components/ui/card';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 interface SearchModeCardProps {
   icon: LucideIcon;
@@ -12,6 +15,14 @@ interface SearchModeCardProps {
 
 export function SearchModeCard({ icon: Icon, title, description, onPress }: SearchModeCardProps) {
   const scale = useSharedValue(1);
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -43,7 +54,7 @@ export function SearchModeCard({ icon: Icon, title, description, onPress }: Sear
           <CardContent className="flex-1 gap-3">
             {/* Icon */}
             <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Icon size={32} className="text-primary" />
+              <Icon size={32} color={themeColors.primary} />
             </View>
 
             {/* Title */}

@@ -12,17 +12,26 @@ import type { ChatConversation } from '../../lib/types/chat-history';
 import { MessageSquare, Trash2, Calendar, MessageCircle } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { cn } from '../../lib/utils';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
 
 export default function ChatHistoryScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const loadConversations = async (reset: boolean = false) => {
     if (!session?.accessToken) return;
@@ -213,7 +222,7 @@ export default function ChatHistoryScreen() {
       <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
         {loading && conversations.length === 0 ? (
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={themeColors.foreground} />
             <Text className="mt-4 text-muted-foreground">Caricamento conversazioni...</Text>
           </View>
         ) : conversations.length === 0 ? (
@@ -229,6 +238,8 @@ export default function ChatHistoryScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
+                tintColor={themeColors.foreground}
+                colors={[themeColors.primary]}
               />
             }
             onEndReached={handleLoadMore}

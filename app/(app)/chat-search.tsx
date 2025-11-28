@@ -21,6 +21,8 @@ import { Button } from '../../components/ui/button';
 import { Text } from '../../components/ui/text';
 import { useColorScheme } from 'nativewind';
 import { cn } from '../../lib/utils';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
 
 interface Message {
   id: string;
@@ -42,8 +44,15 @@ export default function ChatSearchScreen() {
   const { session } = useAuth();
   const params = useLocalSearchParams();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const mode = (params.mode as 'guided' | 'free') || 'free';
   const conversationId = params.conversation_id as string;
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -563,7 +572,7 @@ export default function ChatSearchScreen() {
         {/* Loading indicator for conversation */}
         {loadingConversation && (
           <View className="absolute inset-0 bg-background/80 z-50 justify-center items-center">
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={themeColors.foreground} />
             <Text className="mt-4 text-muted-foreground">Caricamento conversazione...</Text>
           </View>
         )}

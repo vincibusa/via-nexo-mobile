@@ -4,6 +4,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 interface User {
   id: string;
@@ -25,6 +28,14 @@ export function DiscoverSection({
   onFollow,
 }: DiscoverSectionProps) {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   if (users.length === 0) {
     return null;
@@ -39,7 +50,7 @@ export function DiscoverSection({
           className="flex-row items-center gap-1"
         >
           <Text className="text-sm font-medium text-primary">Vedi tutti</Text>
-          <ChevronRight size={16} className="text-primary" />
+          <ChevronRight size={16} color={themeColors.primary} />
         </TouchableOpacity>
       </View>
 

@@ -10,6 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Utensils, Beer, Coffee, Wine, Music, Pizza } from 'lucide-react-native';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
+import { THEME } from '../../../lib/theme';
+import { useSettings } from '../../../lib/contexts/settings';
 
 // Conditional import for react-native-maps (not available on web)
 let MapView: any = null;
@@ -87,6 +89,13 @@ const getPlaceIconColor = (category: string) => {
 export default function HomeScreen() {
   const { user } = useAuth();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
   const router = useRouter();
   const [places, setPlaces] = useState<Place[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
@@ -250,26 +259,28 @@ export default function HomeScreen() {
         </MapView>
       )}
 
-      {/* ScrollView wrapper for pull-to-refresh - allows minimal scroll to trigger refresh */}
-      <ScrollView
-        style={StyleSheet.absoluteFill}
-        contentContainerStyle={{ 
-          flexGrow: 1,
-          minHeight: Dimensions.get('window').height + 1 // Allow scroll for pull-to-refresh
-        }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        scrollEventThrottle={16}
-        bounces={true}
-        alwaysBounceVertical={true}
-        showsVerticalScrollIndicator={false}
-        pointerEvents="box-none"
-      >
-        {/* Overlays */}
-        <SafeAreaView className="flex-1" edges={['top']} pointerEvents="box-none">
-          <View className="flex-1 justify-between" pointerEvents="box-none">
-            {/* Top Section: Header & Stories */}
+      {/* Overlays */}
+      <SafeAreaView className="flex-1" edges={['top']} pointerEvents="box-none">
+        <View className="flex-1 justify-between" pointerEvents="box-none">
+          {/* Top Section: Header & Stories with Pull-to-Refresh */}
+          <ScrollView
+            contentContainerStyle={{ 
+              paddingBottom: 20,
+            }}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                tintColor={themeColors.foreground}
+                colors={[themeColors.primary]}
+              />
+            }
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            scrollEnabled={true}
+            style={{ maxHeight: 120 }}
+            pointerEvents="box-none"
+          >
             <View pointerEvents="box-none">
               {/* Header Background Gradient/Overlay */}
               <View
@@ -277,20 +288,17 @@ export default function HomeScreen() {
                 pointerEvents="none"
               />
 
-
-
               {/* Stories */}
-              <View className="pl-2">
+              <View className="pl-2" pointerEvents="auto">
                 <StoriesCarousel 
                   onCreatePress={handleOpenCreateMenu}
                   refreshTrigger={storiesRefreshTrigger}
                 />
               </View>
             </View>
-
-          </View>
-        </SafeAreaView>
-      </ScrollView>
+          </ScrollView>
+        </View>
+      </SafeAreaView>
 
       {/* Create Menu Modal */}
       <CreateMenuSheet

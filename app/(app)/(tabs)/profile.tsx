@@ -86,8 +86,11 @@ export default function ProfileScreen() {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
 
-  // Get dynamic colors for icons
-  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
   
   const totalFavorites = places.length + events.length;
 
@@ -266,7 +269,12 @@ export default function ProfileScreen() {
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={themeColors.foreground}
+            colors={[themeColors.primary]}
+          />
         }
       >
         {/* Header */}
@@ -275,7 +283,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={() => router.push('/(app)/settings' as any)}
           >
-            <Settings size={24} className="text-foreground" />
+            <Settings size={24} color={themeColors.foreground} />
           </TouchableOpacity>
         </View>
 
@@ -350,7 +358,7 @@ export default function ProfileScreen() {
               <Text className="font-semibold">Modifica Profilo</Text>
             </Button>
             <Button variant="outline" className="px-4">
-              <Settings size={20} className="text-foreground" />
+              <Settings size={20} color={themeColors.foreground} />
             </Button>
           </View>
         </View>
@@ -364,7 +372,7 @@ export default function ProfileScreen() {
                 className="flex-1 py-3 items-center border-b-2 border-foreground"
                 disabled
               >
-                <Grid3x3 size={20} className="text-foreground" />
+                <Grid3x3 size={20} color={themeColors.foreground} />
               </TouchableOpacity>
             </View>
           </View>
@@ -372,7 +380,7 @@ export default function ProfileScreen() {
           {/* Empty State */}
           <View className="py-16 items-center">
             <View className="rounded-full bg-muted p-6 mb-4">
-              <Grid3x3 size={48} className="text-muted-foreground" />
+              <Grid3x3 size={48} color={themeColors.mutedForeground} />
             </View>
             <Text className="text-lg font-semibold mb-2">Nessuna storia ancora</Text>
             <Text className="text-sm text-muted-foreground text-center">
@@ -426,7 +434,7 @@ export default function ProfileScreen() {
                 </View>
               </View>
               {notificationsLoading ? (
-                <ActivityIndicator size="small" />
+                <ActivityIndicator size="small" color={themeColors.foreground} />
               ) : (
                 <Switch
                   checked={!!(settings?.push_enabled && hasPermission)}

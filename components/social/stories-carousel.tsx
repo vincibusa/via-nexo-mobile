@@ -7,6 +7,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/contexts/auth';
 import { StoryViewer } from './story-viewer';
 import { API_CONFIG } from '../../lib/config';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 export interface StoryGroup {
   user_id: string;
@@ -37,10 +40,18 @@ export function StoriesCarousel({
 }: StoriesCarouselProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStoryGroup, setSelectedStoryGroup] = useState<StoryGroup | null>(null);
   const [isViewerVisible, setIsViewerVisible] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   useEffect(() => {
     fetchStories();
@@ -91,7 +102,7 @@ export function StoriesCarousel({
     <>
       {isLoading ? (
         <View className="h-24 items-center justify-center px-4">
-          <ActivityIndicator size="small" />
+          <ActivityIndicator size="small" color={themeColors.foreground} />
         </View>
       ) : (
         <ScrollView

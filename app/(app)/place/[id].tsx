@@ -19,6 +19,7 @@ import { useColorScheme } from 'nativewind';
 import { cn } from '../../../lib/utils';
 import { API_CONFIG } from '../../../lib/config';
 import { THEME } from '../../../lib/theme';
+import { useSettings } from '../../../lib/contexts/settings';
 
 export default function PlaceDetailScreen() {
   const params = useLocalSearchParams();
@@ -26,9 +27,13 @@ export default function PlaceDetailScreen() {
   const { session } = useAuth();
   const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
 
-  // Get dynamic colors for icons
-  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const id = params.id as string;
   const aiReason = params.ai_reason as string | undefined;
@@ -131,7 +136,7 @@ export default function PlaceDetailScreen() {
       <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
         <Stack.Screen options={{ title: 'Dettaglio', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.foreground} />
         </View>
       </SafeAreaView>
     );
@@ -173,7 +178,12 @@ export default function PlaceDetailScreen() {
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={themeColors.foreground}
+            colors={[themeColors.primary]}
+          />
         }
       >
         {/* Image Gallery */}
@@ -404,7 +414,7 @@ export default function PlaceDetailScreen() {
               disabled={favoriteLoading}
             >
               {favoriteLoading ? (
-                <ActivityIndicator size="small" />
+                <ActivityIndicator size="small" color={themeColors.foreground} />
               ) : (
                 <>
                   <Heart

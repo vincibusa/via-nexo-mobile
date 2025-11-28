@@ -8,6 +8,9 @@ import type { Place } from '../../lib/types/suggestion';
 import { PlaceCard } from '../places/place-card';
 import { Text } from '../ui/text';
 import { API_CONFIG } from '../../lib/config';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
 
@@ -17,6 +20,8 @@ interface PlacesTabProps {
 
 export function PlacesTab({ query }: PlacesTabProps) {
   const { placesFilters, setPlacesFilters } = useFiltersStore();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const [places, setPlaces] = useState<PlaceWithExtras[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -24,6 +29,12 @@ export function PlacesTab({ query }: PlacesTabProps) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   // Get user location
   useEffect(() => {
@@ -158,7 +169,7 @@ export function PlacesTab({ query }: PlacesTabProps) {
       {/* List */}
       {loading && places.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.foreground} />
         </View>
       ) : (
         <FlashList

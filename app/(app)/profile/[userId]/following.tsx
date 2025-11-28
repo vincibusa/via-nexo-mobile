@@ -10,6 +10,8 @@ import { useState, useEffect } from 'react';
 import { cn } from '../../../../lib/utils';
 import { useColorScheme } from 'nativewind';
 import { API_CONFIG } from '../../../../lib/config';
+import { THEME } from '../../../../lib/theme';
+import { useSettings } from '../../../../lib/contexts/settings';
 
 interface Following {
   id: string;
@@ -24,12 +26,19 @@ export default function FollowingScreen() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const { userId } = useLocalSearchParams();
   const [following, setFollowing] = useState<Following[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   useEffect(() => {
     fetchFollowing();
@@ -159,7 +168,7 @@ export default function FollowingScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} className="text-foreground" />
+            <ArrowLeft size={24} color={themeColors.foreground} />
           </TouchableOpacity>
           <Text className="text-lg font-semibold">Seguendo</Text>
           <View className="w-6" />
@@ -168,7 +177,7 @@ export default function FollowingScreen() {
         {/* Content */}
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={themeColors.foreground} />
           </View>
         ) : following.length > 0 ? (
           <FlatList
@@ -177,14 +186,23 @@ export default function FollowingScreen() {
             keyExtractor={(item) => item.id}
             className="flex-1"
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                tintColor={themeColors.foreground}
+                colors={[themeColors.primary]}
+              />
             }
             onEndReached={() => {
               if (hasMore) fetchFollowing(true);
             }}
             onEndReachedThreshold={0.8}
             ListFooterComponent={
-              hasMore ? <ActivityIndicator size="small" className="py-4" /> : null
+              hasMore ? (
+                <View className="py-4">
+                  <ActivityIndicator size="small" color={themeColors.foreground} />
+                </View>
+              ) : null
             }
           />
         ) : (

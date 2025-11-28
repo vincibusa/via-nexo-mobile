@@ -11,6 +11,8 @@ import { useState, useEffect } from 'react';
 import { cn } from '../../../lib/utils';
 import { useColorScheme } from 'nativewind';
 import { API_CONFIG } from '../../../lib/config';
+import { THEME } from '../../../lib/theme';
+import { useSettings } from '../../../lib/contexts/settings';
 
 interface UserProfile {
   id: string;
@@ -30,6 +32,7 @@ export default function UserProfileScreen() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const { userId } = useLocalSearchParams();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +40,12 @@ export default function UserProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const isOwnProfile = userId === currentUser?.id;
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   useEffect(() => {
     fetchProfile();
@@ -120,7 +129,7 @@ export default function UserProfileScreen() {
         edges={['top']}
       >
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.foreground} />
         </View>
       </SafeAreaView>
     );
@@ -148,17 +157,22 @@ export default function UserProfileScreen() {
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={themeColors.foreground}
+            colors={[themeColors.primary]}
+          />
         }
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
           <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} className="text-foreground" />
+            <ArrowLeft size={24} color={themeColors.foreground} />
           </TouchableOpacity>
           <Text className="text-lg font-semibold">@{profile.email.split('@')[0]}</Text>
           <TouchableOpacity>
-            <MoreVertical size={24} className="text-foreground" />
+            <MoreVertical size={24} color={themeColors.foreground} />
           </TouchableOpacity>
         </View>
 
@@ -229,7 +243,7 @@ export default function UserProfileScreen() {
               )}
               {profile.location && (
                 <View className="flex-row items-center gap-1.5">
-                  <MapPin size={14} className="text-muted-foreground" />
+                  <MapPin size={14} color={themeColors.mutedForeground} />
                   <Text className="text-sm text-muted-foreground">{profile.location}</Text>
                 </View>
               )}
@@ -266,7 +280,7 @@ export default function UserProfileScreen() {
                 </Button>
 
                 <Button variant="outline" className="px-4">
-                  <MoreHorizontal size={20} className="text-foreground" />
+                  <MoreHorizontal size={20} color={themeColors.foreground} />
                 </Button>
               </>
             )}
@@ -282,7 +296,7 @@ export default function UserProfileScreen() {
                 className="flex-1 py-3 items-center border-b-2 border-foreground"
                 disabled
               >
-                <Grid3x3 size={20} className="text-foreground" />
+                <Grid3x3 size={20} color={themeColors.foreground} />
               </TouchableOpacity>
             </View>
           </View>
@@ -290,7 +304,7 @@ export default function UserProfileScreen() {
           {/* Empty State */}
           <View className="py-16 items-center">
             <View className="rounded-full bg-muted p-6 mb-4">
-              <Grid3x3 size={48} className="text-muted-foreground" />
+              <Grid3x3 size={48} color={themeColors.mutedForeground} />
             </View>
             <Text className="text-lg font-semibold mb-2">Nessun post ancora</Text>
             <Text className="text-sm text-muted-foreground text-center">

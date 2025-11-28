@@ -13,8 +13,9 @@ import { API_CONFIG } from '../../../lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PlacesTab } from '../../../components/search/places-tab';
 import { EventsTab } from '../../../components/search/events-tab';
-
 import { ChatAITab } from '../../../components/search/chatai-tab';
+import { THEME } from '../../../lib/theme';
+import { useSettings } from '../../../lib/contexts/settings';
 
 interface User {
   id: string;
@@ -45,6 +46,7 @@ const MAX_RECENT_SEARCHES = 10;
 export default function SearchScreen() {
   const { user } = useAuth();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'places' | 'events' | 'chatai'>('users');
@@ -53,6 +55,12 @@ export default function SearchScreen() {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   // Load recent searches when component mounts or users tab is focused
   useFocusEffect(
@@ -270,7 +278,7 @@ export default function SearchScreen() {
           {SEARCH_TABS[SEARCH_TABS.findIndex(t => t.id === activeTab)]?.hasSearch && (
             <View className="flex-row items-center gap-3">
               <View className="flex-1 flex-row items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
-                <Search size={18} className="text-muted-foreground" />
+                <Search size={18} color={themeColors.mutedForeground} />
                 <TextInput
                   placeholder="Cerca"
                   value={searchQuery}
@@ -281,7 +289,7 @@ export default function SearchScreen() {
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <X size={16} className="text-muted-foreground" />
+                    <X size={16} color={themeColors.mutedForeground} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -324,7 +332,7 @@ export default function SearchScreen() {
         {activeTab === 'users' ? (
           isLoading ? (
             <View className="flex-1 items-center justify-center">
-              <ActivityIndicator size="large" />
+              <ActivityIndicator size="large" color={themeColors.foreground} />
             </View>
           ) : searchQuery.trim() ? (
             <>
@@ -335,7 +343,12 @@ export default function SearchScreen() {
                   keyExtractor={(item) => item.id}
                   className="flex-1"
                   refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl 
+                      refreshing={refreshing} 
+                      onRefresh={onRefresh}
+                      tintColor={themeColors.foreground}
+                      colors={[themeColors.primary]}
+                    />
                   }
                 />
               ) : (
@@ -375,14 +388,14 @@ export default function SearchScreen() {
                           onPress={() => setSearchQuery(query)}
                           className="flex-1 flex-row items-center gap-3"
                         >
-                          <Clock size={16} className="text-muted-foreground" />
+                          <Clock size={16} color={themeColors.mutedForeground} />
                           <Text className="text-base">{query}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => deleteRecentSearch(query)}
                           className="p-2"
                         >
-                          <X size={16} className="text-muted-foreground" />
+                          <X size={16} color={themeColors.mutedForeground} />
                         </TouchableOpacity>
                       </View>
                     ))}

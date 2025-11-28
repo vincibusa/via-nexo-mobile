@@ -7,6 +7,9 @@ import { eventsListService, type EventListItem } from '../../lib/services/events
 import { EventCard } from '../events/event-card';
 import { Text } from '../ui/text';
 import { API_CONFIG } from '../../lib/config';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 interface EventsTabProps {
   query: string;
@@ -14,6 +17,8 @@ interface EventsTabProps {
 
 export function EventsTab({ query }: EventsTabProps) {
   const { eventsFilters, setEventsFilters } = useFiltersStore();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -21,6 +26,12 @@ export function EventsTab({ query }: EventsTabProps) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   // Get user location
   useEffect(() => {
@@ -151,7 +162,7 @@ export function EventsTab({ query }: EventsTabProps) {
       {/* List */}
       {loading && events.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.foreground} />
         </View>
       ) : (
         <FlashList

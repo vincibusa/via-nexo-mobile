@@ -18,13 +18,22 @@ import { cn } from '../../lib/utils';
 import { useColorScheme } from 'nativewind';
 import * as ImagePicker from 'expo-image-picker';
 import { API_CONFIG } from '../../lib/config';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
 
 export default function EditProfileScreen() {
   const { user, updateUserProfile } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   // Form fields
   const [displayName, setDisplayName] = useState('');
@@ -201,7 +210,7 @@ export default function EditProfileScreen() {
         edges={['top']}
       >
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.foreground} />
         </View>
       </SafeAreaView>
     );

@@ -3,9 +3,20 @@ import { Text } from '../ui/text';
 import { Card } from '../ui/card';
 import { MessageCircle, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 export function ChatAITab() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   return (
     <View className="flex-1 p-4">
@@ -16,7 +27,7 @@ export function ChatAITab() {
         >
           <View className="flex-row items-center gap-4 p-6">
             <View className="rounded-full bg-primary/10 p-4">
-              <MessageCircle size={32} className="text-primary" />
+              <MessageCircle size={32} color={themeColors.primary} />
             </View>
             <View className="flex-1">
               <Text className="text-lg font-bold mb-1">Chat AI</Text>
@@ -24,7 +35,7 @@ export function ChatAITab() {
                 Descrivi la tua serata ideale e il nostro AI ti aiuterà
               </Text>
             </View>
-            <ChevronRight size={24} className="text-muted-foreground" />
+            <ChevronRight size={24} color={themeColors.mutedForeground} />
           </View>
         </TouchableOpacity>
       </Card>
@@ -38,7 +49,7 @@ export function ChatAITab() {
             className="py-3 px-4 bg-muted/50 rounded-lg flex-row justify-between items-center"
           >
             <Text className="font-medium text-sm">Voglio uscire con gli amici</Text>
-            <ChevronRight size={18} className="text-muted-foreground" />
+            <ChevronRight size={18} color={themeColors.mutedForeground} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -46,7 +57,7 @@ export function ChatAITab() {
             className="py-3 px-4 bg-muted/50 rounded-lg flex-row justify-between items-center"
           >
             <Text className="font-medium text-sm">Cena con budget limitato</Text>
-            <ChevronRight size={18} className="text-muted-foreground" />
+            <ChevronRight size={18} color={themeColors.mutedForeground} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -54,7 +65,7 @@ export function ChatAITab() {
             className="py-3 px-4 bg-muted/50 rounded-lg flex-row justify-between items-center"
           >
             <Text className="font-medium text-sm">Cosa fare domani sera?</Text>
-            <ChevronRight size={18} className="text-muted-foreground" />
+            <ChevronRight size={18} color={themeColors.mutedForeground} />
           </TouchableOpacity>
         </View>
       </View>

@@ -9,13 +9,22 @@ import { useState } from 'react';
 import { Heart } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { cn } from '../../lib/utils';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
 
 export default function FavoritesScreen() {
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
   const { places, events, isLoading, removeFavorite, refreshFavorites } = useFavorites();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'places' | 'events'>('places');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -130,7 +139,14 @@ export default function FavoritesScreen() {
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor={themeColors.foreground}
+              colors={[themeColors.primary]}
+            />
+          }
         >
           <View className="p-4">
             {activeTab === 'places' ? (

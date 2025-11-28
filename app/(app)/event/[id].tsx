@@ -15,6 +15,7 @@ import { Heart, Calendar, Clock, MapPin, Music, Ticket } from 'lucide-react-nati
 import { useColorScheme } from 'nativewind';
 import { cn } from '../../../lib/utils';
 import { THEME } from '../../../lib/theme';
+import { useSettings } from '../../../lib/contexts/settings';
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams();
@@ -22,9 +23,13 @@ export default function EventDetailScreen() {
   const { session } = useAuth();
   const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
 
-  // Get dynamic colors for icons
-  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const effectiveTheme = settings?.theme === 'system' 
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
 
   const id = params.id as string;
 
@@ -115,7 +120,7 @@ export default function EventDetailScreen() {
       <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
         <Stack.Screen options={{ title: 'Dettaglio', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.foreground} />
         </View>
       </SafeAreaView>
     );
@@ -154,7 +159,12 @@ export default function EventDetailScreen() {
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={themeColors.foreground}
+            colors={[themeColors.primary]}
+          />
         }
       >
         {/* Hero Image */}
@@ -353,7 +363,7 @@ export default function EventDetailScreen() {
               disabled={favoriteLoading}
             >
               {favoriteLoading ? (
-                <ActivityIndicator size="small" />
+                <ActivityIndicator size="small" color={themeColors.foreground} />
               ) : (
                 <>
                   <Heart
