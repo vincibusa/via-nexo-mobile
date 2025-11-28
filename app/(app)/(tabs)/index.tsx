@@ -1,18 +1,34 @@
 import { SearchModeCard } from '../../../components/home/search-mode-card';
 import { Text } from '../../../components/ui/text';
+import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../lib/contexts/auth';
 import { cn } from '../../../lib/utils';
 import { useColorScheme } from 'nativewind';
 import { useRouter } from 'expo-router';
-import { View, ScrollView, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, StyleSheet, Dimensions, Platform, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MessageCircle, MapPin, Utensils, Beer, Coffee, Wine, Music, Pizza } from 'lucide-react-native';
-import { useMemo, useState, useEffect } from 'react';
+import { MapPin, Utensils, Beer, Coffee, Wine, Music, Pizza } from 'lucide-react-native';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
-import MapView, { Marker } from 'react-native-maps';
+
+// Conditional import for react-native-maps (not available on web)
+let MapView: any = null;
+let Marker: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch (e) {
+    // Maps not available
+  }
+}
 import { placesListService } from '../../../lib/services/places-list';
 import type { Place } from '../../../lib/types/suggestion';
 import { API_CONFIG } from '../../../lib/config';
+
+import { CreateMenuSheet } from '../../../components/social/create-menu-sheet';
+import { StoriesCarousel } from '../../../components/social/stories-carousel';
 
 // Helper function to get appropriate icon based on place category
 const getPlaceIcon = (category: string) => {
@@ -75,6 +91,17 @@ export default function HomeScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [storiesRefreshTrigger, setStoriesRefreshTrigger] = useState(0);
+
+  const handleOpenCreateMenu = () => {
+    setShowCreateMenu(true);
+  };
+
+  const handleCloseCreateMenu = () => {
+    setShowCreateMenu(false);
+  };
 
   // Memoized user name extraction with proper error handling
   const userName = useMemo(() => {
@@ -91,185 +118,347 @@ export default function HomeScreen() {
     return 'Amico';
   }, [user]);
 
-  // Memoized time-aware greeting
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
 
-    if (hour >= 6 && hour < 12) {
-      return `Ciao ${userName} ☀️, cosa facciamo oggi?`;
-    }
-    if (hour >= 12 && hour < 18) {
-      return `Ciao ${userName} 👋, cosa organizziamo per stasera?`;
-    }
-    if (hour >= 18 && hour < 24) {
-      return `Ciao ${userName} 🌙, la serata è tua!`;
-    }
-    return `Ciao ${userName} 🌃, ancora in giro?`;
-  }, [userName]);
 
 
   // Fetch location and places
-  useEffect(() => {
+  const fetchPlaces = async () => {
     let mounted = true;
+    try {
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-    const fetchPlaces = async () => {
-      try {
-        // Request location permission
-        const { status } = await Location.requestForegroundPermissionsAsync();
+      let userLocation: { lat: number; lon: number };
 
-        let userLocation: { lat: number; lon: number };
-
-        if (status === 'granted') {
-          try {
-            const currentLocation = await Location.getCurrentPositionAsync({});
-            userLocation = {
-              lat: currentLocation.coords.latitude,
-              lon: currentLocation.coords.longitude,
-            };
-          } catch (error) {
-            console.warn('Error getting location:', error);
-            // Fallback to default location
-            userLocation = API_CONFIG.DEFAULT_LOCATION;
-          }
-        } else {
-          // Fallback to default location if permission denied
+      if (status === 'granted') {
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({});
+          userLocation = {
+            lat: currentLocation.coords.latitude,
+            lon: currentLocation.coords.longitude,
+          };
+        } catch (error) {
+          console.warn('Error getting location:', error);
+          // Fallback to default location
           userLocation = API_CONFIG.DEFAULT_LOCATION;
         }
-
-        if (!mounted) return;
-        setLocation(userLocation);
-
-        // Fetch places within 20km radius
-        const { data, error } = await placesListService.getPlaces(
-          { max_distance_km: 20 }, // filter places within 20km
-          userLocation
-        );
-
-        if (!mounted) return;
-
-        if (error) {
-          console.error('Error fetching places:', error);
-        } else if (data) {
-          setPlaces(data.data || []);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
-      } finally {
-        if (mounted) {
-          setIsLoadingPlaces(false);
-        }
+      } else {
+        // Fallback to default location if permission denied
+        userLocation = API_CONFIG.DEFAULT_LOCATION;
       }
-    };
 
+      if (!mounted) return;
+      setLocation(userLocation);
+
+      // Fetch places within 20km radius
+      const { data, error } = await placesListService.getPlaces(
+        { max_distance_km: 20 }, // filter places within 20km
+        userLocation
+      );
+
+      if (!mounted) return;
+
+      if (error) {
+        console.error('Error fetching places:', error);
+      } else if (data) {
+        setPlaces(data.data || []);
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    } finally {
+      if (mounted) {
+        setIsLoadingPlaces(false);
+      }
+    }
+  };
+
+  useEffect(() => {
     fetchPlaces();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setIsLoadingPlaces(true);
+    // Trigger stories refresh first
+    setStoriesRefreshTrigger(prev => {
+      const newValue = prev + 1;
+      console.log('Incrementing stories refresh trigger:', newValue);
+      return newValue;
+    });
+    await fetchPlaces();
+    setRefreshing(false);
+  };
+
+  const mapRef = useRef<any>(null);
+
+  // ... existing code ...
+
+  // Animate to user location when available
+  useEffect(() => {
+    if (location && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: location.lat,
+        longitude: location.lon,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
+    }
+  }, [location]);
+
   return (
-    <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['top']}>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="gap-3 p-6">
-          <Text
-            className="text-2xl font-bold leading-tight"
-            accessibilityRole="header"
-          >
-            {greeting}
-          </Text>
-          <Text className="text-base text-muted-foreground leading-relaxed">
-            Scegli come cercare il tuo locale o evento perfetto
-          </Text>
-        </View>
+    <View className="flex-1 bg-background">
+      {/* Full Screen Map - Only render on native platforms */}
+      {MapView && (
+        <MapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFill}
+          initialRegion={{
+            latitude: location?.lat || API_CONFIG.DEFAULT_LOCATION.lat,
+            longitude: location?.lon || API_CONFIG.DEFAULT_LOCATION.lon,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          followsUserLocation={false}
+          customMapStyle={colorScheme === 'dark' ? DARK_MAP_STYLE : []}
+        >
+          {places.map((place) => {
+            const IconComponent = getPlaceIcon(place.category);
+            const iconColor = getPlaceIconColor(place.category);
 
-        {/* Search Mode Cards */}
-        <View className="gap-6 px-6">
-          {/* Ricerca Guidata */}
-          <SearchModeCard
-            icon={Search}
-            title="Ricerca Guidata"
-            description="Trova rapidamente con filtri: compagnia, mood, budget e orario"
-            onPress={() => router.push('/(app)/chat-search?mode=guided' as any)}
-          />
-
-          {/* Ricerca Libera (Chat) */}
-          <SearchModeCard
-            icon={MessageCircle}
-            title="Ricerca Libera (Chat)"
-            description="Descrivi la tua serata ideale e il nostro AI ti aiuterà"
-            onPress={() => router.push('/(app)/chat-search?mode=free' as any)}
-          />
-        </View>
-
-        {/* Places Map Section */}
-        <View className="mt-8 gap-4 pb-6">
-          <View className="px-6">
-            <Text
-              className="text-lg font-semibold"
-              accessibilityRole="header"
-            >
-              Locali entro 20km
-            </Text>
-          </View>
-
-          {isLoadingPlaces ? (
-            <View className="items-center justify-center py-12">
-              <ActivityIndicator size="large" />
-              <Text className="mt-4 text-sm text-muted-foreground">
-                Caricamento locali...
-              </Text>
-            </View>
-          ) : places.length > 0 ? (
-            <View className="mx-6">
-              <MapView
-                style={{ height: 300, borderRadius: 12 }}
-                initialRegion={{
-                  latitude: location?.lat || API_CONFIG.DEFAULT_LOCATION.lat,
-                  longitude: location?.lon || API_CONFIG.DEFAULT_LOCATION.lon,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
+            return (
+              <Marker
+                key={place.id}
+                coordinate={{
+                  latitude: place.latitude,
+                  longitude: place.longitude,
                 }}
-                showsUserLocation={true}
-                showsMyLocationButton={true}
-                followsUserLocation={false}
+                title={place.name}
+                description={`${place.category} • ${place.address}`}
+                onPress={() => router.push(`/place/${place.id}` as any)}
               >
-                {places.map((place) => {
-                  const IconComponent = getPlaceIcon(place.category);
-                  const iconColor = getPlaceIconColor(place.category);
+                <View
+                  className="rounded-full p-2 shadow-lg border-2 border-white"
+                  style={{ backgroundColor: iconColor }}
+                >
+                  <IconComponent size={16} color="white" />
+                </View>
+              </Marker>
+            );
+          })}
+        </MapView>
+      )}
 
-                  return (
-                    <Marker
-                      key={place.id}
-                      coordinate={{
-                        latitude: place.latitude,
-                        longitude: place.longitude,
-                      }}
-                      title={place.name}
-                      description={`${place.category} • ${place.address}`}
-                      onPress={() => router.push(`/place/${place.id}` as any)}
-                    >
-                      <View
-                        className="rounded-full p-2 shadow-lg border-2 border-white"
-                        style={{ backgroundColor: iconColor }}
-                      >
-                        <IconComponent size={16} color="white" />
-                      </View>
-                    </Marker>
-                  );
-                })}
-              </MapView>
+      {/* ScrollView wrapper for pull-to-refresh - allows minimal scroll to trigger refresh */}
+      <ScrollView
+        style={StyleSheet.absoluteFill}
+        contentContainerStyle={{ 
+          flexGrow: 1,
+          minHeight: Dimensions.get('window').height + 1 // Allow scroll for pull-to-refresh
+        }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        scrollEventThrottle={16}
+        bounces={true}
+        alwaysBounceVertical={true}
+        showsVerticalScrollIndicator={false}
+        pointerEvents="box-none"
+      >
+        {/* Overlays */}
+        <SafeAreaView className="flex-1" edges={['top']} pointerEvents="box-none">
+          <View className="flex-1 justify-between" pointerEvents="box-none">
+            {/* Top Section: Header & Stories */}
+            <View pointerEvents="box-none">
+              {/* Header Background Gradient/Overlay */}
+              <View
+                className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent h-48 -z-10"
+                pointerEvents="none"
+              />
+
+
+
+              {/* Stories */}
+              <View className="pl-2">
+                <StoriesCarousel 
+                  onCreatePress={handleOpenCreateMenu}
+                  refreshTrigger={storiesRefreshTrigger}
+                />
+              </View>
             </View>
-          ) : (
-            <View className="mx-6 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 p-8">
-              <Text className="text-center text-sm text-muted-foreground leading-relaxed">
-                Nessun locale disponibile{'\n'}nella tua zona al momento
-              </Text>
-            </View>
-          )}
-        </View>
+
+          </View>
+        </SafeAreaView>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Create Menu Modal */}
+      <CreateMenuSheet
+        isOpen={showCreateMenu}
+        onClose={handleCloseCreateMenu}
+      />
+    </View>
   );
 }
+
+const DARK_MAP_STYLE = [
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#242f3e"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#242f3e"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#263c3f"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#6b9a76"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#38414e"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#212a37"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9ca5b3"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#1f2835"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#f3d19c"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#2f3948"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#17263c"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#515c6d"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#17263c"
+      }
+    ]
+  }
+];

@@ -66,14 +66,14 @@ export default function ChatSearchScreen() {
   const createNewConversation = async () => {
     try {
       if (!session?.accessToken) return;
-      
+
       setLoadingConversation(true);
       console.log('[ChatSearch] Creating new conversation...');
-      
+
       // We'll create the conversation when the first message is sent
       // For now, just mark that we tried to create it
       console.log('[ChatSearch] Ready to create conversation on first message');
-      
+
     } catch (error) {
       console.error('[ChatSearch] Error preparing new conversation:', error);
     } finally {
@@ -133,9 +133,9 @@ export default function ChatSearchScreen() {
   const loadExistingConversation = async (id: string) => {
     try {
       if (!session?.accessToken) return;
-      
+
       const conversation = await chatHistoryService.continueConversation(id, session.accessToken);
-      
+
       // Convert database messages to UI messages and ensure proper ordering
       const uiMessages: Message[] = conversation.messages
         .map(msg => ({
@@ -146,7 +146,7 @@ export default function ChatSearchScreen() {
           suggestions: msg.suggestions_data || undefined,
         }))
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()); // Ensure chronological order
-      
+
       setMessages(uiMessages);
       // PROTECTION: Always set for loaded conversations (this is intentional overwrite)
       setCurrentConversation(conversation);
@@ -162,12 +162,11 @@ export default function ChatSearchScreen() {
   const autoSaveConversation = async () => {
     try {
       if (!session?.accessToken || messages.length < 2) return;
-      
+
       if (!currentConversation) {
         // Create new conversation if none exists
-        const result = await chatHistoryService.saveConversation(messages, session.accessToken);
-        const conversation = (result && 'conversation' in result) ? result.conversation : result;
-        
+        const conversation = await chatHistoryService.saveConversation(messages, session.accessToken);
+
         if (conversation && conversation.id) {
           setCurrentConversation(conversation);
           setShowHistoryMenu(false);
@@ -229,9 +228,8 @@ export default function ChatSearchScreen() {
     if (!currentConversation && session?.accessToken) {
       try {
         console.log('[ChatSearch] Creating conversation for first message...');
-        const result = await chatHistoryService.saveConversation([userMessage], session.accessToken);
-        const conversation = (result && 'conversation' in result) ? result.conversation : result;
-        
+        const conversation = await chatHistoryService.saveConversation([userMessage], session.accessToken);
+
         if (conversation && conversation.id) {
           setCurrentConversation(conversation);
           console.log('[ChatSearch] Conversation created on first message:', conversation.id);
@@ -287,7 +285,7 @@ export default function ChatSearchScreen() {
           setMessages((prev) => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
-            
+
             if (!lastMessage?.isUser) {
               // Update existing AI message
               updated[updated.length - 1] = {
@@ -303,7 +301,7 @@ export default function ChatSearchScreen() {
                 timestamp: new Date(),
               });
             }
-            
+
             return updated;
           });
         }
@@ -316,9 +314,9 @@ export default function ChatSearchScreen() {
         // Separate place and event suggestions
         const placeSuggestions = response.suggestions.filter((s) => s.type === 'place');
         const eventSuggestions = response.suggestions.filter((s) => s.type === 'event');
-        
+
         console.log('[ChatSearch] Suggestions - Places:', placeSuggestions.length, 'Events:', eventSuggestions.length);
-        
+
         // Fetch places if any
         if (placeSuggestions.length > 0) {
           const placeIds = placeSuggestions.map((s) => s.id);
@@ -404,7 +402,7 @@ export default function ChatSearchScreen() {
       setMessages((prev) => {
         const updated = [...prev];
         const lastMessage = updated[updated.length - 1];
-        
+
         if (!lastMessage?.isUser) {
           // Update existing AI message with final content and suggestions
           updated[updated.length - 1] = {
@@ -422,7 +420,7 @@ export default function ChatSearchScreen() {
             suggestions: suggestedPlaces,
           });
         }
-        
+
         return updated;
       });
 
@@ -578,15 +576,15 @@ export default function ChatSearchScreen() {
             <Pressable
               onPress={() => setShowHistoryMenu(false)}
               className="absolute inset-0"
-              style={{ 
+              style={{
                 zIndex: 9998,
                 backgroundColor: 'rgba(0, 0, 0, 0.1)',
               }}
             />
 
             {/* History Menu Dropdown - Positioned at screen level */}
-            <View 
-              className="absolute top-0 right-0 left-0" 
+            <View
+              className="absolute top-0 right-0 left-0"
               style={{ zIndex: 9999 }}
               pointerEvents="box-none"
             >

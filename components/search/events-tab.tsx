@@ -1,29 +1,19 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import * as Location from 'expo-location';
-import { useFiltersStore } from '../../../lib/stores/filters-store';
-import { eventsListService, type EventListItem } from '../../../lib/services/events-list';
-import { EventCard } from '../../../components/events/event-card';
-import { SearchBar } from '../../../components/common/search-bar';
-import { FilterPills, type FilterPill } from '../../../components/common/filter-pills';
-import { Text } from '../../../components/ui/text';
-import { useColorScheme } from 'nativewind';
-import { cn } from '../../../lib/utils';
-import { API_CONFIG } from '../../../lib/config';
+import { useFiltersStore } from '../../lib/stores/filters-store';
+import { eventsListService, type EventListItem } from '../../lib/services/events-list';
+import { EventCard } from '../events/event-card';
+import { Text } from '../ui/text';
+import { API_CONFIG } from '../../lib/config';
 
-const TIME_FILTERS: FilterPill[] = [
-  { id: 'upcoming', label: 'In arrivo', value: 'upcoming' },
-  { id: 'today', label: 'Oggi', value: 'today' },
-  { id: 'this_week', label: 'Questa settimana', value: 'this_week' },
-  { id: 'this_weekend', label: 'Weekend', value: 'this_weekend' },
-  { id: 'this_month', label: 'Questo mese', value: 'this_month' },
-];
+interface EventsTabProps {
+  query: string;
+}
 
-export default function EventsScreen() {
+export function EventsTab({ query }: EventsTabProps) {
   const { eventsFilters, setEventsFilters } = useFiltersStore();
-  const { colorScheme } = useColorScheme();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -31,8 +21,6 @@ export default function EventsScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTimeId, setSelectedTimeId] = useState('upcoming');
 
   // Get user location
   useEffect(() => {
@@ -49,11 +37,9 @@ export default function EventsScreen() {
           };
         } catch (error) {
           console.warn('Error getting location:', error);
-          // Fallback to default location
           userLocation = API_CONFIG.DEFAULT_LOCATION;
         }
       } else {
-        // Fallback to default location if permission denied
         userLocation = API_CONFIG.DEFAULT_LOCATION;
       }
 
@@ -74,7 +60,7 @@ export default function EventsScreen() {
 
       const filters = {
         ...eventsFilters,
-        search: searchQuery || undefined,
+        search: query || undefined,
       };
 
       const { data, error } = await eventsListService.getEvents(filters, location || undefined, cursor);
@@ -102,7 +88,7 @@ export default function EventsScreen() {
         setHasMore(data.hasMore);
       }
     },
-    [eventsFilters, searchQuery, location]
+    [eventsFilters, query, location]
   );
 
   // Initial fetch
@@ -117,7 +103,7 @@ export default function EventsScreen() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [query]);
 
   // Handle load more
   const handleLoadMore = useCallback(() => {
@@ -130,20 +116,6 @@ export default function EventsScreen() {
   const handleRefresh = useCallback(() => {
     fetchEvents(null, true);
   }, [fetchEvents]);
-
-  // Handle time filter
-  const handleTimeSelect = useCallback(
-    (pill: FilterPill) => {
-      console.log('Time filter selected:', pill);
-      setSelectedTimeId(pill.id);
-      setEventsFilters({ time_filter: pill.value });
-      // Reset data when filter changes
-      setEvents([]);
-      setNextCursor(null);
-      setHasMore(true);
-    },
-    [setEventsFilters]
-  );
 
   // Render item
   const renderItem = useCallback(({ item }: { item: EventListItem }) => {
@@ -173,15 +145,8 @@ export default function EventsScreen() {
   }, [loading]);
 
   return (
-    <SafeAreaView edges={['top']} className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
-      {/* Header */}
-      <View className="pb-3">
-        <Text variant="h2" className="px-4 mb-4 border-0">
-          Eventi
-        </Text>
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder="Cerca un evento..." />
-        <FilterPills filters={TIME_FILTERS} selectedId={selectedTimeId} onSelect={handleTimeSelect} />
-      </View>
+    <View className="flex-1">
+
 
       {/* List */}
       {loading && events.length === 0 ? (
@@ -191,9 +156,15 @@ export default function EventsScreen() {
       ) : (
         <FlashList
           data={events}
-          renderItem={renderItem}
+          renderItem={({ item }) => (
+            <View className="flex-1 p-1">
+              <EventCard event={item} variant="grid" />
+            </View>
+          )}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
+          numColumns={2}
+          estimatedItemSize={220}
+          contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 16 }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.8}
           onRefresh={handleRefresh}
@@ -202,6 +173,6 @@ export default function EventsScreen() {
           ListEmptyComponent={renderEmpty}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

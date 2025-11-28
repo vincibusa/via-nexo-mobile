@@ -1,19 +1,20 @@
 // Funzione per ottenere l'IP locale del computer di sviluppo
 const getLocalIP = (): string => {
   // In produzione, usa l'URL di produzione
-  if (!__DEV__) return 'https://via-nexo-new.vercel.app';
-  
+  // @ts-ignore - __DEV__ is a React Native global
+  if (!global.__DEV__) return 'https://via-nexo-new.vercel.app';
+
   // In sviluppo, usa l'IP locale del computer
   // Puoi ottenere il tuo IP locale con: ipconfig (Windows) o ifconfig (Mac/Linux)
   // Sostituisci con il tuo IP locale
-  return 'http://192.168.1.70:3000';
+  return 'http://172.20.10.2:3000';
 };
 
 export const API_CONFIG = {
   // Cambia con l'URL del tuo backend in produzione
   // In sviluppo usa l'IP locale del computer invece di localhost
   BASE_URL: getLocalIP(),
-  
+
   // Default location fallback (Rome center)
   DEFAULT_LOCATION: {
     lat: 41.9028,
@@ -60,5 +61,16 @@ export const API_CONFIG = {
     CHAT_CONVERSATIONS: '/api/chat/conversations',
     CHAT_CONVERSATION_BY_ID: (id: string) => `/api/chat/conversations/${id}`,
     CHAT_CONVERSATION_MESSAGES: (id: string) => `/api/chat/conversations/${id}/messages`,
+
+    // Social
+    STORIES_FOLLOWING: '/api/social/stories/following',
+    STORIES_CREATE: '/api/social/stories',
+    STORY_BY_ID: (id: string) => `/api/social/stories/${id}`,
+    STORY_VIEW: (id: string) => `/api/social/stories/${id}/view`,
+    PROFILES: '/api/social/profiles',
+    PROFILE_BY_ID: (id: string) => `/api/social/profiles/${id}`,
+    FOLLOWS: '/api/social/follows',
+    FOLLOWERS: (id: string) => `/api/social/follows/followers?userId=${id}`,
+    FOLLOWING: (id: string) => `/api/social/follows/following?userId=${id}`,
   },
 } as const;

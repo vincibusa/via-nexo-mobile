@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import { notificationsService } from '../lib/services/notifications';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -47,7 +48,7 @@ export default function RootLayout() {
   useEffect(() => {
     // Configure notification handling on app start
     const cleanup = notificationsService.configureNotifications();
-    
+
     return () => {
       if (cleanup) {
         cleanup();
@@ -56,12 +57,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <SettingsProvider>
-        <FavoritesProvider>
-          <AppContent />
-        </FavoritesProvider>
-      </SettingsProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <SettingsProvider>
+          <FavoritesProvider>
+            <AppContent />
+          </FavoritesProvider>
+        </SettingsProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

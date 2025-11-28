@@ -9,7 +9,7 @@ import { useFavorites } from '../../../lib/contexts/favorites';
 import { useAuth } from '../../../lib/contexts/auth';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Image, Pressable, Linking, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Image, Pressable, Linking, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Calendar, Clock, MapPin, Music, Ticket } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
@@ -32,6 +32,7 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const isEventFavorite = isFavorite('event', id);
   const favoriteId = getFavoriteId('event', id);
@@ -103,6 +104,12 @@ export default function EventDetailScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadEvent();
+    setRefreshing(false);
+  };
+
   if (loading) {
     return (
       <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
@@ -143,7 +150,13 @@ export default function EventDetailScreen() {
         }}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Hero Image */}
         {event.cover_image ? (
           <View className="relative h-80 w-full">

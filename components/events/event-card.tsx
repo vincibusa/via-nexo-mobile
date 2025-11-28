@@ -11,9 +11,10 @@ import { THEME } from '../../lib/theme';
 
 interface EventCardProps {
   event: EventListItem;
+  variant?: 'list' | 'grid';
 }
 
-export const EventCard = React.memo(({ event }: EventCardProps) => {
+export const EventCard = React.memo(({ event, variant = 'list' }: EventCardProps) => {
   const { colorScheme } = useColorScheme();
   const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
 
@@ -33,6 +34,57 @@ export const EventCard = React.memo(({ event }: EventCardProps) => {
   };
 
   const { day, month, time } = formatDate(event.start_datetime);
+
+  if (variant === 'grid') {
+    return (
+      <Pressable onPress={handlePress} className="flex-1 mb-3 active:opacity-80">
+        <Card className="flex-col overflow-hidden p-0 border-0 h-[220px]">
+          {/* Image with date overlay */}
+          <View className="w-full h-[120px] relative">
+            {event.cover_image ? (
+              <Image source={{ uri: event.cover_image }} className="w-full h-full" resizeMode="cover" />
+            ) : (
+              <View className="w-full h-full bg-muted items-center justify-center">
+                <Text className="text-4xl opacity-30">🎉</Text>
+              </View>
+            )}
+
+            {/* Date badge overlay */}
+            <View className="absolute top-2 left-2 bg-background/95 rounded-md p-1 min-w-[36px] items-center">
+              <Text className="text-base font-bold leading-tight">{day}</Text>
+              <Text variant="muted" className="text-[8px] uppercase leading-tight">
+                {month}
+              </Text>
+            </View>
+          </View>
+
+          {/* Content */}
+          <View className="flex-1 p-2 justify-between">
+            <View>
+              <Text className="text-sm font-semibold mb-0.5" numberOfLines={2}>
+                {event.title}
+              </Text>
+              <View className="flex-row items-center">
+                <Calendar size={10} color={themeColors.mutedForeground} />
+                <Text variant="muted" className="ml-1 text-[10px]">
+                  {time}
+                </Text>
+              </View>
+            </View>
+
+            {event.place && (
+              <View className="flex-row items-center mt-1">
+                <MapPin size={10} color={themeColors.mutedForeground} />
+                <Text variant="muted" className="ml-1 text-[10px]" numberOfLines={1}>
+                  {event.place.name}
+                </Text>
+              </View>
+            )}
+          </View>
+        </Card>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable onPress={handlePress} className="mb-3 active:opacity-80">

@@ -7,16 +7,73 @@ import { useAuth } from '../../../lib/contexts/auth';
 import { useSettings } from '../../../lib/contexts/settings';
 import { useFavorites } from '../../../lib/contexts/favorites';
 import { usePushNotifications } from '../../../lib/hooks/usePushNotifications';
-import { Alert, View, ScrollView, Linking, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Alert, View, ScrollView, Linking, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, Heart, Bell, Globe, Moon, Sun, MapPin, Info, FileText, Shield, MessageSquare } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { ChevronRight, Heart, Bell, Globe, Moon, Sun, MapPin, Info, FileText, Shield, MessageSquare, Grid3x3, Settings } from 'lucide-react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Constants from 'expo-constants';
 import { useColorScheme } from 'nativewind';
+import { useEffect, useCallback, useState } from 'react';
+import { API_CONFIG } from '../../../lib/config';
 import { THEME } from '../../../lib/theme';
+import { cn } from '../../../lib/utils';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
+  const router = useRouter();
+
+  // Load initial profile data when user is available
+  useEffect(() => {
+    if (user?.id) {
+      refreshProfile();
+    }
+  }, [user?.id]);
+
+  // Refresh profile when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        refreshProfile();
+      }
+    }, [user?.id])
+  );
+
+  const refreshProfile = async () => {
+    if (!user?.id) return;
+
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/social/profiles/${user.id}`);
+      if (response.ok) {
+        const profileData = await response.json();
+        console.log('Refreshed profile data:', profileData);
+
+        // Update context with fresh data
+        await updateUserProfile({
+          displayName: profileData.display_name,
+          email: profileData.email,
+          avatarUrl: profileData.avatar_url,
+        });
+
+        // Update followers and following counts
+        setFollowersCount(profileData.followers_count || 0);
+        setFollowingCount(profileData.following_count || 0);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshProfile();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    console.log('ProfileScreen - user updated:', user);
+    console.log('ProfileScreen - user.avatarUrl:', user?.avatarUrl);
+  }, [user]);
+
   const { settings, isLoading, updateSettings } = useSettings();
   const { places, events } = useFavorites();
   const {
@@ -24,8 +81,10 @@ export default function ProfileScreen() {
     isLoading: notificationsLoading,
     toggleNotifications
   } = usePushNotifications();
-  const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const [refreshing, setRefreshing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   // Get dynamic colors for icons
   const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
@@ -199,210 +258,210 @@ export default function ProfileScreen() {
   const appVersion = Constants.expoConfig?.version || '1.0.0';
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="gap-6 p-6">
-          <Text className="text-2xl font-bold">Profilo</Text>
+    <SafeAreaView
+      className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}
+      edges={['top']}
+    >
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
+          <Text className="text-lg font-semibold">@{user?.email?.split('@')[0]}</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/settings' as any)}
+          >
+            <Settings size={24} className="text-foreground" />
+          </TouchableOpacity>
+        </View>
 
-          {/* User Info with Avatar */}
-          <Card>
-            <CardContent className="gap-4 pt-6">
-              <View className="flex-row items-center gap-4">
-                <Avatar alt="User Avatar" className="size-16">
-                  <AvatarFallback>
-                    <Text className="text-lg font-semibold">{getInitials()}</Text>
-                  </AvatarFallback>
-                </Avatar>
+        {/* Profile Info Section */}
+        <View className="p-6">
+          {/* Avatar Row */}
+          <View className="flex-row items-start gap-4 mb-6">
+            {/* Large Avatar */}
+            <View className="relative" key={user?.avatarUrl}>
+              <Avatar
+                className="h-24 w-24"
+                alt={user?.displayName || 'User avatar'}
+              >
+                {user?.avatarUrl && (
+                  <AvatarImage
+                    source={{ uri: user.avatarUrl }}
+                  />
+                )}
+                <AvatarFallback>
+                  <Text className="text-2xl font-bold">
+                    {getInitials()}
+                  </Text>
+                </AvatarFallback>
+              </Avatar>
+            </View>
+
+            {/* Stats Row (Mini - accanto avatar) */}
+            <View className="flex-1 flex-row justify-around pt-4">
+              <View className="items-center">
+                <Text className="text-xl font-bold">0</Text>
+                <Text className="text-xs text-muted-foreground">Storie</Text>
+              </View>
+              <TouchableOpacity
+                className="items-center"
+                onPress={() => router.push(`/(app)/profile/${user?.id}/followers` as any)}
+              >
+                <Text className="text-xl font-bold">{followersCount}</Text>
+                <Text className="text-xs text-muted-foreground">Follower</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="items-center"
+                onPress={() => router.push(`/(app)/profile/${user?.id}/following` as any)}
+              >
+                <Text className="text-xl font-bold">{followingCount}</Text>
+                <Text className="text-xs text-muted-foreground">Seguiti</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Name & Username */}
+          <View className="mb-4">
+            <Text className="text-lg font-bold mb-0.5">{user?.displayName || 'Utente'}</Text>
+            <Text className="text-sm text-muted-foreground">
+              @{user?.email?.split('@')[0]}
+            </Text>
+          </View>
+
+          {/* Bio Section */}
+          <View className="gap-2 mb-6">
+            <Text className="text-sm leading-relaxed text-muted-foreground">
+              {user?.bio || 'Nessuna bio ancora'}
+            </Text>
+          </View>
+
+          {/* Action Buttons */}
+          <View className="flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onPress={() => router.push('/(app)/edit-profile' as any)}
+            >
+              <Text className="font-semibold">Modifica Profilo</Text>
+            </Button>
+            <Button variant="outline" className="px-4">
+              <Settings size={20} className="text-foreground" />
+            </Button>
+          </View>
+        </View>
+
+        {/* Empty Stories Section */}
+        <View className="border-t border-border">
+          {/* Tabs Header */}
+          <View className="border-b border-border">
+            <View className="flex-row">
+              <TouchableOpacity
+                className="flex-1 py-3 items-center border-b-2 border-foreground"
+                disabled
+              >
+                <Grid3x3 size={20} className="text-foreground" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Empty State */}
+          <View className="py-16 items-center">
+            <View className="rounded-full bg-muted p-6 mb-4">
+              <Grid3x3 size={48} className="text-muted-foreground" />
+            </View>
+            <Text className="text-lg font-semibold mb-2">Nessuna storia ancora</Text>
+            <Text className="text-sm text-muted-foreground text-center">
+              Quando creerai delle storie,{`\n`}le vedrai qui.
+            </Text>
+          </View>
+        </View>
+
+        {/* Settings Section (Collapsible) */}
+        <View className="border-t border-border p-6">
+          <Text className="text-lg font-semibold mb-4">Impostazioni</Text>
+
+          {/* Quick Settings */}
+          <View className="gap-4">
+            {/* Favorites */}
+            <TouchableOpacity
+              onPress={() => router.push('/favorites' as any)}
+              className="flex-row items-center justify-between py-3"
+            >
+              <View className="flex-row items-center gap-3">
+                <Heart size={20} color={themeColors.foreground} fill={themeColors.foreground} />
+                <Text className="font-medium">I Miei Preferiti</Text>
+              </View>
+              <ChevronRight size={20} color={themeColors.mutedForeground} />
+            </TouchableOpacity>
+
+            {/* Chat History */}
+            <TouchableOpacity
+              onPress={() => router.push('/chat-history' as any)}
+              className="flex-row items-center justify-between py-3"
+            >
+              <View className="flex-row items-center gap-3">
+                <MessageSquare size={20} color={themeColors.foreground} />
+                <Text className="font-medium">Storico Chat</Text>
+              </View>
+              <ChevronRight size={20} color={themeColors.mutedForeground} />
+            </TouchableOpacity>
+
+            {/* Notifications */}
+            <View className="flex-row items-center justify-between py-3">
+              <View className="flex-row items-center gap-3 flex-1">
+                <Bell size={20} color={themeColors.foreground} />
                 <View className="flex-1">
-                  {user?.displayName && (
-                    <Text className="text-lg font-semibold">{user.displayName}</Text>
-                  )}
-                  <Text className="text-sm text-muted-foreground">{user?.email}</Text>
-                  <Text className="text-xs text-muted-foreground capitalize mt-1">
-                    {user?.role}
+                  <Text className="font-medium">Notifiche Push</Text>
+                  <Text className="text-xs text-muted-foreground">
+                    {hasPermission
+                      ? (settings?.push_enabled ? 'Attive' : 'Disattivate')
+                      : 'Permessi richiesti'
+                    }
                   </Text>
                 </View>
               </View>
-            </CardContent>
-          </Card>
-
-          {/* I Miei Preferiti */}
-          <TouchableOpacity
-            onPress={() => router.push('/favorites' as any)}
-          >
-            <Card>
-              <CardContent className="flex-row items-center justify-between py-4">
-                <View className="flex-row items-center gap-3">
-                  <Heart size={20} color={themeColors.foreground} fill={themeColors.foreground} />
-                  <View>
-                    <Text className="font-medium">I Miei Preferiti</Text>
-                    {totalFavorites > 0 && (
-                      <Text className="text-xs text-muted-foreground">
-                        {totalFavorites} {totalFavorites === 1 ? 'salvato' : 'salvati'}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                <ChevronRight size={20} color={themeColors.mutedForeground} />
-              </CardContent>
-            </Card>
-          </TouchableOpacity>
-
-          {/* Storico Conversazioni */}
-          <TouchableOpacity
-            onPress={() => router.push('/chat-history' as any)}
-          >
-            <Card>
-              <CardContent className="flex-row items-center justify-between py-4">
-                <View className="flex-row items-center gap-3">
-                  <MessageSquare size={20} color={themeColors.foreground} />
-                  <View>
-                    <Text className="font-medium">Storico Chat</Text>
-                    <Text className="text-xs text-muted-foreground">
-                      Le tue conversazioni salvate
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight size={20} color={themeColors.mutedForeground} />
-              </CardContent>
-            </Card>
-          </TouchableOpacity>
-
-          {/* Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Impostazioni</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-4">
-              {isLoading ? (
-                <ActivityIndicator />
+              {notificationsLoading ? (
+                <ActivityIndicator size="small" />
               ) : (
-                <>
-                  {/* Push Notifications */}
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-3 flex-1">
-                      <Bell size={20} color={themeColors.foreground} />
-                      <View className="flex-1">
-                        <Text className="font-medium">Notifiche Push</Text>
-                        <Text className="text-xs text-muted-foreground">
-                          {hasPermission 
-                            ? (settings?.push_enabled ? 'Attive' : 'Disattivate')
-                            : 'Permessi richiesti'
-                          }
-                        </Text>
-                      </View>
-                    </View>
-                    {notificationsLoading ? (
-                      <ActivityIndicator size="small" />
-                    ) : (
-                      <Switch
-                        checked={!!(settings?.push_enabled && hasPermission)}
-                        onCheckedChange={handleTogglePushNotifications}
-                        disabled={!hasPermission && !!settings?.push_enabled}
-                      />
-                    )}
-                  </View>
-
-                  {/* Language */}
-                  <TouchableOpacity
-                    onPress={handleChangeLanguage}
-                    className="flex-row items-center justify-between"
-                  >
-                    <View className="flex-row items-center gap-3 flex-1">
-                      <Globe size={20} color={themeColors.foreground} />
-                      <View className="flex-1">
-                        <Text className="font-medium">Lingua</Text>
-                        <Text className="text-xs text-muted-foreground">
-                          {settings?.language === 'it' ? 'Italiano' : 'English'}
-                        </Text>
-                      </View>
-                    </View>
-                    <ChevronRight size={20} color={themeColors.mutedForeground} />
-                  </TouchableOpacity>
-
-                  {/* Theme */}
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-3 flex-1">
-                      {getThemeIcon()}
-                      <View className="flex-1">
-                        <Text className="font-medium">Tema</Text>
-                        <Text className="text-xs text-muted-foreground">
-                          {getThemeDisplayText()}
-                        </Text>
-                      </View>
-                    </View>
-                    <Switch
-                      checked={settings?.theme === 'dark'}
-                      onCheckedChange={handleToggleTheme}
-                    />
-                  </View>
-
-                  {/* Default Radius */}
-                  <TouchableOpacity
-                    onPress={handleChangeRadius}
-                    className="flex-row items-center justify-between"
-                  >
-                    <View className="flex-row items-center gap-3 flex-1">
-                      <MapPin size={20} color={themeColors.foreground} />
-                      <View className="flex-1">
-                        <Text className="font-medium">Distanza Predefinita</Text>
-                        <Text className="text-xs text-muted-foreground">
-                          {settings?.default_radius_km || 5} km
-                        </Text>
-                      </View>
-                    </View>
-                    <ChevronRight size={20} color={themeColors.mutedForeground} />
-                  </TouchableOpacity>
-                </>
+                <Switch
+                  checked={!!(settings?.push_enabled && hasPermission)}
+                  onCheckedChange={handleTogglePushNotifications}
+                  disabled={!hasPermission && !!settings?.push_enabled}
+                />
               )}
-            </CardContent>
-          </Card>
+            </View>
 
-          {/* About */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Informazioni</CardTitle>
-            </CardHeader>
-            <CardContent className="gap-4">
-              {/* App Version */}
-              <View className="flex-row items-center gap-3">
-                <Info size={20} color={themeColors.foreground} />
+            {/* Theme */}
+            <View className="flex-row items-center justify-between py-3">
+              <View className="flex-row items-center gap-3 flex-1">
+                {getThemeIcon()}
                 <View className="flex-1">
-                  <Text className="font-medium">Versione App</Text>
-                  <Text className="text-xs text-muted-foreground">{appVersion}</Text>
+                  <Text className="font-medium">Tema</Text>
+                  <Text className="text-xs text-muted-foreground">
+                    {getThemeDisplayText()}
+                  </Text>
                 </View>
               </View>
+              <Switch
+                checked={settings?.theme === 'dark'}
+                onCheckedChange={handleToggleTheme}
+              />
+            </View>
 
-              {/* Privacy Policy */}
-              <TouchableOpacity
-                onPress={handleOpenPrivacyPolicy}
-                className="flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center gap-3 flex-1">
-                  <Shield size={20} color={themeColors.foreground} />
-                  <Text className="font-medium">Privacy Policy</Text>
-                </View>
-                <ChevronRight size={20} color={themeColors.mutedForeground} />
-              </TouchableOpacity>
-
-              {/* Terms of Service */}
-              <TouchableOpacity
-                onPress={handleOpenTerms}
-                className="flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center gap-3 flex-1">
-                  <FileText size={20} color={themeColors.foreground} />
-                  <Text className="font-medium">Termini di Servizio</Text>
-                </View>
-                <ChevronRight size={20} color={themeColors.mutedForeground} />
-              </TouchableOpacity>
-            </CardContent>
-          </Card>
-
-          {/* Logout */}
-          <Button variant="destructive" onPress={handleLogout}>
-            <Text>Esci</Text>
-          </Button>
+            {/* Logout */}
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="flex-row items-center justify-between py-3 border-t border-border mt-4 pt-4"
+            >
+              <Text className="text-destructive font-medium">Esci</Text>
+              <ChevronRight size={20} color={themeColors.destructive} />
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

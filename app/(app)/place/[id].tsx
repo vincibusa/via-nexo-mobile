@@ -11,7 +11,7 @@ import { useFavorites } from '../../../lib/contexts/favorites';
 import { useAuth } from '../../../lib/contexts/auth';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Linking, Pressable, Alert, TouchableOpacity } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Linking, Pressable, Alert, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Phone, Globe, Instagram, Facebook, MapPin, Clock, Euro } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -38,6 +38,7 @@ export default function PlaceDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const isPlaceFavorite = isFavorite('place', id);
   const favoriteId = getFavoriteId('place', id);
@@ -119,6 +120,12 @@ export default function PlaceDetailScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadPlace();
+    setRefreshing(false);
+  };
+
   if (loading) {
     return (
       <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
@@ -162,7 +169,13 @@ export default function PlaceDetailScreen() {
         }}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Image Gallery */}
         <ImageGallery images={images} height={300} />
 

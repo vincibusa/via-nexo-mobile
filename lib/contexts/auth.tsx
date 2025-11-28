@@ -30,6 +30,7 @@ interface AuthContextType {
   refreshBiometricStatus: () => Promise<void>;
   authenticateWithBiometrics: () => Promise<{ success: boolean; error?: string }>;
   loginWithSavedCredentials: () => Promise<{ error?: string }>;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -297,6 +298,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
+  const updateUserProfile = async (updates: Partial<User>) => {
+    if (!user) return;
+
+    console.log('updateUserProfile called with:', updates);
+    const updatedUser = { ...user, ...updates };
+    console.log('updatedUser:', updatedUser);
+
+    await Promise.all([storage.saveUser(updatedUser), session && storage.saveSession(session)]);
+    setUser(updatedUser);
+
+    console.log('User updated in context and storage');
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -315,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshBiometricStatus,
         authenticateWithBiometrics,
         loginWithSavedCredentials,
+        updateUserProfile,
       }}
     >
       {children}

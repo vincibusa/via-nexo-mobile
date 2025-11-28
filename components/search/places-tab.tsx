@@ -1,33 +1,22 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import * as Location from 'expo-location';
-import { useFiltersStore } from '../../../lib/stores/filters-store';
-import { placesListService } from '../../../lib/services/places-list';
-import type { Place } from '../../../lib/types/suggestion';
-import { PlaceCard } from '../../../components/places/place-card';
-import { SearchBar } from '../../../components/common/search-bar';
-import { FilterPills, type FilterPill } from '../../../components/common/filter-pills';
-import { Text } from '../../../components/ui/text';
-import { useColorScheme } from 'nativewind';
-import { cn } from '../../../lib/utils';
-import { API_CONFIG } from '../../../lib/config';
-
-const CATEGORY_FILTERS: FilterPill[] = [
-  { id: 'all', label: 'Tutti', value: null },
-  { id: 'bar', label: 'Bar', value: 'bar' },
-  { id: 'ristorante', label: 'Ristorante', value: 'ristorante' },
-  { id: 'club', label: 'Club', value: 'club' },
-  { id: 'pub', label: 'Pub', value: 'pub' },
-  { id: 'lounge', label: 'Lounge', value: 'lounge' },
-];
+import { useFiltersStore } from '../../lib/stores/filters-store';
+import { placesListService } from '../../lib/services/places-list';
+import type { Place } from '../../lib/types/suggestion';
+import { PlaceCard } from '../places/place-card';
+import { Text } from '../ui/text';
+import { API_CONFIG } from '../../lib/config';
 
 type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
 
-export default function PlacesScreen() {
+interface PlacesTabProps {
+  query: string;
+}
+
+export function PlacesTab({ query }: PlacesTabProps) {
   const { placesFilters, setPlacesFilters } = useFiltersStore();
-  const { colorScheme } = useColorScheme();
   const [places, setPlaces] = useState<PlaceWithExtras[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -35,8 +24,6 @@ export default function PlacesScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('all');
 
   // Get user location
   useEffect(() => {
@@ -53,11 +40,9 @@ export default function PlacesScreen() {
           };
         } catch (error) {
           console.warn('Error getting location:', error);
-          // Fallback to default location
           userLocation = API_CONFIG.DEFAULT_LOCATION;
         }
       } else {
-        // Fallback to default location if permission denied
         userLocation = API_CONFIG.DEFAULT_LOCATION;
       }
 
@@ -78,7 +63,7 @@ export default function PlacesScreen() {
 
       const filters = {
         ...placesFilters,
-        search: searchQuery || undefined,
+        search: query || undefined,
       };
 
       const { data, error } = await placesListService.getPlaces(filters, location || undefined, cursor);
@@ -106,7 +91,7 @@ export default function PlacesScreen() {
         setHasMore(data.hasMore);
       }
     },
-    [placesFilters, searchQuery, location]
+    [placesFilters, query, location]
   );
 
   // Initial fetch
@@ -121,7 +106,7 @@ export default function PlacesScreen() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [query]);
 
   // Handle load more
   const handleLoadMore = useCallback(() => {
@@ -135,23 +120,13 @@ export default function PlacesScreen() {
     fetchPlaces(null, true);
   }, [fetchPlaces]);
 
-  // Handle category filter
-  const handleCategorySelect = useCallback(
-    (pill: FilterPill) => {
-      console.log('Filter selected:', pill);
-      setSelectedCategoryId(pill.id);
-      setPlacesFilters({ category: pill.value || undefined });
-      // Reset data when filter changes
-      setPlaces([]);
-      setNextCursor(null);
-      setHasMore(true);
-    },
-    [setPlacesFilters]
-  );
-
   // Render item
   const renderItem = useCallback(({ item }: { item: PlaceWithExtras }) => {
-    return <PlaceCard place={item} />;
+    return (
+      <View className="flex-1 p-1">
+        <PlaceCard place={item} variant="grid" />
+      </View>
+    );
   }, []);
 
   // Render footer
@@ -177,23 +152,8 @@ export default function PlacesScreen() {
   }, [loading]);
 
   return (
-    <SafeAreaView edges={['top']} className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
-      {/* Header */}
-      <View className="pb-3">
-        <Text variant="h2" className="px-4 mb-4 border-0">
-          Luoghi
-        </Text>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Cerca un locale..."
-        />
-        <FilterPills
-          filters={CATEGORY_FILTERS}
-          selectedId={selectedCategoryId}
-          onSelect={handleCategorySelect}
-        />
-      </View>
+    <View className="flex-1">
+
 
       {/* List */}
       {loading && places.length === 0 ? (
@@ -205,7 +165,9 @@ export default function PlacesScreen() {
           data={places}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
+          numColumns={2}
+          estimatedItemSize={220}
+          contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 16 }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.8}
           onRefresh={handleRefresh}
@@ -214,6 +176,6 @@ export default function PlacesScreen() {
           ListEmptyComponent={renderEmpty}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

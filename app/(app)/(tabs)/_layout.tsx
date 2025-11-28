@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Calendar, MapPin, User } from 'lucide-react-native';
+import { Home, User, Search } from 'lucide-react-native';
 import { useSettings } from '../../../lib/contexts/settings';
 import { NAV_THEME } from '../../../lib/theme';
 
@@ -28,18 +28,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="places"
+        name="search"
         options={{
-          title: 'Luoghi',
-         
-          tabBarIcon: ({ color, size }) => <MapPin size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="events"
-        options={{
-          title: 'Eventi',
-          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />,
+          title: 'Cerca',
+          tabBarIcon: ({ color, size }) => <Search size={size} color={color} />,
         }}
       />
       <Tabs.Screen
