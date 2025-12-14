@@ -1,21 +1,25 @@
-import { View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, FlatList, RefreshControl } from 'react-native';
+import { View, TextInput, TouchableOpacity } from 'react-native';
 import { Text } from '../../../components/ui/text';
-import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar';
-import { Button } from '../../../components/ui/button';
 import { useAuth } from '../../../lib/contexts/auth';
 import { cn } from '../../../lib/utils';
 import { useColorScheme } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, X, Clock } from 'lucide-react-native';
+import { Search, X } from 'lucide-react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { API_CONFIG } from '../../../lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PlacesTab } from '../../../components/search/places-tab';
-import { EventsTab } from '../../../components/search/events-tab';
 import { ChatAITab } from '../../../components/search/chatai-tab';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
+import type { Place } from '../../../lib/types/suggestion';
+import type { EventListItem } from '../../../lib/services/events-list';
+import { placesListService } from '../../../lib/services/places-list';
+import { eventsListService } from '../../../lib/services/events-list';
+import * as Location from 'expo-location';
+import { UnifiedSearchView } from '../../../components/search/unified-search-view';
+
+type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
 
 interface User {
   id: string;
@@ -27,18 +31,21 @@ interface User {
 }
 
 interface SearchTab {
-  id: 'users' | 'places' | 'events' | 'chatai';
+  id: 'unified' | 'chatai';
   label: string;
   hasSearch: boolean;
 }
 
 const SEARCH_TABS: SearchTab[] = [
-  { id: 'users', label: 'Utenti', hasSearch: true },
-  { id: 'places', label: 'Luoghi', hasSearch: true },
-  { id: 'events', label: 'Eventi', hasSearch: true },
-
+  { id: 'unified', label: 'Cerca', hasSearch: true },
   { id: 'chatai', label: 'Chat AI', hasSearch: false },
 ];
+
+interface UnifiedSearchState {
+  users: { data: User[]; loading: boolean; error: string | null };
+  places: { data: PlaceWithExtras[]; loading: boolean; error: string | null };
+  events: { data: EventListItem[]; loading: boolean; error: string | null };
+}
 
 const RECENT_SEARCHES_KEY = 'recent_user_searches';
 const MAX_RECENT_SEARCHES = 10;
@@ -49,9 +56,13 @@ export default function SearchScreen() {
   const { settings } = useSettings();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'places' | 'events' | 'chatai'>('users');
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'unified' | 'chatai'>('unified');
+  const [unifiedState, setUnifiedState] = useState<UnifiedSearchState>({
+    users: { data: [], loading: false, error: null },
+    places: { data: [], loading: false, error: null },
+    events: { data: [], loading: false, error: null },
+  });
+  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,14 +73,39 @@ export default function SearchScreen() {
     : (settings?.theme === 'dark' ? 'dark' : 'light');
   const themeColors = THEME[effectiveTheme];
 
-  // Load recent searches when component mounts or users tab is focused
+  // Load recent searches when component mounts or unified tab is focused
   useFocusEffect(
     useCallback(() => {
-      if (activeTab === 'users') {
+      if (activeTab === 'unified') {
         loadRecentSearches();
       }
     }, [activeTab])
   );
+
+  // Get user location on mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let userLocation: { lat: number; lon: number };
+
+      if (status === 'granted') {
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({});
+          userLocation = {
+            lat: currentLocation.coords.latitude,
+            lon: currentLocation.coords.longitude,
+          };
+        } catch (error) {
+          console.warn('Error getting location:', error);
+          userLocation = API_CONFIG.DEFAULT_LOCATION;
+        }
+      } else {
+        userLocation = API_CONFIG.DEFAULT_LOCATION;
+      }
+
+      setLocation(userLocation);
+    })();
+  }, []);
 
   // Load recent searches from storage
   const loadRecentSearches = async () => {
@@ -122,80 +158,152 @@ export default function SearchScreen() {
     }
   };
 
-  // Debounced search function
+  // Helper: Search users
+  const searchUsers = async (query: string): Promise<User[]> => {
+    const url = `${API_CONFIG.BASE_URL}/api/social/profiles/search?q=${encodeURIComponent(query)}&limit=20`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`User search failed: ${response.status}`);
+
+    const data = await response.json() as Array<{
+      id: string;
+      display_name?: string;
+      email: string;
+      avatar_url?: string;
+      bio?: string;
+      isFollowing?: boolean;
+    }>;
+
+    return data.map((u) => ({
+      id: u.id,
+      display_name: u.display_name || u.email?.split('@')[0] || 'Utente',
+      email: u.email,
+      avatar_url: u.avatar_url,
+      bio: u.bio,
+      isFollowing: u.isFollowing || false,
+    }));
+  };
+
+  // Helper: Search places
+  const searchPlaces = async (query: string): Promise<PlaceWithExtras[]> => {
+    const filters = { search: query };
+    const { data, error } = await placesListService.getPlaces(
+      filters,
+      location || undefined,
+      null
+    );
+    if (error) throw new Error(error);
+    return data?.data || [];
+  };
+
+  // Helper: Search events
+  const searchEvents = async (query: string): Promise<EventListItem[]> => {
+    const filters = { search: query, time_filter: 'upcoming' as const };
+    const { data, error } = await eventsListService.getEvents(
+      filters,
+      location || undefined,
+      null
+    );
+    if (error) throw new Error(error);
+    return data?.data || [];
+  };
+
+  // Main unified search function
+  const performUnifiedSearch = async (query: string) => {
+    if (!query.trim()) {
+      setUnifiedState({
+        users: { data: [], loading: false, error: null },
+        places: { data: [], loading: false, error: null },
+        events: { data: [], loading: false, error: null },
+      });
+      setSearchPerformed(false);
+      return;
+    }
+
+    setSearchPerformed(true);
+
+    // Set all to loading
+    setUnifiedState(prev => ({
+      users: { ...prev.users, loading: true, error: null },
+      places: { ...prev.places, loading: true, error: null },
+      events: { ...prev.events, loading: true, error: null },
+    }));
+
+    // Execute 3 API calls in parallel
+    const [usersResult, placesResult, eventsResult] = await Promise.allSettled([
+      searchUsers(query),
+      searchPlaces(query),
+      searchEvents(query),
+    ]);
+
+    // Update users state
+    if (usersResult.status === 'fulfilled') {
+      setUnifiedState(prev => ({
+        ...prev,
+        users: { data: usersResult.value, loading: false, error: null },
+      }));
+    } else {
+      setUnifiedState(prev => ({
+        ...prev,
+        users: { data: [], loading: false, error: 'Errore nel caricamento utenti' },
+      }));
+    }
+
+    // Update places state
+    if (placesResult.status === 'fulfilled') {
+      setUnifiedState(prev => ({
+        ...prev,
+        places: { data: placesResult.value, loading: false, error: null },
+      }));
+    } else {
+      setUnifiedState(prev => ({
+        ...prev,
+        places: { data: [], loading: false, error: 'Errore nel caricamento luoghi' },
+      }));
+    }
+
+    // Update events state
+    if (eventsResult.status === 'fulfilled') {
+      setUnifiedState(prev => ({
+        ...prev,
+        events: { data: eventsResult.value, loading: false, error: null },
+      }));
+    } else {
+      setUnifiedState(prev => ({
+        ...prev,
+        events: { data: [], loading: false, error: 'Errore nel caricamento eventi' },
+      }));
+    }
+
+    // Save to recent searches
+    await saveRecentSearch(query);
+  };
+
+  // Debounced unified search
   useEffect(() => {
+    if (activeTab !== 'unified') return;
+
     const timeoutId = setTimeout(() => {
-      if (searchQuery.trim()) {
-        performSearch();
-      } else {
-        setUsers([]);
-        setSearchPerformed(false);
-      }
+      performUnifiedSearch(searchQuery);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, activeTab]);
+  }, [searchQuery, activeTab, location]);
 
-  const performSearch = async () => {
-    setIsLoading(true);
-    setSearchPerformed(true);
-    try {
-      const url = `${API_CONFIG.BASE_URL}/api/social/profiles/search?q=${encodeURIComponent(searchQuery)}&limit=20`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.status}`);
-      }
-
-      const data = await response.json() as Array<{
-        id: string;
-        display_name?: string;
-        email: string;
-        avatar_url?: string;
-        bio?: string;
-        isFollowing?: boolean;
-      }>;
-      setUsers(
-        data.map((u) => ({
-          id: u.id,
-          display_name: u.display_name || u.email?.split('@')[0] || 'Utente',
-          email: u.email,
-          avatar_url: u.avatar_url,
-          bio: u.bio,
-          isFollowing: u.isFollowing || false,
-        }))
-      );
-
-      // Save the search query to recent searches
-      await saveRecentSearch(searchQuery);
-    } catch (error) {
-      console.error('Error searching users:', error);
-      setUsers([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
+  const handleUnifiedRefresh = async () => {
     setRefreshing(true);
-    if (activeTab === 'users') {
-      if (searchQuery.trim()) {
-        // Ricarica la ricerca se c'è una query
-        await performSearch();
-      } else {
-        // Ricarica le ricerche recenti se non c'è query
-        await loadRecentSearches();
-      }
-    } else if (activeTab === 'places' || activeTab === 'events') {
-      // These tabs handle their own refresh through PlacesTab and EventsTab components
-      // They already have RefreshControl implemented
+
+    if (searchQuery.trim()) {
+      await performUnifiedSearch(searchQuery);
+    } else {
+      await loadRecentSearches();
     }
+
     setRefreshing(false);
   };
 
   const handleFollow = async (userId: string) => {
     try {
-      const user = users.find((u) => u.id === userId);
+      const user = unifiedState.users.data.find((u) => u.id === userId);
       if (!user) return;
 
       if (user.isFollowing) {
@@ -219,51 +327,19 @@ export default function SearchScreen() {
       }
 
       // Update local state
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId ? { ...u, isFollowing: !u.isFollowing } : u
-        )
-      );
+      setUnifiedState((prev) => ({
+        ...prev,
+        users: {
+          ...prev.users,
+          data: prev.users.data.map((u) =>
+            u.id === userId ? { ...u, isFollowing: !u.isFollowing } : u
+          ),
+        },
+      }));
     } catch (error) {
       console.error('Error toggling follow:', error);
     }
   };
-
-  const renderUserItem = ({ item }: { item: User }) => (
-    <TouchableOpacity
-      onPress={() => router.push(`/(app)/profile/${item.id}` as any)}
-      className="flex-row items-center justify-between border-b border-border px-4 py-3"
-    >
-      <View className="flex-row items-center gap-3 flex-1">
-        <Avatar className="h-12 w-12" alt={''}>
-          <AvatarImage source={{ uri: item.avatar_url || '' }} />
-          <AvatarFallback>
-            <Text className="text-sm font-semibold">
-              {item.display_name.charAt(0).toUpperCase()}
-            </Text>
-          </AvatarFallback>
-        </Avatar>
-        <View className="flex-1">
-          <Text className="font-semibold">{item.display_name}</Text>
-          <Text className="text-xs text-muted-foreground">{item.email}</Text>
-          {item.bio && (
-            <Text className="mt-1 text-xs text-muted-foreground line-clamp-1">
-              {item.bio}
-            </Text>
-          )}
-        </View>
-      </View>
-      <Button
-        variant={item.isFollowing ? 'outline' : 'default'}
-        onPress={() => handleFollow(item.id)}
-        className="px-4"
-      >
-        <Text className={cn('font-medium', item.isFollowing ? '' : 'text-primary-foreground')}>
-          {item.isFollowing ? 'Seguendo' : 'Segui'}
-        </Text>
-      </Button>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView
@@ -329,94 +405,20 @@ export default function SearchScreen() {
         </View>
 
         {/* Content */}
-        {activeTab === 'users' ? (
-          isLoading ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator size="large" color={themeColors.foreground} />
-            </View>
-          ) : searchQuery.trim() ? (
-            <>
-              {users.length > 0 ? (
-                <FlatList
-                  data={users}
-                  renderItem={renderUserItem}
-                  keyExtractor={(item) => item.id}
-                  className="flex-1"
-                  refreshControl={
-                    <RefreshControl 
-                      refreshing={refreshing} 
-                      onRefresh={onRefresh}
-                      tintColor={themeColors.foreground}
-                      colors={[themeColors.primary]}
-                    />
-                  }
-                />
-              ) : (
-                <View className="flex-1 items-center justify-center px-6">
-                  <Text className="text-center text-muted-foreground">
-                    Nessun utente trovato{'\n'}con "{searchQuery}"
-                  </Text>
-                </View>
-              )}
-            </>
-          ) : (
-            <ScrollView 
-              className="flex-1" 
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-              }
-            >
-              {/* Recent Searches Section */}
-              {recentSearches.length > 0 ? (
-                <View className="px-4 py-6">
-                  <View className="flex-row items-center justify-between mb-4">
-                    <Text className="text-lg font-semibold">
-                      Ricerche Recenti
-                    </Text>
-                    <TouchableOpacity onPress={clearAllRecentSearches}>
-                      <Text className="text-xs text-primary">Cancella</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View className="gap-2">
-                    {recentSearches.map((query, index) => (
-                      <View
-                        key={index}
-                        className="flex-row items-center justify-between bg-muted/50 rounded-lg px-4 py-3"
-                      >
-                        <TouchableOpacity
-                          onPress={() => setSearchQuery(query)}
-                          className="flex-1 flex-row items-center gap-3"
-                        >
-                          <Clock size={16} color={themeColors.mutedForeground} />
-                          <Text className="text-base">{query}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => deleteRecentSearch(query)}
-                          className="p-2"
-                        >
-                          <X size={16} color={themeColors.mutedForeground} />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <View className="px-4 py-6">
-                  <Text className="text-center text-muted-foreground mb-4">
-                    Nessuna ricerca recente
-                  </Text>
-                  <Text className="text-center text-xs text-muted-foreground">
-                    Le tue ricerche appariranno qui
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          )
-        ) : activeTab === 'places' ? (
-          <PlacesTab query={searchQuery} />
-        ) : activeTab === 'events' ? (
-          <EventsTab query={searchQuery} />
+        {activeTab === 'unified' ? (
+          <UnifiedSearchView
+            query={searchQuery}
+            state={unifiedState}
+            searchPerformed={searchPerformed}
+            recentSearches={recentSearches}
+            onSelectRecentSearch={setSearchQuery}
+            onDeleteRecentSearch={deleteRecentSearch}
+            onClearRecentSearches={clearAllRecentSearches}
+            onRefresh={handleUnifiedRefresh}
+            onFollowUser={handleFollow}
+            themeColors={themeColors}
+            refreshing={refreshing}
+          />
         ) : (
           <ChatAITab />
         )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import { Text } from '../../../components/ui/text';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
+import { useMessagesRealtime } from '../../../lib/hooks/useMessagesRealtime';
 
 export default function ConversationScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
@@ -32,7 +33,7 @@ export default function ConversationScreen() {
     : (settings?.theme === 'dark' ? 'dark' : 'light');
   const themeColors = THEME[effectiveTheme];
 
-  const loadMessages = async (beforeMessageId?: string) => {
+  const loadMessages = useCallback(async (beforeMessageId?: string) => {
     if (!session?.accessToken || !conversationId) return;
 
     try {
@@ -44,10 +45,34 @@ export default function ConversationScreen() {
 
       if (beforeMessageId) {
         // Loading older messages (pagination)
-        setMessages((prev) => [...response.messages, ...prev]);
+        setMessages((prev) => {
+          // Deduplicate by creating a Map with message IDs as keys
+          const messageMap = new Map<string, Message>();
+
+          // Add existing messages
+          prev.forEach(msg => messageMap.set(msg.id, msg));
+
+          // Add new messages (older ones, so prepend)
+          const newMessages = response.messages.filter(msg => !messageMap.has(msg.id));
+          return [...newMessages, ...prev];
+        });
       } else {
-        // Initial load
-        setMessages(response.messages);
+        // Initial load or polling - deduplicate with existing messages
+        setMessages((prev) => {
+          // Create a Map to deduplicate
+          const messageMap = new Map<string, Message>();
+
+          // Add existing messages first (to preserve any local optimistic updates)
+          prev.forEach(msg => messageMap.set(msg.id, msg));
+
+          // Add/update with fetched messages
+          response.messages.forEach(msg => messageMap.set(msg.id, msg));
+
+          // Convert back to array sorted by created_at
+          return Array.from(messageMap.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
 
         // Mark as read (last message)
         if (response.messages.length > 0) {
@@ -65,18 +90,24 @@ export default function ConversationScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.accessToken, conversationId, user?.id]);
 
+  // Initial load when conversation opens
   useEffect(() => {
     loadMessages();
+  }, [loadMessages]);
 
-    // Poll for new messages every 3 seconds
-    const interval = setInterval(() => {
-      loadMessages();
-    }, 3000);
+  // Stable callback for Realtime - now truly stable with memoized loadMessages
+  const handleRealtimeMessage = useCallback(() => {
+    console.log('[Conversation] Realtime triggered, refreshing messages');
+    loadMessages();
+  }, [loadMessages]); // Depends on memoized loadMessages
 
-    return () => clearInterval(interval);
-  }, [conversationId]);
+  // Setup Supabase Realtime listener - replaces polling!
+  // This subscribes to INSERT events on messages table for this specific conversation
+  // When a new message arrives, messages list refreshes automatically (< 1 second)
+  // CRITICAL: Passes accessToken to authenticate Realtime with RLS
+  useMessagesRealtime(session?.accessToken, conversationId as string, handleRealtimeMessage);
 
   const handleSendMessage = async (content: string) => {
     if (!conversationId || !user) return;

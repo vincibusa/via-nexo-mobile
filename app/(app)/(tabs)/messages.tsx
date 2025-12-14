@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, FlatList, Alert, RefreshControl, Pressable, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import { useColorScheme } from 'nativewind';
 import { ConversationListItem } from '../../../components/messaging/ConversationListItem';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
+import { useConversationsRealtime } from '../../../lib/hooks/useConversationsRealtime';
 
 export default function MessagesScreen() {
   const { session, user } = useAuth();
@@ -48,7 +49,7 @@ export default function MessagesScreen() {
     });
   }, [conversations, searchQuery]);
 
-  const loadConversations = async (reset: boolean = false) => {
+  const loadConversations = useCallback(async (reset: boolean = false) => {
     if (!session?.accessToken) return;
 
     try {
@@ -70,11 +71,25 @@ export default function MessagesScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [session?.accessToken, offset]);
 
+  // Initial load - depends on session for authentication
   useEffect(() => {
+    if (!session?.accessToken) return;
     loadConversations(true);
-  }, []);
+  }, [session?.accessToken, loadConversations]);
+
+  // Stable callback for Realtime - now truly stable with memoized loadConversations
+  const handleRealtimeUpdate = useCallback(() => {
+    console.log('[Messages] Realtime triggered, refreshing conversations');
+    loadConversations(true);
+  }, [loadConversations]); // Depends on memoized loadConversations
+
+  // Setup Supabase Realtime listener - replaces polling!
+  // This subscribes to INSERT events on messages table
+  // When a new message arrives, the conversations list refreshes automatically
+  // CRITICAL: Passes accessToken to authenticate Realtime with RLS
+  useConversationsRealtime(session?.accessToken, handleRealtimeUpdate);
 
   const handleRefresh = () => {
     setRefreshing(true);

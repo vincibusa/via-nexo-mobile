@@ -7,7 +7,7 @@ const getLocalIP = (): string => {
   // In sviluppo, usa l'IP locale del computer
   // Puoi ottenere il tuo IP locale con: ipconfig (Windows) o ifconfig (Mac/Linux)
   // Sostituisci con il tuo IP locale
-  return 'http://172.20.10.2:3000';
+  return 'http://192.168.1.70:3000';
 };
 
 export const API_CONFIG = {
@@ -45,6 +45,13 @@ export const API_CONFIG = {
     EVENTS: '/api/events',
     EVENTS_BATCH: '/api/events/batch',
     EVENT_BY_ID: (id: string) => `/api/events/${id}`,
+    
+    // Event Recommendations
+    EVENT_RECOMMENDATIONS: '/api/events/recommendations',
+    EVENTS_WITH_FRIENDS: '/api/events/with-friends',
+    TRENDING_EVENTS: '/api/events/trending',
+    SIMILAR_EVENTS: '/api/events/similar',
+    EVENT_INTEREST: '/api/events/interest',
 
     // Favorites
     FAVORITES: '/api/favorites',

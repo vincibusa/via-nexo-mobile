@@ -1,10 +1,20 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { API_CONFIG } from '../config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface PushTokenRegistration {
   push_token: string;
   platform: 'ios' | 'android';
+}
+
+export interface NotificationSoundSettings {
+  enabled: boolean;
+  soundUri?: string;
+  vibrationEnabled: boolean;
+  messageNotifications: boolean;
+  socialNotifications: boolean;
+  eventNotifications: boolean;
 }
 
 class NotificationsService {
@@ -139,28 +149,51 @@ class NotificationsService {
     if (data?.type === 'new_event') {
       // Navigate to event details
       if (data.entity_id && data.entity_type === 'event') {
-        // TODO: Navigate to event screen
-        console.log('Navigate to event:', data.entity_id);
+        this.navigateToDeepLink(`/(app)/event/${data.entity_id}`);
       }
     } else if (data?.type === 'favorite_event_reminder') {
       // Navigate to favorite event
       if (data.entity_id && data.entity_type === 'event') {
-        // TODO: Navigate to event screen
-        console.log('Navigate to favorite event:', data.entity_id);
+        this.navigateToDeepLink(`/(app)/event/${data.entity_id}`);
       }
     } else if (data?.type === 'manager_approved') {
       // Navigate to manager dashboard or place
       if (data.entity_id && data.entity_type === 'place') {
-        // TODO: Navigate to place screen
-        console.log('Navigate to approved place:', data.entity_id);
+        this.navigateToDeepLink(`/(app)/place/${data.entity_id}`);
+      }
+    } else if (data?.type === 'new_follower') {
+      // Navigate to follower profile
+      if (data.user_id) {
+        this.navigateToDeepLink(`/(app)/profile/${data.user_id}`);
+      }
+    } else if (data?.type === 'message' || data?.type === 'new_message') {
+      // Navigate to conversation
+      const conversationId = data.conversationId || data.conversation_id;
+      if (conversationId) {
+        this.navigateToDeepLink(`/(app)/conversation/${conversationId}`);
+      }
+    } else if (data?.type === 'story_view' || data?.type === 'story_reaction') {
+      // Navigate to profile or story
+      if (data.user_id) {
+        this.navigateToDeepLink(`/(app)/profile/${data.user_id}`);
       }
     }
 
-    // Handle deep links
+    // Handle generic deep links
     if (data?.deep_link) {
-      // TODO: Handle deep linking
-      console.log('Deep link:', data.deep_link);
+      this.navigateToDeepLink(data.deep_link);
     }
+  }
+
+  /**
+   * Navigate using deep link (to be called by navigation handler)
+   */
+  private navigateToDeepLink(path: string) {
+    // Store the deep link path for the auth context to handle
+    // The auth context should check this path and navigate appropriately
+    AsyncStorage.setItem('pending_notification_path', path).catch(err => {
+      console.error('Error storing notification path:', err);
+    });
   }
 
   /**
@@ -194,6 +227,87 @@ class NotificationsService {
   async areNotificationsEnabled(): Promise<boolean> {
     const status = await this.getPermissionsStatus();
     return status === 'granted';
+  }
+
+  /**
+   * Load notification sound settings from storage
+   */
+  async loadSoundSettings(): Promise<NotificationSoundSettings> {
+    try {
+      const stored = await AsyncStorage.getItem('notification_sound_settings');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      return this.getDefaultSoundSettings();
+    } catch (error) {
+      console.error('Error loading sound settings:', error);
+      return this.getDefaultSoundSettings();
+    }
+  }
+
+  /**
+   * Save notification sound settings
+   */
+  async saveSoundSettings(settings: NotificationSoundSettings): Promise<boolean> {
+    try {
+      await AsyncStorage.setItem('notification_sound_settings', JSON.stringify(settings));
+
+      // Update notification handler based on settings
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: settings.enabled,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error saving sound settings:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get default sound settings
+   */
+  private getDefaultSoundSettings(): NotificationSoundSettings {
+    return {
+      enabled: true,
+      vibrationEnabled: true,
+      messageNotifications: true,
+      socialNotifications: true,
+      eventNotifications: true,
+    };
+  }
+
+  /**
+   * Toggle notification sound
+   */
+  async toggleNotificationSound(enabled: boolean): Promise<boolean> {
+    const settings = await this.loadSoundSettings();
+    settings.enabled = enabled;
+    return this.saveSoundSettings(settings);
+  }
+
+  /**
+   * Toggle vibration
+   */
+  async toggleVibration(enabled: boolean): Promise<boolean> {
+    const settings = await this.loadSoundSettings();
+    settings.vibrationEnabled = enabled;
+    return this.saveSoundSettings(settings);
+  }
+
+  /**
+   * Toggle category-specific notifications
+   */
+  async toggleNotificationCategory(category: 'messageNotifications' | 'socialNotifications' | 'eventNotifications', enabled: boolean): Promise<boolean> {
+    const settings = await this.loadSoundSettings();
+    settings[category] = enabled;
+    return this.saveSoundSettings(settings);
   }
 }
 

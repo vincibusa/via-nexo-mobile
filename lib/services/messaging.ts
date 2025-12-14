@@ -204,6 +204,30 @@ class MessagingService {
       return 0;
     }
   }
+
+  /**
+   * Get total unread message count across all conversations
+   * @returns Promise with total unread count
+   */
+  async getTotalUnreadCount(): Promise<number> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/unread-count`;
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get total unread count');
+      }
+
+      const data = await response.json();
+      return data.unreadCount;
+    } catch (error) {
+      console.error('Error getting total unread count:', error);
+      return 0; // Return 0 on error to avoid breaking UI
+    }
+  }
 }
 
 export default new MessagingService();
