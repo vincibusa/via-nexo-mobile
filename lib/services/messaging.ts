@@ -9,6 +9,7 @@ import type {
   MessagesResponse,
   SendMessageRequest,
   SendMessageResponse,
+  MessageReaction,
 } from '../types/messaging';
 
 class MessagingService {
@@ -226,6 +227,151 @@ class MessagingService {
     } catch (error) {
       console.error('Error getting total unread count:', error);
       return 0; // Return 0 on error to avoid breaking UI
+    }
+  }
+
+  /**
+   * Add reaction to a message
+   */
+  async addReaction(messageId: string, emoji: string): Promise<MessageReaction> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/messages/${messageId}/reactions`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ emoji }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add reaction');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove reaction from a message
+   */
+  async removeReaction(messageId: string, reactionId: string): Promise<void> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/messages/${messageId}/reactions/${reactionId}`;
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove reaction');
+      }
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get reactions for a message
+   */
+  async getReactions(messageId: string): Promise<MessageReaction[]> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/messages/${messageId}/reactions`;
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get reactions');
+      }
+
+      const data = await response.json();
+      return data.reactions || [];
+    } catch (error) {
+      console.error('Error getting reactions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search messages in a conversation
+   */
+  async searchMessages(
+    conversationId: string,
+    query: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<MessagesResponse> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const params = new URLSearchParams({
+        q: query,
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      const url = `${API_CONFIG.BASE_URL}/api/messages/conversations/${conversationId}/search?${params}`;
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to search messages');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search across all conversations
+   */
+  async searchAllMessages(
+    query: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{
+    messages: Message[];
+    conversations: Record<string, Conversation>;
+    pagination: {
+      total: number;
+      limit: number;
+      offset: number;
+    };
+  }> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const params = new URLSearchParams({
+        q: query,
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      const url = `${API_CONFIG.BASE_URL}/api/messages/search?${params}`;
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to search all messages');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error searching all messages:', error);
+      throw error;
     }
   }
 }

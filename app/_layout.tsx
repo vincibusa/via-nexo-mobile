@@ -4,17 +4,20 @@ import '../global.css';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '../lib/contexts/auth';
-import { SettingsProvider, useSettings } from '../lib/contexts/settings';
+import { SettingsProvider } from '../lib/contexts/settings';
 import { FavoritesProvider } from '../lib/contexts/favorites';
 import { NAV_THEME } from '../lib/theme';
 import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import { notificationsService } from '../lib/services/notifications';
+import { notificationBatchingService } from '../lib/services/notification-batching';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '../lib/query-client';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -22,17 +25,14 @@ export {
 } from 'expo-router';
 
 function AppContent() {
-  const { currentTheme } = useSettings();
-  const { colorScheme: systemColorScheme } = useColorScheme();
-
-  // Use user's theme preference, fallback to system
-  const effectiveTheme = currentTheme || systemColorScheme || 'light';
+  // Use dark theme (single theme for the app)
+  const theme = 'dark';
 
   return (
-    <ThemeProvider value={NAV_THEME[effectiveTheme]}>
+    <ThemeProvider value={NAV_THEME[theme]}>
       <StatusBar 
-        style={effectiveTheme === 'dark' ? 'light' : 'dark'} 
-        backgroundColor={NAV_THEME[effectiveTheme].colors.background}
+        style="light" 
+        backgroundColor={NAV_THEME[theme].colors.background}
         translucent={false}
       />
       <Stack screenOptions={{
@@ -49,22 +49,31 @@ export default function RootLayout() {
     // Configure notification handling on app start
     const cleanup = notificationsService.configureNotifications();
 
+    // Initialize notification batching
+    notificationBatchingService.initialize();
+
     return () => {
       if (cleanup) {
         cleanup();
       }
+      // Cleanup notification batching
+      notificationBatchingService.cleanup();
     };
   }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <SettingsProvider>
-          <FavoritesProvider>
-            <AppContent />
-          </FavoritesProvider>
-        </SettingsProvider>
-      </AuthProvider>
+      <BottomSheetModalProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <SettingsProvider>
+              <FavoritesProvider>
+                <AppContent />
+              </FavoritesProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
 }

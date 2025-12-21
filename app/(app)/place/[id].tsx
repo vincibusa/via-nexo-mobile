@@ -15,7 +15,6 @@ import { View, ScrollView, ActivityIndicator, Linking, Pressable, Alert, Touchab
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Phone, Globe, Instagram, Facebook, MapPin, Clock, Euro } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { useColorScheme } from 'nativewind';
 import { cn } from '../../../lib/utils';
 import { API_CONFIG } from '../../../lib/config';
 import { THEME } from '../../../lib/theme';
@@ -26,14 +25,8 @@ export default function PlaceDetailScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
-  const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
-
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
 
   const id = params.id as string;
   const aiReason = params.ai_reason as string | undefined;
@@ -133,7 +126,7 @@ export default function PlaceDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
+      <SafeAreaView className="flex-1 bg-background">
         <Stack.Screen options={{ title: 'Dettaglio', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={themeColors.foreground} />
@@ -144,7 +137,7 @@ export default function PlaceDetailScreen() {
 
   if (error || !place) {
     return (
-      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
+      <SafeAreaView className="flex-1 bg-background">
         <Stack.Screen options={{ title: 'Errore', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-center text-lg text-muted-foreground">
@@ -165,7 +158,7 @@ export default function PlaceDetailScreen() {
     : [];
 
   return (
-    <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <Stack.Screen
         options={{
           title: place.name,

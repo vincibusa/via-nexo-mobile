@@ -1,19 +1,18 @@
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { LucideIcon } from 'lucide-react-native';
+import { Search } from 'lucide-react-native';
 import { Card, CardContent, CardTitle, CardDescription } from '../../components/ui/card';
 import { THEME } from '../../lib/theme';
 import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
 
 interface SearchModeCardProps {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  onPress: () => void;
+  userName: string;
+  onSearchPress: () => void;
+  isDark: boolean;
 }
 
-export function SearchModeCard({ icon: Icon, title, description, onPress }: SearchModeCardProps) {
+export function SearchModeCard({ userName, onSearchPress, isDark }: SearchModeCardProps) {
   const scale = useSharedValue(1);
   const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
@@ -45,7 +44,7 @@ export function SearchModeCard({ icon: Icon, title, description, onPress }: Sear
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
-        onPress={onPress}
+        onPress={onSearchPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         className="active:opacity-90"
@@ -54,14 +53,18 @@ export function SearchModeCard({ icon: Icon, title, description, onPress }: Sear
           <CardContent className="flex-1 gap-3">
             {/* Icon */}
             <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Icon size={32} color={themeColors.primary} />
+              <Search size={32} color={themeColors.primary} />
             </View>
 
             {/* Title */}
-            <CardTitle className="text-xl">{title}</CardTitle>
+            <CardTitle className="text-xl">
+              {userName ? `Hey ${userName}!` : 'Search'}
+            </CardTitle>
 
             {/* Description */}
-            <CardDescription>{description}</CardDescription>
+            <CardDescription>
+              Tap to search for places, events, and more
+            </CardDescription>
           </CardContent>
         </Card>
       </Pressable>

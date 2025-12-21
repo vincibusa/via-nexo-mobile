@@ -127,8 +127,8 @@ export default function CommentsScreen() {
       <TouchableOpacity onPress={() => handleLikeComment(item.id)}>
         <Heart
           size={16}
-          color={item.is_liked ? '#ef4444' : themeColors.mutedForeground}
-          fill={item.is_liked ? '#ef4444' : 'none'}
+          color={item.is_liked ? themeColors.destructive : themeColors.mutedForeground}
+          fill={item.is_liked ? themeColors.destructive : 'none'}
         />
       </TouchableOpacity>
     </View>
@@ -194,7 +194,7 @@ export default function CommentsScreen() {
                     placeholder="Aggiungi un commento..."
                     value={newComment}
                     onChangeText={setNewComment}
-                    placeholderTextColor="#999"
+                    placeholderTextColor={themeColors.mutedForeground}
                     className="flex-1 border-0 bg-transparent p-0 text-sm"
                   />
                   <TouchableOpacity

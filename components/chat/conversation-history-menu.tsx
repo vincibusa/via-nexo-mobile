@@ -121,9 +121,9 @@ export function ConversationHistoryMenu({
         className="w-80 max-h-96 bg-card border border-border rounded-xl shadow-2xl"
         pointerEvents="auto"
         style={{
-          shadowColor: 'rgba(0, 0, 0, 0.3)',
+          shadowColor: themeColors.foreground,
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
+          shadowOpacity: 0.1,
           shadowRadius: 8,
           elevation: 8,
         }}

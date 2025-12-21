@@ -1,9 +1,8 @@
 /**
  * Hook for Realtime conversations list updates
- * Listens to broadcast events from messages table via database triggers
+ * Uses postgres_changes to listen directly to database changes with proper RLS
  *
- * FIXED: Switched from postgres_changes to broadcast to bypass RLS authorization issues
- * Reference: https://supabase.com/docs/guides/realtime/subscribing-to-database-changes
+ * Reference: https://supabase.com/docs/guides/realtime/postgres-changes
  */
 
 import { useEffect, useRef } from 'react'
@@ -12,12 +11,11 @@ import { getAuthenticatedClient } from '../supabase/client'
 /**
  * Subscribe to real-time updates for conversations list
  *
- * This hook listens to broadcast events triggered by the messages table.
- * A database trigger sends broadcasts whenever messages are inserted/updated/deleted.
+ * This hook listens to postgres_changes events on the messages table.
  * When a new message is created, it triggers the onUpdate callback
  * which should refresh the conversations list.
  *
- * IMPORTANT: Requires accessToken to authenticate Realtime with RLS on realtime.messages
+ * IMPORTANT: Requires accessToken to authenticate Realtime with RLS
  *
  * @param accessToken - User's JWT access token
  * @param onUpdate - Callback to trigger when a new message arrives
@@ -47,36 +45,33 @@ export function useConversationsRealtime(
       return
     }
 
-    console.log('[Realtime] Setting up conversations listener with broadcast (not postgres_changes)')
+    console.log('[Realtime] Setting up conversations listener with postgres_changes')
 
     // Create authenticated Supabase client with user's JWT
-    // This allows RLS policies on realtime.messages to work correctly
+    // This allows RLS policies to work correctly
     const supabase = getAuthenticatedClient(accessToken)
 
     // CRITICAL: Set auth for Realtime WebSocket connections
-    // This is required for private channels to work with RLS
+    // This is required for RLS policies to work with postgres_changes
     const setupSubscription = async () => {
       try {
-        // Set auth token for Realtime (required for private channels)
+        // Set auth token for Realtime BEFORE creating the channel
         await supabase.realtime.setAuth(accessToken)
         console.log('[Realtime] Auth set for WebSocket connection')
 
-        // Subscribe to broadcast events from messages table
-        // The database trigger sends broadcasts to this channel whenever messages change
-        // Using private channel with RLS on realtime.messages for authorization
+        // Subscribe to postgres_changes events on messages table
+        // Listen to all INSERT events to detect new messages in any conversation
         const channel = supabase
-          .channel('messages-updates', {
-            config: {
-              private: true,  // Requires RLS policies on realtime.messages table
-            },
-          })
+          .channel('conversations-updates')
           .on(
-            'broadcast',
+            'postgres_changes',
             {
-              event: 'INSERT',  // Listen for INSERT events from the trigger
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
             },
             (payload) => {
-              console.log('[Realtime] New message broadcast received:', payload.payload)
+              console.log('[Realtime] New message inserted:', payload.new)
               console.log('[Realtime] Refreshing conversations list')
               callbackRef.current() // ← Call via ref to use latest callback
             }
@@ -85,9 +80,9 @@ export function useConversationsRealtime(
             console.log('[Realtime] Conversations subscription status:', status)
 
             if (status === 'SUBSCRIBED') {
-              console.log('[Realtime] ✅ Successfully subscribed to conversations broadcasts')
+              console.log('[Realtime] ✅ Successfully subscribed to postgres_changes for conversations')
             } else if (status === 'CHANNEL_ERROR') {
-              console.error('[Realtime] ❌ Error subscribing to conversations broadcasts')
+              console.error('[Realtime] ❌ Error subscribing to postgres_changes for conversations')
             }
           })
 

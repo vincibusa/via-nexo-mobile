@@ -177,6 +177,14 @@ export default function NewConversationScreen() {
           title: 'Nuova conversazione',
           headerShown: true,
           headerBackTitle: ' ',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/new-group-conversation' as any)}
+              className="mr-4"
+            >
+              <Text className="text-primary font-semibold">Gruppo</Text>
+            </TouchableOpacity>
+          ),
         }}
       />
 

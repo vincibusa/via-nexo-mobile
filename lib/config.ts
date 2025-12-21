@@ -79,5 +79,10 @@ export const API_CONFIG = {
     FOLLOWS: '/api/social/follows',
     FOLLOWERS: (id: string) => `/api/social/follows/followers?userId=${id}`,
     FOLLOWING: (id: string) => `/api/social/follows/following?userId=${id}`,
+
+    // Discovery
+    DISCOVERY: '/api/discovery',
+    DISCOVERY_LIKE: (id: string) => `/api/discovery/${id}/like`,
+    DISCOVERY_VIEW: (id: string) => `/api/discovery/${id}/view`,
   },
 } as const;

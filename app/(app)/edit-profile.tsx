@@ -273,7 +273,7 @@ export default function EditProfileScreen() {
                 value={displayName}
                 onChangeText={setDisplayName}
                 placeholder="Il tuo nome"
-                placeholderTextColor="#999"
+                placeholderTextColor={themeColors.mutedForeground}
               />
             </View>
 
@@ -284,7 +284,7 @@ export default function EditProfileScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="email@example.com"
-                placeholderTextColor="#999"
+                placeholderTextColor={themeColors.mutedForeground}
                 keyboardType="email-address"
               />
             </View>
@@ -296,7 +296,7 @@ export default function EditProfileScreen() {
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Racconta qualcosa di te..."
-                placeholderTextColor="#999"
+                placeholderTextColor={themeColors.mutedForeground}
                 multiline
                 numberOfLines={4}
                 className="rounded-lg border border-input bg-background p-3 text-foreground"
@@ -314,7 +314,7 @@ export default function EditProfileScreen() {
                 value={location}
                 onChangeText={setLocation}
                 placeholder="Es: Palermo, Sicilia"
-                placeholderTextColor="#999"
+                placeholderTextColor={themeColors.mutedForeground}
               />
             </View>
 
@@ -325,7 +325,7 @@ export default function EditProfileScreen() {
                 value={website}
                 onChangeText={setWebsite}
                 placeholder="https://example.com"
-                placeholderTextColor="#999"
+                placeholderTextColor={themeColors.mutedForeground}
               />
             </View>
           </View>

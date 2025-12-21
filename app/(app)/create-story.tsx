@@ -27,6 +27,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { useColorScheme } from 'nativewind';
+import { useSettings } from '../../lib/contexts/settings';
+import { THEME } from '../../lib/theme';
 import { uploadService, UploadProgress } from '../../lib/services/upload';
 import { API_CONFIG } from '../../lib/config';
 
@@ -83,6 +85,14 @@ export default function CreateStoryScreen() {
   const { user, session } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+  
+  // Get effective theme
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
+  
   const [image, setImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -375,7 +385,7 @@ export default function CreateStoryScreen() {
             style={getFontFamilyStyle(fontFamily)}
             multiline
             autoFocus
-            placeholderTextColor="#6b7280"
+            placeholderTextColor={themeColors.mutedForeground}
           />
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Home, User, Search, MessageCircle, Bell } from 'lucide-react-native';
+import { Home, User, Search, MessageCircle, Play } from 'lucide-react-native';
 import { View, Text } from 'react-native';
 import { useSettings } from '../../../lib/contexts/settings';
 import { NAV_THEME } from '../../../lib/theme';
@@ -11,8 +11,8 @@ const BadgeIcon = ({ Icon, color, size, count }: { Icon: any; color: string; siz
   <View>
     <Icon size={size} color={color} />
     {count ? (
-      <View className="absolute -top-1 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center">
-        <Text className="text-white text-xs font-bold">
+      <View className="absolute -top-1 -right-2 bg-destructive rounded-full w-5 h-5 flex items-center justify-center">
+        <Text className="text-primary-foreground text-xs font-bold">
           {count > 99 ? '99+' : count}
         </Text>
       </View>
@@ -21,9 +21,9 @@ const BadgeIcon = ({ Icon, color, size, count }: { Icon: any; color: string; siz
 );
 
 export default function TabLayout() {
-  const { currentTheme } = useSettings();
   const { session } = useAuth();
-  const theme = NAV_THEME[currentTheme ?? 'light'];
+  // Use dark theme (single theme for the app)
+  const theme = NAV_THEME.dark;
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
@@ -74,6 +74,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="discovery"
+        options={{
+          title: 'Discovery',
+          tabBarIcon: ({ color, size }) => <Play size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="messages"
         options={{
           title: 'Messaggi',
@@ -87,13 +94,6 @@ export default function TabLayout() {
         options={{
           title: 'Profilo',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: 'Notifiche',
-          tabBarIcon: ({ color, size }) => <Bell size={size} color={color} />,
         }}
       />
     </Tabs>

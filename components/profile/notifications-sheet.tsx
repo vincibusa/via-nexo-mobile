@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   FlatList,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Check, Trash2, User, Heart, MessageCircle, Calendar, Users } from 'lucide-react-native';
-import { Text } from '../../../components/ui/text';
-import { useAuth } from '../../../lib/contexts/auth';
-import { API_CONFIG } from '../../../lib/config';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import { Bell, Check, Trash2, User, Heart, MessageCircle, Calendar, Users, X } from 'lucide-react-native';
+import { Text } from '../ui/text';
+import { useAuth } from '../../lib/contexts/auth';
+import { API_CONFIG } from '../../lib/config';
 import { useRouter } from 'expo-router';
+import { THEME } from '../../lib/theme';
+import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
-import { THEME } from '../../../lib/theme';
-import { useSettings } from '../../../lib/contexts/settings';
 
 interface Notification {
   id: string;
@@ -36,22 +36,56 @@ interface Notification {
   };
 }
 
-export default function NotificationsScreen() {
+interface NotificationsSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function NotificationsSheet({ isOpen, onClose }: NotificationsSheetProps) {
   const { session } = useAuth();
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
+  const { colorScheme } = useColorScheme();
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  
   const effectiveTheme = settings?.theme === 'system'
     ? (colorScheme === 'dark' ? 'dark' : 'light')
     : (settings?.theme === 'dark' ? 'dark' : 'light');
   const themeColors = THEME[effectiveTheme];
+  
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const snapPoints = useMemo(() => ['60%', '90%'], []);
+
+  useEffect(() => {
+    if (isOpen) {
+      bottomSheetRef.current?.expand();
+      fetchNotifications();
+    } else {
+      bottomSheetRef.current?.close();
+    }
+  }, [isOpen]);
+
+  const handleSheetChange = useCallback((index: number) => {
+    if (index === -1) {
+      onClose();
+    }
+  }, [onClose]);
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   const fetchNotifications = useCallback(async () => {
     if (!session?.accessToken) return;
@@ -76,21 +110,10 @@ export default function NotificationsScreen() {
       setTotalCount(data.total || 0);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      Alert.alert('Errore', 'Impossibile caricare le notifiche');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [session?.accessToken]);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchNotifications();
-  }, [fetchNotifications]);
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -162,12 +185,10 @@ export default function NotificationsScreen() {
   };
 
   const handleNotificationPress = (notification: Notification) => {
-    // Mark as read on press
     if (!notification.is_read) {
       markAsRead(notification.id);
     }
 
-    // Navigate based on notification type
     switch (notification.type) {
       case 'new_follower':
         if (notification.actor_id) {
@@ -193,6 +214,7 @@ export default function NotificationsScreen() {
       case 'friend_going_to_event':
         if (notification.entity_id && notification.entity_type === 'event') {
           router.push(`/(app)/event/${notification.entity_id}` as any);
+          onClose();
         }
         break;
 
@@ -201,13 +223,11 @@ export default function NotificationsScreen() {
       case 'new_story':
       case 'story_engagement':
         if (notification.entity_id && notification.entity_type === 'story') {
-          // Navigate to story viewer
           Alert.alert('Storia', 'Apri la storia per vedere i dettagli');
         }
         break;
 
       case 'daily_digest':
-        // Show daily digest modal
         Alert.alert(
           'Daily Digest',
           notification.content || 'Attività dei tuoi amici nelle ultime 24 ore',
@@ -216,7 +236,6 @@ export default function NotificationsScreen() {
         break;
 
       default:
-        // Generic notification - just mark as read
         break;
     }
   };
@@ -228,26 +247,26 @@ export default function NotificationsScreen() {
 
       case 'post_like':
       case 'comment_like':
-        return <Heart size={20} color="#ef4444" />;
+        return <Heart size={20} color={themeColors.destructive} />;
 
       case 'post_comment':
-        return <MessageCircle size={20} color="#22c55e" />;
+        return <MessageCircle size={20} color={themeColors.primary} />;
 
       case 'message':
-        return <MessageCircle size={20} color="#a855f7" />;
+        return <MessageCircle size={20} color={themeColors.accent} />;
 
       case 'event_reminder':
       case 'friend_going_to_event':
-        return <Calendar size={20} color="#f97316" />;
+        return <Calendar size={20} color={themeColors.primary} />;
 
       case 'story_view':
       case 'story_created':
       case 'new_story':
       case 'story_engagement':
-        return <Users size={20} color="#ec4899" />;
+        return <Users size={20} color={themeColors.accent} />;
 
       case 'daily_digest':
-        return <Bell size={20} color="#eab308" />;
+        return <Bell size={20} color={themeColors.primary} />;
 
       default:
         return <Bell size={20} color={themeColors.mutedForeground} />;
@@ -325,74 +344,76 @@ export default function NotificationsScreen() {
     </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={themeColors.foreground} />
-          <Text className="mt-4 text-muted-foreground">
-            Caricamento notifiche...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-4 pt-4 pb-3 border-b border-border">
-        <View className="flex-row justify-between items-center">
-          <View>
-            <Text className="text-2xl font-bold text-foreground">
-              Notifiche
-            </Text>
-            <Text className="text-sm text-muted-foreground mt-1">
-              {unreadCount > 0 ? `${unreadCount} non lette` : 'Tutte lette'} • {totalCount} totali
-            </Text>
-          </View>
-
-          {unreadCount > 0 && (
-            <TouchableOpacity
-              onPress={markAllAsRead}
-              className="px-3 py-1.5 bg-primary rounded-lg"
-            >
-              <Text className="text-primary-foreground text-sm font-medium">
-                Segna tutte come lette
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {notifications.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-8">
-          <Bell size={64} color={themeColors.mutedForeground} />
-          <Text className="text-lg font-medium text-muted-foreground mb-2">
-            Nessuna notifica
-          </Text>
-          <Text className="text-muted-foreground text-center">
-            Quando riceverai nuove notifiche, le vedrai qui
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={notifications}
-          renderItem={renderNotification}
-          keyExtractor={item => item.id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          ListFooterComponent={
-            totalCount > notifications.length ? (
-              <View className="py-4 items-center">
-                <Text className="text-muted-foreground text-sm">
-                  {notifications.length} di {totalCount} notifiche
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={isOpen ? 0 : -1}
+      snapPoints={snapPoints}
+      onChange={handleSheetChange}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: themeColors.card,
+      }}
+      handleIndicatorStyle={{
+        backgroundColor: themeColors.mutedForeground,
+      }}
+    >
+      <BottomSheetView style={{ flex: 1 }}>
+        <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
+          <View className="px-4 pt-2 pb-4 border-b border-border">
+            <View className="flex-row justify-between items-center">
+              <View className="flex-1">
+                <Text className="text-lg font-semibold text-foreground">
+                  Notifiche
+                </Text>
+                <Text className="text-sm text-muted-foreground mt-1">
+                  {unreadCount > 0 ? `${unreadCount} non lette` : 'Tutte lette'} • {totalCount} totali
                 </Text>
               </View>
-            ) : null
-          }
-        />
-      )}
-    </SafeAreaView>
+
+              <TouchableOpacity onPress={onClose} hitSlop={10} className="ml-4">
+                <X size={24} color={themeColors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            {unreadCount > 0 && (
+              <TouchableOpacity
+                onPress={markAllAsRead}
+                className="mt-3 px-3 py-1.5 bg-primary rounded-lg self-start"
+              >
+                <Text className="text-primary-foreground text-sm font-medium">
+                  Segna tutte come lette
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {loading ? (
+            <View className="flex-1 py-8 items-center justify-center">
+              <ActivityIndicator size="large" color={themeColors.foreground} />
+            </View>
+          ) : notifications.length === 0 ? (
+            <View className="flex-1 items-center justify-center p-8">
+              <Bell size={64} color={themeColors.mutedForeground} />
+              <Text className="text-lg font-medium text-muted-foreground mb-2">
+                Nessuna notifica
+              </Text>
+              <Text className="text-muted-foreground text-center">
+                Quando riceverai nuove notifiche, le vedrai qui
+              </Text>
+            </View>
+          ) : (
+            <BottomSheetFlatList
+              data={notifications}
+              renderItem={renderNotification}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            />
+          )}
+        </SafeAreaView>
+      </BottomSheetView>
+    </BottomSheet>
   );
 }
+

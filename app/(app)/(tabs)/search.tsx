@@ -2,7 +2,6 @@ import { View, TextInput, TouchableOpacity } from 'react-native';
 import { Text } from '../../../components/ui/text';
 import { useAuth } from '../../../lib/contexts/auth';
 import { cn } from '../../../lib/utils';
-import { useColorScheme } from 'nativewind';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, X } from 'lucide-react-native';
 import { useState, useEffect, useCallback } from 'react';
@@ -52,8 +51,6 @@ const MAX_RECENT_SEARCHES = 10;
 
 export default function SearchScreen() {
   const { user } = useAuth();
-  const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'unified' | 'chatai'>('unified');
@@ -67,11 +64,8 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
 
   // Load recent searches when component mounts or unified tab is focused
   useFocusEffect(
@@ -343,7 +337,7 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView
-      className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}
+      className="flex-1 bg-background"
       edges={['top']}
     >
       <View className="flex-1 flex-col">

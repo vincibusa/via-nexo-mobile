@@ -1,15 +1,16 @@
-import { View, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text } from '../ui/text';
 import { Camera, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import { useAuth } from '../../lib/contexts/auth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { cn } from '../../lib/utils';
 import { API_CONFIG } from '../../lib/config';
 import { StoryViewer } from './story-viewer';
 import { THEME } from '../../lib/theme';
 import { useSettings } from '../../lib/contexts/settings';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 
 interface StoryGroup {
   user_id: string;
@@ -42,6 +43,7 @@ export function CreateMenuSheet({
   const { user } = useAuth();
   const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
+  const bottomSheetRef = useRef<BottomSheet>(null);
   const [userStories, setUserStories] = useState<StoryGroup | null>(null);
   const [isLoadingStories, setIsLoadingStories] = useState(false);
   const [isViewingStories, setIsViewingStories] = useState(false);
@@ -51,6 +53,36 @@ export function CreateMenuSheet({
     ? (colorScheme === 'dark' ? 'dark' : 'light')
     : (settings?.theme === 'dark' ? 'dark' : 'light');
   const themeColors = THEME[effectiveTheme];
+
+  // Bottom sheet snap points
+  const snapPoints = useMemo(() => ['60%'], []);
+
+  // Handle sheet changes
+  useEffect(() => {
+    if (isOpen) {
+      bottomSheetRef.current?.expand();
+    } else {
+      bottomSheetRef.current?.close();
+    }
+  }, [isOpen]);
+
+  const handleSheetChange = useCallback((index: number) => {
+    if (index === -1) {
+      onClose();
+    }
+  }, [onClose]);
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -121,24 +153,22 @@ export function CreateMenuSheet({
   }
 
   return (
-    <Modal
-      visible={isOpen}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={isOpen ? 0 : -1}
+      snapPoints={snapPoints}
+      onChange={handleSheetChange}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: themeColors.card,
+      }}
+      handleIndicatorStyle={{
+        backgroundColor: themeColors.mutedForeground,
+      }}
     >
-      <View className="flex-1 bg-black/50 justify-end">
-        <View
-          className={cn(
-            'rounded-t-2xl px-4 py-6 gap-1',
-            colorScheme === 'dark' ? 'bg-slate-950' : 'bg-white'
-          )}
-        >
-          {/* Handle indicator */}
-          <View className="items-center mb-2">
-            <View className="h-1 w-12 rounded-full bg-muted" />
-          </View>
-
+      <BottomSheetView style={{ flex: 1 }}>
+        <View className="px-4 py-6 gap-1">
           {/* Loading indicator */}
           {isLoadingStories ? (
             <View className="items-center py-4">
@@ -188,7 +218,7 @@ export function CreateMenuSheet({
             </>
           )}
         </View>
-      </View>
-    </Modal>
+      </BottomSheetView>
+    </BottomSheet>
   );
 }

@@ -12,7 +12,6 @@ import { useState, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, Image, Pressable, Linking, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Calendar, Clock, MapPin, Music, Ticket } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
 import { cn } from '../../../lib/utils';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
@@ -22,14 +21,8 @@ export default function EventDetailScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { isFavorite, getFavoriteId, addFavorite, removeFavorite } = useFavorites();
-  const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
-
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
 
   const id = params.id as string;
 
@@ -117,7 +110,7 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
+      <SafeAreaView className="flex-1 bg-background">
         <Stack.Screen options={{ title: 'Dettaglio', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={themeColors.foreground} />
@@ -128,7 +121,7 @@ export default function EventDetailScreen() {
 
   if (error || !event) {
     return (
-      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')}>
+      <SafeAreaView className="flex-1 bg-background">
         <Stack.Screen options={{ title: 'Errore', headerShown: true, headerBackTitle: ' ' }} />
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-center text-lg text-muted-foreground">
@@ -146,7 +139,7 @@ export default function EventDetailScreen() {
   const isSoldOut = event.ticket_availability === 'sold_out';
 
   return (
-    <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <Stack.Screen
         options={{
           title: event.title,
@@ -354,10 +347,24 @@ export default function EventDetailScreen() {
             </CardContent>
           </Card>
 
+          {/* Reservation Button */}
+          {!eventIsPast && (
+            <Button
+              className="w-full mb-3"
+              variant="default"
+              onPress={() => router.push({
+                pathname: '/(app)/events/[id]/reserve' as any,
+                params: { id: id }
+              })}
+            >
+              <Text>Prenota Lista</Text>
+            </Button>
+          )}
+
           {/* Bottom Actions */}
           <View className="flex-row gap-3 pb-4">
-            <Button 
-              className="flex-1 flex-row gap-2" 
+            <Button
+              className="flex-1 flex-row gap-2"
               variant="default"
               onPress={handleToggleFavorite}
               disabled={favoriteLoading}

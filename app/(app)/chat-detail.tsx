@@ -22,8 +22,14 @@ import { useAuth } from '../../lib/contexts/auth';
 import { webSocketChatService } from '../../lib/services/websocket-chat';
 import messagingService from '../../lib/services/messaging';
 import type { Message } from '../../lib/types/messaging';
-import { useColorScheme } from 'nativewind';
-import { CheckCircle, Clock } from 'lucide-react-native';
+import { useSettings } from '../../lib/contexts/settings';
+import { THEME } from '../../lib/theme';
+import { CheckCircle, Clock, Mic, Paperclip, Search, X } from 'lucide-react-native';
+import { VoiceMessageRecorder } from '../../components/chat/voice-message-recorder';
+import { VoiceMessagePlayer } from '../../components/chat/voice-message-player';
+import { MessageSearch } from '../../components/chat/message-search';
+import { useTypingIndicator } from '../../lib/hooks/useTypingIndicator';
+import { useLoadingState } from '../../lib/hooks/useLoadingStates';
 
 export default function ChatDetailScreen() {
   const router = useRouter();
@@ -32,7 +38,11 @@ export default function ChatDetailScreen() {
     conversationId: string;
     userName: string;
   }>();
-  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
+  const isDark = true;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -40,22 +50,36 @@ export default function ChatDetailScreen() {
   const [isSending, setIsSending] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [showMediaOptions, setShowMediaOptions] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const isDark = colorScheme === 'dark';
-  const textColor = isDark ? 'text-white' : 'text-black';
-  const bgColor = isDark ? 'bg-slate-900' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const inputBgColor = isDark ? 'bg-slate-800' : 'bg-slate-100';
+  // Typing indicator hook
+  const { typingUsers, sendTyping } = useTypingIndicator(
+    session?.accessToken,
+    conversationId,
+    user?.id,
+    user?.displayName || 'User'
+  );
+
+  // Loading state for messages
+  const messagesLoadingState = useLoadingState<Message[]>({
+    initialData: [],
+    showErrorAlert: false, // We'll handle errors in the UI
+  });
 
   // Carica la cronologia conversazione
   useEffect(() => {
     const loadConversation = async () => {
       if (!conversationId) {
-        setError('Missing conversation ID');
+        messagesLoadingState.setError('Missing conversation ID');
         setIsLoading(false);
         return;
       }
+
+      messagesLoadingState.startLoading();
+      setIsLoading(true);
 
       try {
         const response = await messagingService.getMessages(conversationId, 50);
@@ -63,6 +87,7 @@ export default function ChatDetailScreen() {
         // Set initial messages
         if (response.messages) {
           setMessages(response.messages);
+          messagesLoadingState.setData(response.messages);
         }
 
         setIsLoading(false);
@@ -81,7 +106,9 @@ export default function ChatDetailScreen() {
         }
       } catch (err) {
         console.error('Error loading conversation:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load conversation');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load conversation';
+        setError(errorMessage);
+        messagesLoadingState.setError(errorMessage);
         setIsLoading(false);
       }
     };
@@ -118,6 +145,9 @@ export default function ChatDetailScreen() {
 
     setIsSending(true);
     try {
+      // Send typing stopped indicator
+      await sendTyping(false);
+
       // Try to send via WebSocket first if connected
       if (isConnected) {
         await webSocketChatService.sendMessage(newMessage.trim());
@@ -148,155 +178,302 @@ export default function ChatDetailScreen() {
     }
   };
 
+  // Handle typing indicator
+  const handleTextChange = (text: string) => {
+    setNewMessage(text);
+    if (text.length > 0) {
+      sendTyping(true);
+    } else {
+      sendTyping(false);
+    }
+  };
+
+  const handleVoiceMessageSent = (messageId: string) => {
+    setShowVoiceRecorder(false);
+    // The message will be added via real-time subscription
+  };
+
   if (isLoading) {
     return (
-      <SafeAreaView className={`flex-1 justify-center items-center ${bgColor}`}>
-        <ActivityIndicator size="large" color={isDark ? '#3b82f6' : '#1e40af'} />
-        <Text className={`mt-4 ${textColor}`}>Loading conversation...</Text>
+      <SafeAreaView className="flex-1 justify-center items-center bg-background">
+        <ActivityIndicator size="large" color={themeColors.primary} />
+        <Text className="mt-4 text-foreground">Loading conversation...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (messagesLoadingState.hasError && !messagesLoadingState.hasData) {
+    return (
+      <SafeAreaView className="flex-1 justify-center items-center bg-background">
+        <Text className="text-destructive text-lg font-bold mb-4">Error Loading Messages</Text>
+        <Text className="text-foreground text-center mb-6 px-4">
+          {messagesLoadingState.error}
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            messagesLoadingState.clearError();
+            // Reload conversation
+            const loadConversation = async () => {
+              if (!conversationId) return;
+              messagesLoadingState.startLoading();
+              try {
+                const response = await messagingService.getMessages(conversationId, 50);
+                if (response.messages) {
+                  setMessages(response.messages);
+                  messagesLoadingState.setData(response.messages);
+                }
+              } catch (err) {
+                messagesLoadingState.setError(err as Error);
+              }
+            };
+            loadConversation();
+          }}
+          className="bg-primary px-6 py-3 rounded-lg"
+        >
+          <Text className="text-primary-foreground font-semibold">Retry</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className={`flex-1 ${bgColor}`}>
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
         {/* Header */}
-        <View className={`px-4 py-3 border-b ${borderColor}`}>
+        <View className="px-4 py-3 border-b border-border">
           <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text className="text-blue-500">← Back</Text>
+            <TouchableOpacity onPress={() => {
+              if (showSearch) {
+                setShowSearch(false);
+              } else {
+                router.back();
+              }
+            }}>
+              <Text className="text-primary">← Back</Text>
             </TouchableOpacity>
-            <Text className={`text-lg font-bold ${textColor}`}>{userName || 'Chat'}</Text>
-            <View style={{ width: 40 }} />
+            <Text className="text-lg font-bold text-foreground">{userName || 'Chat'}</Text>
+            <TouchableOpacity onPress={() => setShowSearch(!showSearch)}>
+              <Search size={20} color={themeColors.mutedForeground} />
+            </TouchableOpacity>
           </View>
 
           {/* Connection Status */}
           <View className="flex-row items-center mt-2">
             <View
               className={`w-2 h-2 rounded-full mr-2 ${
-                isConnected ? 'bg-green-500' : 'bg-red-500'
+                isConnected ? 'bg-green-500' : 'bg-destructive'
               }`}
             />
-            <Text className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            <Text className="text-xs text-muted-foreground">
               {isConnected ? 'Connected' : 'Connecting...'}
             </Text>
           </View>
 
           {/* Error Message */}
           {error && (
-            <Text className="text-red-500 text-xs mt-1">{error}</Text>
+            <Text className="text-destructive text-xs mt-1">{error}</Text>
           )}
-        </View>
 
-        {/* Messages */}
-        <ScrollView
-          ref={scrollViewRef}
-          className="flex-1 px-4 py-3"
-          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-        >
-          {messages.length === 0 ? (
-            <View className="flex-1 justify-center items-center py-8">
-              <Text className={`${textColor} text-center`}>
-                No messages yet. Start the conversation!
+          {/* Typing Indicator */}
+          {typingUsers.length > 0 && !showSearch && (
+            <View className="flex-row items-center mt-1">
+              <Text className="text-xs text-muted-foreground">
+                {typingUsers.length === 1
+                  ? `${typingUsers[0].displayName} sta scrivendo...`
+                  : `${typingUsers.length} persone stanno scrivendo...`}
               </Text>
             </View>
-          ) : (
-            messages.map((message) => (
-              <View
-                key={message.id}
-                className={`mb-3 ${
-                  message.sender_id === user?.id ? 'items-end' : 'items-start'
-                }`}
-              >
+          )}
+        </View>
+
+        {/* Search or Messages */}
+        {showSearch ? (
+          <MessageSearch
+            conversationId={conversationId}
+            isDark={isDark}
+            onResultPress={() => setShowSearch(false)}
+          />
+        ) : (
+          <ScrollView
+            ref={scrollViewRef}
+            className="flex-1 px-4 py-3"
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+          >
+            {messages.length === 0 ? (
+              <View className="flex-1 justify-center items-center py-8">
+                <Text className="text-foreground text-center">
+                  No messages yet. Start the conversation!
+                </Text>
+              </View>
+            ) : (
+              messages.map((message) => (
                 <View
-                  className={`max-w-xs px-3 py-2 rounded-lg ${
-                    message.sender_id === user?.id
-                      ? 'bg-blue-500'
-                      : isDark
-                      ? 'bg-slate-700'
-                      : 'bg-slate-200'
+                  key={message.id}
+                  className={`mb-3 ${
+                    message.sender_id === user?.id ? 'items-end' : 'items-start'
                   }`}
                 >
-                  {message.message_type === 'text' && (
-                    <Text
-                      className={
-                        message.sender_id === user?.id ? 'text-white' : textColor
-                      }
-                    >
-                      {message.content}
-                    </Text>
-                  )}
-                  {message.message_type === 'image' && message.media_url && (
-                    <Text
-                      className={
-                        message.sender_id === user?.id ? 'text-white' : textColor
-                      }
-                    >
-                      [Image]
-                    </Text>
-                  )}
-                  {message.message_type === 'voice' && (
-                    <Text
-                      className={
-                        message.sender_id === user?.id ? 'text-white' : textColor
-                      }
-                    >
-                      [Voice message]
-                    </Text>
-                  )}
-                </View>
-                <View className="flex-row items-center mt-1 gap-1">
-                  <Text
-                    className={`text-xs ${
-                      isDark ? 'text-slate-400' : 'text-slate-600'
+                  <View
+                    className={`max-w-xs px-3 py-2 rounded-lg ${
+                      message.sender_id === user?.id
+                        ? 'bg-primary'
+                        : 'bg-muted'
                     }`}
                   >
-                    {new Date(message.created_at).toLocaleTimeString()}
-                  </Text>
-                  {message.sender_id === user?.id && (
-                    <>
-                      {message.read_by && message.read_by.length > 0 ? (
-                        <CheckCircle size={12} color={isDark ? '#60a5fa' : '#3b82f6'} />
-                      ) : (
-                        <Clock size={12} color={isDark ? '#94a3b8' : '#cbd5e1'} />
-                      )}
-                    </>
-                  )}
+                    {message.message_type === 'text' && (
+                      <Text
+                        className={
+                          message.sender_id === user?.id ? 'text-primary-foreground' : 'text-foreground'
+                        }
+                      >
+                        {message.content}
+                      </Text>
+                    )}
+                    {message.message_type === 'image' && message.media_url && (
+                      <Text
+                        className={
+                          message.sender_id === user?.id ? 'text-primary-foreground' : 'text-foreground'
+                        }
+                      >
+                        [Image]
+                      </Text>
+                    )}
+                    {message.message_type === 'voice' && message.media_url && (
+                      <VoiceMessagePlayer
+                        mediaUrl={message.media_url}
+                        duration={message.media_duration}
+                        isOwnMessage={message.sender_id === user?.id}
+                        isDark={isDark}
+                      />
+                    )}
+                  </View>
+                  <View className="flex-row items-center mt-1 gap-1">
+                    <Text className="text-xs text-muted-foreground">
+                      {new Date(message.created_at).toLocaleTimeString()}
+                    </Text>
+                    {message.sender_id === user?.id && (
+                      <>
+                        {message.read_by && message.read_by.length > 0 ? (
+                          <CheckCircle size={12} color={themeColors.primary} />
+                        ) : (
+                          <Clock size={12} color={themeColors.mutedForeground} />
+                        )}
+                      </>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))
-          )}
-        </ScrollView>
+              ))
+            )}
+          </ScrollView>
+        )}
 
-        {/* Input Area */}
-        <View className={`px-4 py-3 border-t ${borderColor}`}>
-          <View className="flex-row items-end gap-2">
-            <TextInput
-              className={`flex-1 px-3 py-2 rounded-lg ${inputBgColor} ${textColor}`}
-              placeholder="Type a message..."
-              placeholderTextColor={isDark ? '#94a3b8' : '#94a3b8'}
-              value={newMessage}
-              onChangeText={setNewMessage}
-              multiline
-              maxLength={500}
-              editable={isConnected && !isSending}
-            />
-            <TouchableOpacity
-              onPress={sendMessage}
-              disabled={!isConnected || isSending || !newMessage.trim()}
-              className="pb-2"
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color={isDark ? '#3b82f6' : '#1e40af'} />
-              ) : (
-                <Text className="text-blue-500 font-bold text-lg">↑</Text>
+        {!showSearch && (
+          <>
+            {/* Voice Recorder */}
+            {showVoiceRecorder && conversationId && (
+              <View className="px-4 py-3 border-t border-border">
+                <VoiceMessageRecorder
+                  conversationId={conversationId}
+                  onSend={handleVoiceMessageSent}
+                  onCancel={() => setShowVoiceRecorder(false)}
+                  maxDuration={120}
+                />
+              </View>
+            )}
+
+            {/* Input Area */}
+            <View className="px-4 py-3 border-t border-border">
+              {!showVoiceRecorder && (
+                <View className="flex-row items-end gap-2">
+                  {/* Media Options Button */}
+                  <TouchableOpacity
+                    onPress={() => setShowMediaOptions(!showMediaOptions)}
+                    disabled={!isConnected || isSending}
+                    className="p-2 rounded-lg bg-muted"
+                  >
+                    <Paperclip size={20} color={themeColors.mutedForeground} />
+                  </TouchableOpacity>
+
+                  {/* Voice Message Button */}
+                  <TouchableOpacity
+                    onPress={() => setShowVoiceRecorder(true)}
+                    disabled={!isConnected || isSending}
+                    className="p-2 rounded-lg bg-muted"
+                  >
+                    <Mic size={20} color={themeColors.mutedForeground} />
+                  </TouchableOpacity>
+
+                  <TextInput
+                    className="flex-1 px-3 py-2 rounded-lg bg-muted text-foreground"
+                    placeholder="Type a message..."
+                    placeholderTextColor={themeColors.mutedForeground}
+                    value={newMessage}
+                    onChangeText={handleTextChange}
+                    multiline
+                    maxLength={500}
+                    editable={isConnected && !isSending}
+                  />
+                  <TouchableOpacity
+                    onPress={sendMessage}
+                    disabled={!isConnected || isSending || !newMessage.trim()}
+                    className="pb-2"
+                  >
+                    {isSending ? (
+                      <ActivityIndicator size="small" color={themeColors.primary} />
+                    ) : (
+                      <Text className="text-primary font-bold text-lg">↑</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               )}
-            </TouchableOpacity>
-          </View>
-        </View>
+
+              {/* Media Options Menu */}
+              {showMediaOptions && !showVoiceRecorder && (
+                <View className="mt-2 p-3 rounded-lg bg-muted">
+                  <Text className="text-sm font-medium mb-2 text-foreground">
+                    Send Media
+                  </Text>
+                  <View className="flex-row space-x-3">
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowMediaOptions(false);
+                        setShowVoiceRecorder(true);
+                      }}
+                      className="flex-1 p-3 rounded-lg items-center bg-secondary"
+                    >
+                      <Mic size={24} color={themeColors.foreground} />
+                      <Text className="mt-1 text-xs text-foreground">
+                        Voice
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        // TODO: Implement image picker
+                        setShowMediaOptions(false);
+                      }}
+                      className="flex-1 p-3 rounded-lg items-center bg-secondary"
+                    >
+                      <Text className="text-lg text-foreground">📷</Text>
+                      <Text className="mt-1 text-xs text-foreground">
+                        Photo
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setShowMediaOptions(false)}
+                      className="p-2"
+                    >
+                      <X size={20} color={themeColors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

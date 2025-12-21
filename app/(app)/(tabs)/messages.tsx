@@ -8,7 +8,6 @@ import { useAuth } from '../../../lib/contexts/auth';
 import MessagingService from '../../../lib/services/messaging';
 import type { Conversation } from '../../../lib/types/messaging';
 import { MessageCircle, Plus, Search, X } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
 import { ConversationListItem } from '../../../components/messaging/ConversationListItem';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
@@ -17,7 +16,6 @@ import { useConversationsRealtime } from '../../../lib/hooks/useConversationsRea
 export default function MessagesScreen() {
   const { session, user } = useAuth();
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -27,11 +25,8 @@ export default function MessagesScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system'
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
 
   // Filter conversations based on search query
   const filteredConversations = useMemo(() => {

@@ -19,7 +19,6 @@ import * as Location from 'expo-location';
 import type { ChatConversationWithMessages } from '../../lib/types/chat-history';
 import { Button } from '../../components/ui/button';
 import { Text } from '../../components/ui/text';
-import { useColorScheme } from 'nativewind';
 import { cn } from '../../lib/utils';
 import { THEME } from '../../lib/theme';
 import { useSettings } from '../../lib/contexts/settings';
@@ -43,16 +42,12 @@ const QUICK_SUGGESTIONS = [
 export default function ChatSearchScreen() {
   const { session } = useAuth();
   const params = useLocalSearchParams();
-  const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
   const mode = (params.mode as 'guided' | 'free') || 'free';
   const conversationId = params.conversation_id as string;
 
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -568,7 +563,7 @@ export default function ChatSearchScreen() {
           ),
         }}
       />
-      <SafeAreaView className={cn('flex-1 bg-background', colorScheme === 'dark' ? 'dark' : '')} edges={['bottom']}>
+      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
         {/* Loading indicator for conversation */}
         {loadingConversation && (
           <View className="absolute inset-0 bg-background/80 z-50 justify-center items-center">
@@ -584,10 +579,9 @@ export default function ChatSearchScreen() {
             {/* Backdrop to close menu when clicking outside */}
             <Pressable
               onPress={() => setShowHistoryMenu(false)}
-              className="absolute inset-0"
+              className="absolute inset-0 bg-black/10"
               style={{
                 zIndex: 9998,
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
               }}
             />
 

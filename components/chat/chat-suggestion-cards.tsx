@@ -164,9 +164,9 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
           </Button>
           <Pressable
             onPress={handleFavorite}
-            className="h-12 w-12 items-center justify-center rounded-xl border-2 border-red-500/30 bg-red-500/10 active:bg-red-500/20"
+            className="h-12 w-12 items-center justify-center rounded-xl border-2 border-destructive/30 bg-destructive/10 active:bg-destructive/20"
           >
-            <Heart size={22} color="#ef4444" fill="transparent" />
+            <Heart size={22} color={themeColors.destructive} fill="transparent" />
           </Pressable>
         </View>
       </View>

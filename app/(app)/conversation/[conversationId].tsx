@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator } from 'react-native';
@@ -11,7 +11,6 @@ import { ChatInput } from '../../../components/chat/chat-input';
 import { Text } from '../../../components/ui/text';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
-import { useColorScheme } from 'nativewind';
 import { useMessagesRealtime } from '../../../lib/hooks/useMessagesRealtime';
 
 export default function ConversationScreen() {
@@ -19,19 +18,17 @@ export default function ConversationScreen() {
   const { session, user } = useAuth();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
-  const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const shouldScrollToBottomRef = useRef(true);
 
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  // Use dark theme (single theme for the app)
+  const themeColors = THEME.dark;
 
   const loadMessages = useCallback(async (beforeMessageId?: string) => {
     if (!session?.accessToken || !conversationId) return;
@@ -81,6 +78,8 @@ export default function ConversationScreen() {
             await MessagingService.markAsRead(conversationId as string, lastMessage.id);
           }
         }
+
+        // Scroll to bottom after initial load - will be handled by onLayout/onContentSizeChange
       }
 
       setHasMore(response.pagination.has_more);
@@ -94,14 +93,17 @@ export default function ConversationScreen() {
 
   // Initial load when conversation opens
   useEffect(() => {
+    shouldScrollToBottomRef.current = true;
     loadMessages();
   }, [loadMessages]);
 
   // Stable callback for Realtime - now truly stable with memoized loadMessages
   const handleRealtimeMessage = useCallback(() => {
     console.log('[Conversation] Realtime triggered, refreshing messages');
+    // Only auto-scroll if user was at bottom
+    shouldScrollToBottomRef.current = isAtBottom;
     loadMessages();
-  }, [loadMessages]); // Depends on memoized loadMessages
+  }, [loadMessages, isAtBottom]); // Depends on memoized loadMessages and isAtBottom
 
   // Setup Supabase Realtime listener - replaces polling!
   // This subscribes to INSERT events on messages table for this specific conversation
@@ -133,11 +135,8 @@ export default function ConversationScreen() {
       };
 
       setMessages((prev) => [...prev, newMessage]);
-
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      // With inverted={true}, new messages appear automatically at the bottom
+      setIsAtBottom(true);
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Errore', 'Impossibile inviare il messaggio');
@@ -148,10 +147,22 @@ export default function ConversationScreen() {
 
   const handleLoadMore = () => {
     if (!loading && hasMore && messages.length > 0) {
+      // With inverted={true} and reversed array, oldest messages are at index 0 of original array
       const oldestMessage = messages[0];
+      shouldScrollToBottomRef.current = false; // Don't scroll when loading older messages
       loadMessages(oldestMessage.id);
     }
   };
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset } = event.nativeEvent;
+    const paddingToTop = 100; // Threshold for "at bottom" (with inverted, bottom is at offset 0)
+    // With inverted={true}, being at bottom means contentOffset.y is near 0
+    const isNearBottom = contentOffset.y <= paddingToTop;
+    
+    setIsAtBottom(isNearBottom);
+  };
+
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender_id === user?.id;
@@ -198,26 +209,31 @@ export default function ConversationScreen() {
           </View>
         ) : (
           <>
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                paddingTop: 16,
-                paddingBottom: 8,
-              }}
-              ListHeaderComponent={renderHeader}
-              onEndReached={handleLoadMore}
-              onEndReachedThreshold={0.5}
-              inverted={false}
-              onContentSizeChange={() => {
-                if (messages.length > 0) {
-                  flatListRef.current?.scrollToEnd({ animated: false });
-                }
-              }}
-            />
+            <View className="flex-1 relative">
+              <FlatList
+                ref={flatListRef}
+                data={messages.slice().reverse()}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{
+                  paddingHorizontal: 16,
+                  paddingTop: 16,
+                  paddingBottom: 8,
+                }}
+                ListHeaderComponent={renderHeader}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                inverted={true}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                onScrollToIndexFailed={(info) => {
+                  // Fallback if scrollToIndex fails - use scrollToEnd
+                  setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                  }, 100);
+                }}
+              />
+            </View>
 
             <ChatInput
               onSend={handleSendMessage}

@@ -4,6 +4,13 @@ export interface User {
   role: 'user' | 'admin' | 'manager';
   displayName?: string;
   avatarUrl?: string;
+  bio?: string;
+  website?: string;
+  postsCount?: number;
+  followersCount?: number;
+  followingCount?: number;
+  isPrivate?: boolean;
+  isVerified?: boolean;
 }
 
 export interface Session {

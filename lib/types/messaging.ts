@@ -9,6 +9,11 @@ export interface Conversation {
   last_message: LastMessage | null;
   unread_count: number;
   is_muted: boolean;
+  // Group conversation fields
+  type: 'direct' | 'group';
+  title?: string;
+  participants?: User[];
+  is_group: boolean;
 }
 
 export interface LastMessage {
@@ -32,12 +37,26 @@ export interface Message {
   created_at: string;
   is_deleted: boolean;
   read_by: ReadReceipt[];
+  reactions?: MessageReaction[];
   sender: {
     id: string;
     displayName?: string;
     avatarUrl?: string;
   };
   reply_to_message_id?: string;
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+  user?: {
+    id: string;
+    displayName?: string;
+    avatarUrl?: string;
+  };
 }
 
 export interface ReadReceipt {
@@ -70,7 +89,11 @@ export interface SendMessageRequest {
 }
 
 export interface CreateConversationRequest {
-  other_user_id: string;
+  other_user_id?: string;
+  // Group conversation fields
+  participant_ids?: string[];
+  title?: string;
+  type?: 'direct' | 'group';
 }
 
 export interface CreateConversationResponse {
