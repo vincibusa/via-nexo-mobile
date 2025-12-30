@@ -7,12 +7,25 @@ import type { SuggestedPlace } from '../../lib/types/suggestion';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useColorScheme } from 'nativewind';
 import { THEME } from '../../lib/theme';
+import { ChatSwipeStack } from './chat-swipe-stack';
 
 interface ChatSuggestionCardsProps {
   suggestions: SuggestedPlace[];
+  onBookingSelect?: (eventId: string) => void; // BOOKING: Handler for event booking
+  bookingIntentId?: string | null; // BOOKING: Active booking intent ID
+  selectedEventId?: string | null; // BOOKING: Currently selected event ID
+  displayMode?: 'cards' | 'swipe'; // SWIPE: Display mode
+  onSwipeComplete?: (likedIds: string[], passedIds: string[]) => void; // SWIPE: Handler for swipe completion
 }
 
-export function ChatSuggestionCards({ suggestions }: ChatSuggestionCardsProps) {
+export function ChatSuggestionCards({
+  suggestions,
+  onBookingSelect,
+  bookingIntentId,
+  selectedEventId,
+  displayMode = 'cards',
+  onSwipeComplete
+}: ChatSuggestionCardsProps) {
   const { colorScheme } = useColorScheme();
   const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
 
@@ -22,6 +35,19 @@ export function ChatSuggestionCards({ suggestions }: ChatSuggestionCardsProps) {
     return null;
   }
 
+  // SWIPE MODE: Render swipeable card stack
+  if (displayMode === 'swipe' && onSwipeComplete) {
+    return (
+      <View className="mt-12">
+        <ChatSwipeStack
+          suggestions={suggestions}
+          onSwipeComplete={onSwipeComplete}
+        />
+      </View>
+    );
+  }
+
+  // CARDS MODE: Render vertical card list (default)
   return (
     <View className="mt-3 gap-3">
       {suggestions.map((place, index) => (
@@ -31,22 +57,43 @@ export function ChatSuggestionCards({ suggestions }: ChatSuggestionCardsProps) {
             .duration(400)
             .springify()}
         >
-          <SuggestionCard place={place} />
+          <SuggestionCard
+            place={place}
+            onBookingSelect={onBookingSelect}
+            bookingIntentId={bookingIntentId}
+            selectedEventId={selectedEventId}
+          />
         </Animated.View>
       ))}
     </View>
   );
 }
 
-function SuggestionCard({ place }: { place: SuggestedPlace }) {
+interface SuggestionCardProps {
+  place: SuggestedPlace;
+  onBookingSelect?: (eventId: string) => void;
+  bookingIntentId?: string | null;
+  selectedEventId?: string | null;
+}
+
+function SuggestionCard({
+  place,
+  onBookingSelect,
+  bookingIntentId,
+  selectedEventId
+}: SuggestionCardProps) {
   const { colorScheme } = useColorScheme();
   const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
   const router = useRouter();
 
+  // Check if this is an event
+  const isEvent = (place as any)._isEvent;
+
+  // Check if this event is part of active booking flow
+  const isBookingActive = bookingIntentId && isEvent;
+  const isSelectedForBooking = selectedEventId === place.id;
+
   const handlePress = () => {
-    // Check if this is an event (marked with _isEvent flag)
-    const isEvent = (place as any)._isEvent;
-    
     if (isEvent) {
       // Navigate to event detail
       router.push({
@@ -60,6 +107,12 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
           ai_reason: place.ai_reason,
         },
       });
+    }
+  };
+
+  const handleBooking = () => {
+    if (onBookingSelect && isEvent) {
+      onBookingSelect(place.id);
     }
   };
 
@@ -90,7 +143,7 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
           {/* Floating badge on image */}
           {place.verified && (
             <View className="absolute right-3 top-3 rounded-full bg-green-500 px-3 py-1">
-              <Text className="text-xs font-bold text-primary-foreground">✓ Verificato</Text>
+              <Text className="text-xs font-bold text-primary-foreground">Verificato</Text>
             </View>
           )}
 
@@ -123,7 +176,7 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
         {place.ai_reason && (
           <View className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary p-3">
             <Text className="text-sm font-medium leading-relaxed text-foreground">
-              💭 {place.ai_reason}
+              {place.ai_reason}
             </Text>
           </View>
         )}
@@ -156,18 +209,47 @@ function SuggestionCard({ place }: { place: SuggestedPlace }) {
 
         {/* Actions */}
         <View className="flex-row gap-3 pt-2">
-          <Button
-            onPress={handlePress}
-            className="flex-1 h-12 bg-primary"
-          >
-            <Text className="font-bold text-primary-foreground">Scopri di più</Text>
-          </Button>
-          <Pressable
-            onPress={handleFavorite}
-            className="h-12 w-12 items-center justify-center rounded-xl border-2 border-destructive/30 bg-destructive/10 active:bg-destructive/20"
-          >
-            <Heart size={22} color={themeColors.destructive} fill="transparent" />
-          </Pressable>
+          {/* BOOKING: Show booking button for events when booking is active */}
+          {isBookingActive ? (
+            <>
+              <Button
+                onPress={handleBooking}
+                className={`flex-1 h-12 ${
+                  isSelectedForBooking
+                    ? 'bg-green-600'
+                    : 'bg-primary'
+                }`}
+                disabled={isSelectedForBooking}
+              >
+                <Text className="font-bold text-primary-foreground">
+                  {isSelectedForBooking ? 'Selezionato' : 'Prenota'}
+                </Text>
+              </Button>
+              <Pressable
+                onPress={handlePress}
+                className="h-12 w-12 items-center justify-center rounded-xl border-2 border-primary/30 bg-primary/10 active:bg-primary/20"
+              >
+                <Text className="text-lg font-semibold text-foreground">i</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Button
+                onPress={handlePress}
+                className="flex-1 h-12 bg-primary"
+              >
+                <Text className="font-bold text-primary-foreground">
+                  {isEvent ? 'Dettagli Evento' : 'Scopri di più'}
+                </Text>
+              </Button>
+              <Pressable
+                onPress={handleFavorite}
+                className="h-12 w-12 items-center justify-center rounded-xl border-2 border-destructive/30 bg-destructive/10 active:bg-destructive/20"
+              >
+                <Heart size={22} color={themeColors.destructive} fill="transparent" />
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
     </Pressable>

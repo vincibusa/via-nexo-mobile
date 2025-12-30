@@ -4,11 +4,13 @@ import { useAuth } from '../../../lib/contexts/auth';
 import { cn } from '../../../lib/utils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, X } from 'lucide-react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { API_CONFIG } from '../../../lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatAITab } from '../../../components/search/chatai-tab';
+import { TrendingSearches, type TrendingSearch } from '../../../components/search/trending-searches';
+import { CategoryChips, type Category } from '../../../components/search/category-chips';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
 import type { Place } from '../../../lib/types/suggestion';
@@ -17,6 +19,12 @@ import { placesListService } from '../../../lib/services/places-list';
 import { eventsListService } from '../../../lib/services/events-list';
 import * as Location from 'expo-location';
 import { UnifiedSearchView } from '../../../components/search/unified-search-view';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 
 type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
 
@@ -52,7 +60,9 @@ const MAX_RECENT_SEARCHES = 10;
 export default function SearchScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchInputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<'unified' | 'chatai'>('unified');
   const [unifiedState, setUnifiedState] = useState<UnifiedSearchState>({
     users: { data: [], loading: false, error: null },
@@ -64,8 +74,71 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Trending and Categories
+  const [trending, setTrending] = useState<TrendingSearch[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Animation values
+  const borderOpacity = useSharedValue(0);
+  const bgOpacity = useSharedValue(0.3);
+
   // Use dark theme (single theme for the app)
   const themeColors = THEME.dark;
+
+  // Animated styles for search bar
+  const animatedSearchBarStyle = useAnimatedStyle(() => ({
+    borderColor: `rgba(99, 102, 241, ${borderOpacity.value})`,
+    backgroundColor: `rgba(115, 115, 115, ${bgOpacity.value})`,
+  }));
+
+  // Handle focus animation
+  useEffect(() => {
+    if (isFocused || searchQuery.length > 0) {
+      borderOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
+    } else {
+      borderOpacity.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(0.3, { duration: 200, easing: Easing.out(Easing.ease) });
+    }
+  }, [isFocused, searchQuery, borderOpacity, bgOpacity]);
+
+  // Load trending and categories on mount
+  useEffect(() => {
+    fetchTrending();
+    fetchCategories();
+  }, []);
+
+  const fetchTrending = async () => {
+    try {
+      setTrendingLoading(true);
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEARCH_TRENDING}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTrending(data.trending || []);
+      }
+    } catch (error) {
+      console.error('Error fetching trending:', error);
+    } finally {
+      setTrendingLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEARCH_CATEGORIES}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
 
   // Load recent searches when component mounts or unified tab is focused
   useFocusEffect(
@@ -289,7 +362,7 @@ export default function SearchScreen() {
     if (searchQuery.trim()) {
       await performUnifiedSearch(searchQuery);
     } else {
-      await loadRecentSearches();
+      await Promise.all([loadRecentSearches(), fetchTrending(), fetchCategories()]);
     }
 
     setRefreshing(false);
@@ -335,38 +408,61 @@ export default function SearchScreen() {
     }
   };
 
+  // Handle category selection
+  const handleCategorySelect = (category: Category) => {
+    setSearchQuery(category.name);
+    searchInputRef.current?.focus();
+  };
+
+  // Handle trending selection
+  const handleTrendingSelect = (query: string) => {
+    setSearchQuery(query);
+    searchInputRef.current?.focus();
+  };
+
+  // Handle cancel button
+  const handleCancel = () => {
+    setSearchQuery('');
+    setIsFocused(false);
+    searchInputRef.current?.blur();
+  };
+
   return (
     <SafeAreaView
       className="flex-1 bg-background"
       edges={['top']}
     >
       <View className="flex-1 flex-col">
-        {/* Header */}
-        {/* Header */}
-        <View className="px-4 py-2">
-          {/* Search Input */}
+        {/* Header with Search Input */}
+        <View className="px-4 py-3">
           {SEARCH_TABS[SEARCH_TABS.findIndex(t => t.id === activeTab)]?.hasSearch && (
             <View className="flex-row items-center gap-3">
-              <View className="flex-1 flex-row items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
+              <Animated.View
+                style={[animatedSearchBarStyle]}
+                className="flex-1 flex-row items-center gap-2 rounded-full px-4 py-3 border"
+              >
                 <Search size={18} color={themeColors.mutedForeground} />
                 <TextInput
-                  placeholder="Cerca"
+                  ref={searchInputRef}
+                  placeholder="Cerca luoghi, eventi, persone..."
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholderTextColor="#999"
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  placeholderTextColor="#737373"
                   className="flex-1 py-0 text-base text-foreground leading-5"
                   autoCapitalize="none"
+                  returnKeyType="search"
                 />
                 {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <X size={16} color={themeColors.mutedForeground} />
+                  <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <X size={18} color={themeColors.mutedForeground} />
                   </TouchableOpacity>
                 )}
-              </View>
-              {/* Cancel Button - visible when focused or has text (simplified for now to always show if query exists, or we could add focus state) */}
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Text className="text-base font-medium">Annulla</Text>
+              </Animated.View>
+              {(isFocused || searchQuery.length > 0) && (
+                <TouchableOpacity onPress={handleCancel}>
+                  <Text className="text-base font-medium text-primary">Annulla</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -412,6 +508,12 @@ export default function SearchScreen() {
             onFollowUser={handleFollow}
             themeColors={themeColors}
             refreshing={refreshing}
+            trending={trending}
+            categories={categories}
+            trendingLoading={trendingLoading}
+            categoriesLoading={categoriesLoading}
+            onTrendingSelect={handleTrendingSelect}
+            onCategorySelect={handleCategorySelect}
           />
         ) : (
           <ChatAITab />

@@ -5,8 +5,9 @@
 
 import { storage } from '../storage';
 import messagingService from './messaging';
-import { supabase } from '../supabase/client';
-import * as FileSystem from 'expo-file-system';
+import { getAuthenticatedClient } from '../supabase/client';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 
 export interface VoiceMessageUploadOptions {
   conversationId: string;
@@ -47,6 +48,15 @@ class VoiceMessageService {
     try {
       const { conversationId, recordingUri, duration, size, mimeType = 'audio/m4a' } = options;
 
+      // Get authenticated session
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        throw new Error('No active session - please login again');
+      }
+
+      // Create authenticated Supabase client
+      const supabase = getAuthenticatedClient(session.accessToken);
+
       // Read file as base64
       const base64 = await FileSystem.readAsStringAsync(recordingUri, {
         encoding: FileSystem.EncodingType.Base64,
@@ -58,10 +68,10 @@ class VoiceMessageService {
       const filename = `voice-${timestamp}-${random}.m4a`;
       const filePath = `voice-messages/${conversationId}/${filename}`;
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage using decode for React Native compatibility
       const { data, error } = await supabase.storage
         .from('chat-media')
-        .upload(filePath, this.base64ToBlob(base64, mimeType), {
+        .upload(filePath, decode(base64), {
           contentType: mimeType,
           upsert: false,
         });
@@ -133,6 +143,15 @@ class VoiceMessageService {
    */
   async deleteVoiceMessage(mediaUrl: string): Promise<void> {
     try {
+      // Get authenticated session
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        console.warn('[VoiceMessageService] No session for delete operation');
+        return;
+      }
+
+      const supabase = getAuthenticatedClient(session.accessToken);
+
       // Extract file path from URL
       const url = new URL(mediaUrl);
       const pathParts = url.pathname.split('/');
@@ -154,28 +173,6 @@ class VoiceMessageService {
     } catch (error) {
       console.error('[VoiceMessageService] Error parsing media URL:', error);
     }
-  }
-
-  /**
-   * Convert base64 to Blob for Supabase upload
-   */
-  private base64ToBlob(base64: string, mimeType: string): Blob {
-    const byteCharacters = atob(base64);
-    const byteArrays = [];
-
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
-
-    return new Blob(byteArrays, { type: mimeType });
   }
 
   /**

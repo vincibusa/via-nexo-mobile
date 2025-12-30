@@ -25,6 +25,7 @@ export const API_CONFIG = {
     LOGIN: '/api/auth/login',
     SIGNUP: '/api/auth/signup',
     LOGOUT: '/api/auth/logout',
+    REFRESH: '/api/auth/refresh',
     ME: '/api/auth/me',
 
     // Suggestions (AI)
@@ -84,5 +85,17 @@ export const API_CONFIG = {
     DISCOVERY: '/api/discovery',
     DISCOVERY_LIKE: (id: string) => `/api/discovery/${id}/like`,
     DISCOVERY_VIEW: (id: string) => `/api/discovery/${id}/view`,
+
+    // Search
+    SEARCH_TRENDING: '/api/search/trending',
+    SEARCH_CATEGORIES: '/api/search/categories',
+
+    // Manager
+    MANAGER_EVENTS: '/api/manager/events',
+    MANAGER_EVENT_BY_ID: (id: string) => `/api/manager/events/${id}`,
+    MANAGER_PLACES: '/api/manager/places',
+
+    // Check-in
+    RESERVATION_CHECKIN: (id: string) => `/api/reservations/${id}/checkin`,
   },
 } as const;

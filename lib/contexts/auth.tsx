@@ -1,5 +1,6 @@
 import { useSegments, useRouter } from 'expo-router';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import {
   getBiometricCapabilities,
   promptBiometricAuth,
@@ -7,12 +8,16 @@ import {
 } from '../../lib/biometrics';
 import { authService } from '../../lib/services/auth';
 import { storage } from '../../lib/storage';
+import { notificationsService } from '../../lib/services/notifications';
 import type {
   BiometricPreference,
   SavedCredentials,
   Session,
   User,
 } from '../../lib/types/auth';
+
+// Refresh token 5 minutes before expiry
+const REFRESH_THRESHOLD_SECONDS = 5 * 60;
 
 interface AuthContextType {
   user: User | null;
@@ -45,10 +50,192 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [biometricType, setBiometricType] = useState<'face' | 'fingerprint' | 'iris' | null>(null);
   const segments = useSegments();
   const router = useRouter();
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRefreshingRef = useRef(false);
+  const refreshPromiseRef = useRef<Promise<{ success: boolean; session?: Session; user?: User }> | null>(null);
+
+  // Refresh session using refresh token
+  const refreshSession = useCallback(async (): Promise<{ success: boolean; session?: Session; user?: User }> => {
+    // If a refresh is already in progress, return the existing promise
+    if (refreshPromiseRef.current) {
+      console.log('Refresh already in progress, returning existing promise...');
+      return refreshPromiseRef.current;
+    }
+
+    // Create the refresh promise
+    const doRefresh = async (): Promise<{ success: boolean; session?: Session; user?: User }> => {
+      try {
+        // Always read from storage as the single source of truth
+        const currentSession = await storage.getSession();
+
+        if (!currentSession?.refreshToken) {
+          console.log('No refresh token in storage');
+          return { success: false };
+        }
+
+        console.log('Attempting to refresh session...');
+        const { data, error } = await authService.refreshToken(currentSession.refreshToken);
+
+        if (error || !data) {
+          // Check if this is an "already used" error - try to recover
+          if (error?.message?.toLowerCase().includes('already used') ||
+              error?.code === 'AUTH_REFRESH_FAILED') {
+            console.log('Refresh token already used, checking for updated session...');
+            // Another refresh may have succeeded - re-read storage
+            const updatedSession = await storage.getSession();
+            if (updatedSession && updatedSession.refreshToken !== currentSession.refreshToken) {
+              // Storage was updated by another caller - return the new session
+              const updatedUser = await storage.getUser();
+              if (updatedUser) {
+                console.log('Found updated session in storage, using it');
+                return { success: true, session: updatedSession, user: updatedUser };
+              }
+            }
+          }
+          console.log('Session refresh failed:', error?.message);
+          return { success: false };
+        }
+
+        console.log('Session refreshed successfully');
+
+        // Save to storage immediately
+        await Promise.all([
+          storage.saveUser(data.user),
+          storage.saveSession(data.session),
+        ]);
+
+        return {
+          success: true,
+          session: data.session,
+          user: data.user,
+        };
+      } catch (error) {
+        console.error('Error refreshing session:', error);
+        return { success: false };
+      } finally {
+        // Clear the promise ref so future refreshes can proceed
+        refreshPromiseRef.current = null;
+      }
+    };
+
+    // Store the promise and return it
+    refreshPromiseRef.current = doRefresh();
+    return refreshPromiseRef.current;
+  }, []);
+
+  // Schedule proactive token refresh
+  const scheduleTokenRefresh = useCallback((session: Session) => {
+    // Clear existing timer
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+
+    const now = Date.now() / 1000;
+    const expiresIn = session.expiresAt - now;
+    const refreshIn = expiresIn - REFRESH_THRESHOLD_SECONDS;
+
+    if (refreshIn <= 0) {
+      // Token already expired or about to expire, refresh immediately
+      console.log('Token expired or expiring soon, refreshing now...');
+      refreshSession().then((result) => {
+        if (result.success && result.session && result.user) {
+          setUser(result.user);
+          setSession(result.session);
+          scheduleTokenRefresh(result.session);
+        } else {
+          // Refresh failed, logout user
+          console.log('Proactive refresh failed, logging out...');
+          storage.clear();
+          setUser(null);
+          setSession(null);
+        }
+      });
+      return;
+    }
+
+    console.log(`Scheduling token refresh in ${Math.round(refreshIn / 60)} minutes`);
+
+    refreshTimerRef.current = setTimeout(async () => {
+      const result = await refreshSession();
+      if (result.success && result.session && result.user) {
+        setUser(result.user);
+        setSession(result.session);
+        scheduleTokenRefresh(result.session);
+      } else {
+        console.log('Scheduled refresh failed, logging out...');
+        await storage.clear();
+        setUser(null);
+        setSession(null);
+      }
+    }, refreshIn * 1000);
+  }, [refreshSession]);
+
+  // Handle app state changes (background/foreground)
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // App going to background - clear timer to avoid stale token usage
+        if (refreshTimerRef.current) {
+          console.log('App going to background, clearing refresh timer');
+          clearTimeout(refreshTimerRef.current);
+          refreshTimerRef.current = null;
+        }
+        return;
+      }
+
+      if (nextAppState === 'active') {
+        // App came to foreground - read fresh session from storage
+        const currentSession = await storage.getSession();
+
+        if (!currentSession?.refreshToken) {
+          return;
+        }
+
+        const now = Date.now() / 1000;
+        const expiresIn = currentSession.expiresAt - now;
+
+        if (expiresIn <= REFRESH_THRESHOLD_SECONDS) {
+          console.log('App resumed, token expiring soon, refreshing...');
+          const result = await refreshSession();
+          if (result.success && result.session && result.user) {
+            setUser(result.user);
+            setSession(result.session);
+            scheduleTokenRefresh(result.session);
+          } else {
+            // Refresh failed, force logout
+            await storage.clear();
+            setUser(null);
+            setSession(null);
+          }
+        } else {
+          // Token still valid, update state and reschedule refresh
+          console.log('App resumed with valid token, updating state from storage');
+          const currentUser = await storage.getUser();
+          if (currentUser) {
+            console.log('Updating user and session state on resume');
+            setUser(currentUser);
+            setSession(currentSession);
+          } else {
+            console.warn('No user in storage but session exists - this should not happen!');
+          }
+          scheduleTokenRefresh(currentSession);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [refreshSession, scheduleTokenRefresh]);
 
   // Load auth state on mount
   useEffect(() => {
     loadAuthState();
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -80,12 +267,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (storedUser && storedSession) {
-        // Check if token is expired
-        if (storedSession.expiresAt > Date.now() / 1000) {
+        const now = Date.now() / 1000;
+        const expiresIn = storedSession.expiresAt - now;
+
+        if (expiresIn > REFRESH_THRESHOLD_SECONDS) {
+          // Token is valid, use it and schedule refresh
+          console.log('Session valid, scheduling refresh...');
+          console.log('Setting user and session from storage - token expires in', Math.round(expiresIn / 60), 'minutes');
           setUser(storedUser);
           setSession(storedSession);
+          scheduleTokenRefresh(storedSession);
+
+          // Re-register push token on app startup (non-blocking)
+          notificationsService.registerPushToken(storedSession.accessToken).catch((err) => {
+            console.log('Failed to register push token on startup:', err);
+          });
+        } else if (storedSession.refreshToken) {
+          // Token expired or expiring soon, try to refresh
+          console.log('Session expired or expiring, attempting refresh...');
+          const result = await refreshSession();
+
+          if (result.success && result.session && result.user) {
+            console.log('Session refreshed on app start');
+            // Storage already saved by refreshSession
+            setUser(result.user);
+            setSession(result.session);
+            scheduleTokenRefresh(result.session);
+          } else {
+            // Refresh failed, clear storage and force re-login
+            console.log('Session refresh failed, clearing storage...');
+            await storage.clear();
+          }
         } else {
-          // Token expired, clear storage
+          // No refresh token, clear storage
+          console.log('No refresh token available, clearing storage...');
           await storage.clear();
         }
       }
@@ -173,6 +388,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([storage.saveUser(authUser), storage.saveSession(authSession)]);
     setUser(authUser);
     setSession(authSession);
+    // Schedule token refresh after successful login
+    scheduleTokenRefresh(authSession);
+
+    // Register push token for notifications (non-blocking)
+    notificationsService.registerPushToken(authSession.accessToken).catch((err) => {
+      console.log('Failed to register push token:', err);
+    });
   };
 
   const login = async (email: string, password: string) => {
@@ -215,6 +437,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Clear refresh timer
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+
       if (session?.accessToken) {
         await authService.logout(session.accessToken);
       }

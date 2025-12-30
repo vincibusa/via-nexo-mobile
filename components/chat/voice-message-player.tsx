@@ -1,6 +1,6 @@
 /**
- * Voice Message Player Component
- * UI for playing voice messages with seek bar and speed control
+ * Voice Message Player Component - WhatsApp Style
+ * Clean, modern UI for playing voice messages with waveform visualization
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -9,20 +9,63 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { useSettings } from '../../lib/contexts/settings';
 import { THEME } from '../../lib/theme';
-import { Play, Pause, RotateCcw, FastForward, Gauge } from 'lucide-react-native';
+import { Play, Pause } from 'lucide-react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface VoiceMessagePlayerProps {
   mediaUrl: string;
   duration?: number; // in seconds
   isOwnMessage: boolean;
   isDark: boolean;
+}
+
+// Waveform component
+function Waveform({
+  isPlaying,
+  progress,
+  isOwnMessage,
+  themeColors
+}: {
+  isPlaying: boolean;
+  progress: number;
+  isOwnMessage: boolean;
+  themeColors: any;
+}) {
+  // Generate 30 bars with varying heights (simulating audio waveform)
+  const bars = Array.from({ length: 30 }, (_, i) => {
+    // Create a wave pattern
+    const height = Math.sin(i * 0.5) * 6 + 8 + Math.random() * 4;
+    return Math.max(4, Math.min(16, height));
+  });
+
+  const activeColor = isOwnMessage ? 'rgba(255, 255, 255, 0.9)' : themeColors.primary;
+  const inactiveColor = isOwnMessage ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.2)';
+
+  return (
+    <View className="flex-row items-center gap-0.5 h-4 flex-1 mx-2">
+      {bars.map((height, index) => {
+        const barProgress = (index / bars.length) * 100;
+        const isActive = barProgress <= progress;
+
+        return (
+          <View
+            key={index}
+            className="flex-1 rounded-full"
+            style={{
+              height,
+              backgroundColor: isActive ? activeColor : inactiveColor,
+              opacity: isPlaying && isActive ? 1 : 0.8,
+            }}
+          />
+        );
+      })}
+    </View>
+  );
 }
 
 export function VoiceMessagePlayer({
@@ -33,12 +76,13 @@ export function VoiceMessagePlayer({
 }: VoiceMessagePlayerProps) {
   const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
-  
+
   // Get effective theme
   const effectiveTheme = settings?.theme === 'system'
     ? (colorScheme === 'dark' ? 'dark' : 'light')
     : (settings?.theme === 'dark' ? 'dark' : 'light');
   const themeColors = THEME[effectiveTheme];
+
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -48,7 +92,7 @@ export function VoiceMessagePlayer({
   const [localUri, setLocalUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const positionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const positionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Download and cache audio file locally
   useEffect(() => {
@@ -81,7 +125,7 @@ export function VoiceMessagePlayer({
         setIsLoading(false);
       } catch (err) {
         console.error('[VoiceMessagePlayer] Error downloading audio:', err);
-        setError('Failed to load audio');
+        setError('Impossibile caricare l\'audio');
         setIsLoading(false);
       }
     };
@@ -141,7 +185,7 @@ export function VoiceMessagePlayer({
       startPositionUpdate();
     } catch (err) {
       console.error('[VoiceMessagePlayer] Error loading audio:', err);
-      setError('Failed to play audio');
+      setError('Impossibile riprodurre l\'audio');
     }
   };
 
@@ -174,7 +218,7 @@ export function VoiceMessagePlayer({
           }
         });
       }
-    }, 250);
+    }, 100); // Update more frequently for smoother waveform
   };
 
   const togglePlayPause = async () => {
@@ -198,31 +242,6 @@ export function VoiceMessagePlayer({
       startPositionUpdate();
     } else {
       await loadAndPlayAudio();
-    }
-  };
-
-  const seekForward = async () => {
-    if (!sound) return;
-
-    const status = await sound.getStatusAsync();
-    if (status.isLoaded) {
-      const newPosition = Math.min(
-        status.positionMillis + 10000, // 10 seconds forward
-        status.durationMillis || 0
-      );
-      await sound.setPositionAsync(newPosition);
-      setPosition(newPosition);
-    }
-  };
-
-  const seekBackward = async () => {
-    if (!sound) return;
-
-    const status = await sound.getStatusAsync();
-    if (status.isLoaded) {
-      const newPosition = Math.max(status.positionMillis - 5000, 0); // 5 seconds back
-      await sound.setPositionAsync(newPosition);
-      setPosition(newPosition);
     }
   };
 
@@ -250,22 +269,22 @@ export function VoiceMessagePlayer({
     ? (position / (duration * 1000)) * 100
     : 0;
 
-  // Message bubble colors
-  const bubbleBg = isOwnMessage
-    ? isDark ? 'bg-blue-600' : 'bg-blue-500'
-    : isDark ? 'bg-slate-700' : 'bg-slate-200';
+  // Calculate remaining time
+  const remainingTime = duration > 0 ? (duration * 1000) - position : 0;
 
-  const textColor = isOwnMessage ? 'text-primary-foreground' : 'text-foreground';
-  const iconColor = isOwnMessage ? themeColors.primaryForeground : themeColors.foreground;
-  const progressBg = isOwnMessage
-    ? isDark ? 'bg-blue-400' : 'bg-blue-300'
-    : isDark ? 'bg-slate-500' : 'bg-slate-400';
+  // Icon colors
+  const iconColor = isOwnMessage ? 'white' : themeColors.foreground;
 
   if (error) {
     return (
-      <View className={`px-3 py-2 rounded-lg ${bubbleBg}`}>
-        <Text className={`text-sm ${textColor}`}>
-          Failed to load voice message
+      <View className="flex-row items-center py-1">
+        <View className={`h-10 w-10 rounded-full items-center justify-center ${
+          isOwnMessage ? 'bg-white/20' : 'bg-muted'
+        }`}>
+          <Play size={20} color={iconColor} />
+        </View>
+        <Text className={`text-sm ml-3 ${isOwnMessage ? 'text-white/80' : 'text-muted-foreground'}`}>
+          Errore caricamento audio
         </Text>
       </View>
     );
@@ -273,82 +292,81 @@ export function VoiceMessagePlayer({
 
   if (isLoading) {
     return (
-      <View className={`px-3 py-2 rounded-lg ${bubbleBg} flex-row items-center`}>
-        <ActivityIndicator size="small" color={iconColor} />
-        <Text className={`text-sm ml-2 ${textColor}`}>
-          Loading voice message...
+      <View className="flex-row items-center py-1">
+        <View className={`h-10 w-10 rounded-full items-center justify-center ${
+          isOwnMessage ? 'bg-white/20' : 'bg-muted'
+        }`}>
+          <ActivityIndicator size="small" color={iconColor} />
+        </View>
+        <Text className={`text-sm ml-3 ${isOwnMessage ? 'text-white/80' : 'text-muted-foreground'}`}>
+          Caricamento...
         </Text>
       </View>
     );
   }
 
   return (
-    <View className={`px-3 py-2 rounded-lg ${bubbleBg}`}>
-      {/* Playback controls */}
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-2">
-          <TouchableOpacity
-            onPress={togglePlayPause}
-            className="p-1"
-            disabled={isLoading}
-          >
-            {isPlaying ? (
-              <Pause size={20} color={iconColor} />
-            ) : (
-              <Play size={20} color={iconColor} />
-            )}
-          </TouchableOpacity>
+    <View className="flex-row items-center py-1 min-w-[240px]">
+      {/* Play/Pause Button - WhatsApp Style */}
+      <TouchableOpacity
+        onPress={togglePlayPause}
+        className={`h-10 w-10 rounded-full items-center justify-center ${
+          isOwnMessage ? 'bg-white/20' : 'bg-primary/10'
+        }`}
+        activeOpacity={0.7}
+      >
+        {isPlaying ? (
+          <Pause size={20} color={iconColor} fill={iconColor} />
+        ) : (
+          <Play size={20} color={iconColor} fill={iconColor} />
+        )}
+      </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={seekBackward}
-            className="p-1"
-            disabled={isLoading || !sound}
-          >
-            <RotateCcw size={16} color={iconColor} />
-          </TouchableOpacity>
+      {/* Waveform */}
+      <Waveform
+        isPlaying={isPlaying}
+        progress={progressPercentage}
+        isOwnMessage={isOwnMessage}
+        themeColors={themeColors}
+      />
 
-          <TouchableOpacity
-            onPress={seekForward}
-            className="p-1"
-            disabled={isLoading || !sound}
-          >
-            <FastForward size={16} color={iconColor} />
-          </TouchableOpacity>
+      {/* Time Display */}
+      <Text className={`text-xs font-mono ml-2 min-w-[38px] ${
+        isOwnMessage ? 'text-white/90' : 'text-foreground'
+      }`}>
+        {isPlaying || isPaused ? formatTime(remainingTime) : formatTime(duration * 1000)}
+      </Text>
 
-          <TouchableOpacity
-            onPress={cyclePlaybackRate}
-            className="p-1"
-            disabled={isLoading || !sound}
-          >
-            <View className="flex-row items-center">
-              <Gauge size={14} color={iconColor} />
-              <Text className={`text-xs ml-1 ${textColor}`}>
-                {playbackRate.toFixed(1)}x
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+      {/* Playback Speed - Only show when playing */}
+      {(isPlaying || isPaused) && playbackRate !== 1.0 && (
+        <TouchableOpacity
+          onPress={cyclePlaybackRate}
+          className={`ml-2 h-6 w-6 rounded-full items-center justify-center ${
+            isOwnMessage ? 'bg-white/20' : 'bg-muted'
+          }`}
+          activeOpacity={0.7}
+        >
+          <Text className={`text-[10px] font-semibold ${
+            isOwnMessage ? 'text-white' : 'text-foreground'
+          }`}>
+            {playbackRate.toFixed(1)}x
+          </Text>
+        </TouchableOpacity>
+      )}
 
-        <Text className={`text-xs ${textColor}`}>
-          {formatTime(position)} / {duration > 0 ? formatTime(duration * 1000) : '--:--'}
-        </Text>
-      </View>
-
-      {/* Progress bar */}
-      <View className={`h-1 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`}>
-        <View
-          className={`h-full rounded-full ${progressBg}`}
-          style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-        />
-      </View>
-
-      {/* Duration info */}
-      {duration > 0 && (
-        <Text className={`text-xs mt-1 ${textColor} opacity-75`}>
-          {duration >= 60
-            ? `${Math.floor(duration / 60)} min ${Math.floor(duration % 60)} sec`
-            : `${Math.floor(duration)} seconds`}
-        </Text>
+      {/* Speed button when not playing */}
+      {!isPlaying && !isPaused && (
+        <TouchableOpacity
+          onPress={cyclePlaybackRate}
+          className="ml-2 px-1"
+          activeOpacity={0.7}
+        >
+          <Text className={`text-[10px] font-medium ${
+            isOwnMessage ? 'text-white/60' : 'text-muted-foreground'
+          }`}>
+            {playbackRate.toFixed(1)}x
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   );

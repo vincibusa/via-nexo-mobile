@@ -11,6 +11,12 @@ export interface ChatSuggestionRequest {
   };
   radius_km?: number;
   conversation_id?: string; // For conversational memory
+
+  // BOOKING FLOW
+  booking_action?: 'select' | 'confirm' | 'cancel' | 'swipe_complete';
+  selected_event_id?: string;
+  booking_intent_id?: string;
+  liked_event_ids?: string[]; // SWIPE: IDs of events user liked
 }
 
 export interface ChatSuggestion {
@@ -33,6 +39,7 @@ export interface ChatSuggestionResponse {
     contextUsed?: boolean; // Indicates if conversational context was used
     conversationLength?: number; // Conversation length
   };
+  bookingIntentId?: string; // BOOKING FLOW: ID for booking intent if events were suggested
 }
 
 export interface ChatStreamProgress {

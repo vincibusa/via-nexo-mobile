@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Nexo",
+    "name": "Party Hub",
     "slug": "nexo-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,10 +21,10 @@
       "bundleIdentifier": "com.busalacchi.nexo",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Nexo utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Nexo utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze.",
-        "NSCameraUsageDescription": "Nexo usa la fotocamera per creare storie.",
-        "NSPhotoLibraryUsageDescription": "Nexo accede alla galleria per selezionare immagini per le storie.",
+        "NSLocationWhenInUseUsageDescription": "Party Hub utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Party Hub utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze.",
+        "NSCameraUsageDescription": "Party Hub usa la fotocamera per creare storie.",
+        "NSPhotoLibraryUsageDescription": "Party Hub accede alla galleria per selezionare immagini per le storie.",
         "UIBackgroundModes": ["remote-notification"],
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -59,7 +59,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Nexo utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze."
+          "locationAlwaysAndWhenInUsePermission": "Party Hub utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze."
         }
       ],
       [

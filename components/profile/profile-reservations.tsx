@@ -15,9 +15,10 @@ import { Calendar, MapPin, Users, ChevronRight } from 'lucide-react-native';
 
 interface ProfileReservationsProps {
   maxItems?: number;
+  userId?: string; // If provided, fetch this user's reservations; otherwise fetch current user's
 }
 
-export function ProfileReservations({ maxItems = 5 }: ProfileReservationsProps) {
+export function ProfileReservations({ maxItems = 5, userId }: ProfileReservationsProps) {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
@@ -33,7 +34,11 @@ export function ProfileReservations({ maxItems = 5 }: ProfileReservationsProps) 
   const fetchReservations = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await reservationsService.getMyReservations(0, 50);
+      // If userId is provided, fetch that user's reservations; otherwise fetch current user's
+      const { data, error } = userId
+        ? await reservationsService.getUserReservations(userId, 0, 50)
+        : await reservationsService.getMyReservations(0, 50);
+
       if (!error && data) {
         // Sort by created_at descending (most recent first)
         const sorted = [...data].sort((a, b) => {
@@ -51,7 +56,7 @@ export function ProfileReservations({ maxItems = 5 }: ProfileReservationsProps) 
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   // Reload when screen is focused
   useFocusEffect(
@@ -87,9 +92,9 @@ export function ProfileReservations({ maxItems = 5 }: ProfileReservationsProps) 
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 mb-3">
         <Text className="text-lg font-semibold text-foreground">
-          Le mie prenotazioni
+          {userId ? 'Prenotazioni' : 'Le mie prenotazioni'}
         </Text>
-        {reservations.length > maxItems && (
+        {reservations.length > maxItems && !userId && (
           <Pressable onPress={handleViewAll}>
             <Text className="text-sm text-primary font-medium">
               Vedi tutte
@@ -118,7 +123,8 @@ export function ProfileReservations({ maxItems = 5 }: ProfileReservationsProps) 
           return (
             <Pressable
               key={reservation.id}
-              onPress={() => handleReservationPress(reservation)}
+              onPress={userId ? undefined : () => handleReservationPress(reservation)}
+              disabled={!!userId}
               className={`w-72 rounded-lg border overflow-hidden ${statusColors[eventStatus]}`}
             >
               {/* Event Image */}
@@ -186,7 +192,8 @@ export function ProfileReservations({ maxItems = 5 }: ProfileReservationsProps) 
                       {reservation.total_guests} {reservation.total_guests === 1 ? 'persona' : 'persone'}
                     </Text>
                   </View>
-                  <ChevronRight size={14} color={themeColors.mutedForeground} />
+                  {/* Only show chevron for own profile (clickable) */}
+                  {!userId && <ChevronRight size={14} color={themeColors.mutedForeground} />}
                 </View>
               </View>
             </Pressable>

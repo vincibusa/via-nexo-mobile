@@ -3,7 +3,7 @@ import { API_CONFIG } from '../config'
 export interface UploadResponse {
   path: string
   url: string
-  message: string
+  message?: string
 }
 
 export interface UploadProgress {
@@ -98,6 +98,81 @@ export class UploadService {
   }
 
   /**
+   * Upload an event cover image to the server
+   */
+  async uploadEventImage(
+    file: { uri: string; name?: string; type?: string },
+    token: string,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<UploadResponse> {
+    try {
+      if (!token) {
+        throw new Error('Authentication required')
+      }
+
+      // Create form data
+      const formData = new FormData()
+
+      // React Native file object from ImagePicker
+      formData.append('file', {
+        uri: file.uri,
+        name: file.name || `event-${Date.now()}.jpg`,
+        type: file.type || 'image/jpeg',
+      } as any)
+
+      // Specify the bucket for event images
+      formData.append('bucket', 'event-images')
+
+      // Create XMLHttpRequest for progress tracking
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+
+        // Track upload progress
+        if (onProgress) {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const progress: UploadProgress = {
+                loaded: event.loaded,
+                total: event.total,
+                percentage: Math.round((event.loaded / event.total) * 100)
+              }
+              onProgress(progress)
+            }
+          })
+        }
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText)
+              resolve(response)
+            } catch (error) {
+              reject(new Error('Invalid response from server'))
+            }
+          } else {
+            this.handleErrorResponse(xhr, reject)
+          }
+        })
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error occurred'))
+        })
+
+        xhr.addEventListener('timeout', () => {
+          reject(new Error('Upload timeout'))
+        })
+
+        xhr.open('POST', `${this.baseUrl}/api/admin/upload`)
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+        xhr.timeout = 60000 // 60 seconds timeout for larger images
+        xhr.send(formData)
+      })
+    } catch (error) {
+      throw this.normalizeError(error)
+    }
+  }
+
+  /**
    * Delete a story media file
    */
   async deleteStoryMedia(path: string, token: string): Promise<{ success: boolean; message: string }> {
@@ -164,7 +239,7 @@ export class UploadService {
   /**
    * Handle HTTP error responses
    */
-  private handleErrorResponse(xhr: XMLHttpRequest, reject: (error: Error) => void) {
+  private handleErrorResponse(xhr: XMLHttpRequest, reject: (error: Error) => void): void {
     try {
       const errorData = JSON.parse(xhr.responseText)
       const errorMessage = errorData.error || `HTTP ${xhr.status}: ${xhr.statusText}`
@@ -196,7 +271,7 @@ export class UploadService {
   /**
    * Normalize different error types
    */
-  private normalizeError(error: any): Error {
+  private normalizeError(error: unknown): Error {
     if (error instanceof Error) {
       return error
     }

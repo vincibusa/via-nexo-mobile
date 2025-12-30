@@ -51,6 +51,32 @@ class MessagingService {
   }
 
   /**
+   * Get a single conversation by ID
+   */
+  async getConversation(conversationId: string): Promise<Conversation | null> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/conversations/${conversationId}`;
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch conversation');
+      }
+
+      const data = await response.json();
+      return data.conversation || data;
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new conversation with another user
    */
   async createConversation(
@@ -331,6 +357,76 @@ class MessagingService {
       return await response.json();
     } catch (error) {
       console.error('Error searching messages:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a conversation
+   */
+  async deleteConversation(conversationId: string): Promise<void> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/conversations/${conversationId}`;
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete conversation');
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Archive a conversation
+   */
+  async archiveConversation(conversationId: string): Promise<void> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/conversations/${conversationId}/archive`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to archive conversation');
+      }
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mute or unmute a conversation
+   */
+  async muteConversation(conversationId: string, mute: boolean = true): Promise<void> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${API_CONFIG.BASE_URL}/api/messages/conversations/${conversationId}/mute`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ mute }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to mute conversation');
+      }
+    } catch (error) {
+      console.error('Error muting conversation:', error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Image,
@@ -23,15 +23,18 @@ interface DiscoveryCardProps {
   isActive: boolean;
   onLike: () => void;
   onView: () => void;
+  containerHeight?: number;
 }
 
-export function DiscoveryCard({ item, isActive, onLike, onView }: DiscoveryCardProps) {
+export function DiscoveryCard({ item, isActive, onLike, onView, containerHeight = SCREEN_HEIGHT }: DiscoveryCardProps) {
   const videoRef = useRef<Video>(null);
   const router = useRouter();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const themeColors = THEME.dark;
+  
+  const styles = useMemo(() => createStyles(containerHeight), [containerHeight]);
 
   useEffect(() => {
     if (item.media_type === 'video') {
@@ -135,14 +138,6 @@ export function DiscoveryCard({ item, isActive, onLike, onView }: DiscoveryCardP
                 {item.description}
               </Text>
             )}
-            <View style={styles.statsRow} pointerEvents="box-none">
-              <Text style={styles.statsText}>
-                👁️ {item.views_count.toLocaleString()}
-              </Text>
-              <Text style={styles.statsText}>
-                ❤️ {item.likes_count.toLocaleString()}
-              </Text>
-            </View>
           </View>
         )}
       </View>
@@ -151,7 +146,7 @@ export function DiscoveryCard({ item, isActive, onLike, onView }: DiscoveryCardP
       <View style={styles.rightActions} pointerEvents="box-none">
         <Pressable onPress={onLike} style={styles.actionButton}>
           <Heart
-            size={32}
+            size={24}
             color="white"
             fill={item.is_liked ? 'red' : 'transparent'}
           />
@@ -161,12 +156,12 @@ export function DiscoveryCard({ item, isActive, onLike, onView }: DiscoveryCardP
         </Pressable>
 
         <Pressable onPress={handleCommentsPress} style={styles.actionButton}>
-          <MessageCircle size={32} color="white" />
+          <MessageCircle size={24} color="white" />
           <Text style={styles.actionLabel}>Commenti</Text>
         </Pressable>
 
         <Pressable onPress={handleShare} style={styles.actionButton}>
-          <Share2 size={32} color="white" />
+          <Share2 size={24} color="white" />
           <Text style={styles.actionLabel}>Condividi</Text>
         </Pressable>
       </View>
@@ -181,10 +176,10 @@ export function DiscoveryCard({ item, isActive, onLike, onView }: DiscoveryCardP
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (containerHeight: number) => StyleSheet.create({
   container: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: containerHeight,
     backgroundColor: '#000',
   },
   mediaContainer: {
@@ -226,7 +221,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 80,
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 0,
   },
   eventInfo: {
     marginBottom: 16,
@@ -249,21 +244,12 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginBottom: 12,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  statsText: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.7,
-  },
   rightActions: {
     position: 'absolute',
     right: 16,
-    bottom: 100,
+    bottom: 20,
     alignItems: 'center',
-    gap: 24,
+    gap: 20,
   },
   actionButton: {
     alignItems: 'center',

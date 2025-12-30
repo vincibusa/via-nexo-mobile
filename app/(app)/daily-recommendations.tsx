@@ -1,149 +1,308 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { View, Pressable, Dimensions } from 'react-native';
+import { Text } from '../../components/ui/text';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useColorScheme } from 'nativewind';
-import { useSettings } from '../../lib/contexts/settings';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import BottomSheet from '@gorhom/bottom-sheet';
+import { ChevronLeft, Sparkles, Heart } from 'lucide-react-native';
 import { THEME } from '../../lib/theme';
-import { ChevronLeft, Calendar, Sparkles } from 'lucide-react-native';
-import { dailyRecommendationsService, type Recommendation } from '../../lib/services/daily-recommendations';
-import { RecommendationCard } from '../../components/recommendations/recommendation-card';
+import {
+  dailyRecommendationsService,
+  type Recommendation,
+} from '../../lib/services/daily-recommendations';
+import { SwipeStack } from '../../components/recommendations/swipe-stack';
+import { LikedEventsList } from '../../components/recommendations/liked-events-list';
+import { storage } from '../../lib/storage';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HEADER_HEIGHT = 70; // Header height (py-3 + content + border)
 
 export default function DailyRecommendationsScreen() {
   const router = useRouter();
-  const { settings } = useSettings();
-  
-  // Use dark theme (single theme for the app)
+  const bottomSheetRef = useRef<BottomSheet>(null);
   const themeColors = THEME.dark;
-  
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const insets = useSafeAreaInsets();
+
+  // State
+  const [allRecommendations, setAllRecommendations] = useState<Recommendation[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [likedEvents, setLikedEvents] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [autoExpandSheet, setAutoExpandSheet] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  // Calculate container height for fullscreen cards (excluding header)
+  const containerHeight = SCREEN_HEIGHT - insets.top - insets.bottom - HEADER_HEIGHT;
+
+  // Filter only events
+  const eventRecommendations = useMemo(
+    () => allRecommendations.filter((r) => r.entity_type === 'event'),
+    [allRecommendations]
   );
 
-  const loadRecommendations = useCallback(async () => {
+  // Remaining recommendations to swipe
+  const remainingRecommendations = useMemo(
+    () => eventRecommendations.slice(currentIndex),
+    [eventRecommendations, currentIndex]
+  );
+
+  // Get access token on mount
+  useEffect(() => {
+    const fetchToken = async () => {
+      const session = await storage.getSession();
+      setAccessToken(session?.accessToken || null);
+    };
+    fetchToken();
+  }, []);
+
+  // Check completion status on mount
+  const checkCompletionStatus = useCallback(async () => {
+    if (!accessToken) return;
+
     try {
-      setIsLoading(true);
-      setError(null);
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await dailyRecommendationsService.checkCompletion(
+        today,
+        accessToken
+      );
 
-      const { data, error: fetchError } =
-        await dailyRecommendationsService.getDailyRecommendations(
-          selectedDate
+      if (error) {
+        console.error('Error checking completion:', error);
+        return;
+      }
+
+      if (data?.completed) {
+        // Already completed - show liked events directly
+        setIsCompleted(true);
+        setLikedEvents(
+          data.liked_events.map((event) => ({
+            id: event.id,
+            entity_type: 'event' as const,
+            entity_id: event.id,
+            featured_date: today,
+            source: 'automatic' as const,
+            priority: 0,
+            score: 1,
+            event: {
+              id: event.id,
+              title: event.title,
+              cover_image_url: event.cover_image_url,
+              start_datetime: event.start_datetime,
+            },
+          }))
         );
-
-      if (fetchError) {
-        setError(fetchError);
-        setRecommendations([]);
-      } else {
-        setRecommendations(data?.recommendations || []);
+        setAutoExpandSheet(true);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading recommendations');
-      setRecommendations([]);
+      console.error('Error checking completion:', err);
+    }
+  }, [accessToken]);
+
+  // Load filtered recommendations (exclude already swiped)
+  const loadRecommendations = useCallback(async () => {
+    if (!accessToken) return;
+
+    try {
+      setIsLoading(true);
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } =
+        await dailyRecommendationsService.getFilteredRecommendations(
+          today,
+          accessToken
+        );
+
+      if (error) {
+        console.error('Error loading recommendations:', error);
+        setAllRecommendations([]);
+      } else {
+        setAllRecommendations(data?.recommendations || []);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setAllRecommendations([]);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDate]);
+  }, [accessToken]);
 
+  // Initial load
   useEffect(() => {
-    loadRecommendations();
-  }, [loadRecommendations]);
+    if (!accessToken) return;
 
-  const handleRecommendationPress = (rec: Recommendation) => {
-    if (rec.entity_type === 'place') {
-      router.push(`/place/${rec.entity_id}` as any);
-    } else {
-      router.push(`/event/${rec.entity_id}` as any);
-    }
-  };
+    const initLoad = async () => {
+      await checkCompletionStatus();
+      // Only load recommendations if not already completed
+      if (!isCompleted) {
+        await loadRecommendations();
+      }
+    };
 
-  const formatDisplayDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      const today = new Date();
-      const isToday = date.toDateString() === today.toDateString();
+    initLoad();
+  }, [accessToken, checkCompletionStatus, loadRecommendations, isCompleted]);
 
-      if (isToday) {
-        return 'Oggi';
+  // Handle swipe with persistence
+  const handleSwipe = useCallback(
+    async (rec: Recommendation, actionType: 'like' | 'pass') => {
+      if (!accessToken) return;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Optimistic update
+      const previousIndex = currentIndex;
+      const previousLiked = likedEvents;
+
+      setCurrentIndex((prev) => prev + 1);
+      if (actionType === 'like') {
+        setLikedEvents((prev) => [...prev, rec]);
       }
 
-      return date.toLocaleDateString('it-IT', {
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
-  };
+      // Save to DB
+      const { data, error } = await dailyRecommendationsService.saveSwipe(
+        {
+          recommendation_id: rec.id,
+          action_type: actionType,
+          featured_date: today,
+          event_id: rec.event?.id,
+          event_type: rec.event?.title,
+          place_id: rec.place?.id,
+          place_type: rec.place?.place_type,
+        },
+        accessToken
+      );
+
+      if (error) {
+        console.error('Error saving swipe:', error);
+        // Rollback optimistic update
+        setCurrentIndex(previousIndex);
+        setLikedEvents(previousLiked);
+        return;
+      }
+
+      // Check if completed
+      if (data?.completion_status?.completed) {
+        setIsCompleted(true);
+      }
+    },
+    [accessToken, currentIndex, likedEvents]
+  );
+
+  // Handle swipe left (pass)
+  const handleSwipeLeft = useCallback(
+    (rec: Recommendation) => {
+      handleSwipe(rec, 'pass');
+    },
+    [handleSwipe]
+  );
+
+  // Handle swipe right (like)
+  const handleSwipeRight = useCallback(
+    (rec: Recommendation) => {
+      handleSwipe(rec, 'like');
+    },
+    [handleSwipe]
+  );
+
+  // Handle completion - auto-expand bottom sheet
+  const handleComplete = useCallback(() => {
+    setAutoExpandSheet(true);
+    setTimeout(() => {
+      bottomSheetRef.current?.snapToIndex(2);
+    }, 100);
+  }, []);
+
+  // Handle event press from liked list
+  const handleEventPress = useCallback(
+    (eventId: string) => {
+      router.push(`/event/${eventId}` as any);
+    },
+    [router]
+  );
+
+  // Clear all liked events
+  const handleClearAll = useCallback(() => {
+    setLikedEvents([]);
+  }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-4 border-b border-gray-200">
-        <Pressable
-          onPress={() => router.back()}
-          className="p-2 -ml-2"
-          hitSlop={8}
-        >
-          <ChevronLeft size={24} color={themeColors.foreground} />
-        </Pressable>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
+          <View className="flex-row items-center flex-1">
+            <Pressable
+              onPress={() => router.back()}
+              className="p-2 -ml-2"
+              hitSlop={8}
+            >
+              <ChevronLeft size={24} color={themeColors.foreground} />
+            </Pressable>
 
-        <View className="flex-1 ml-2">
-          <View className="flex-row items-center">
-            <Sparkles size={20} color={themeColors.primary} />
-            <Text className="ml-2 text-xl font-bold text-foreground">
-              Consigliati del Giorno
-            </Text>
+            <View className="ml-2">
+              <View className="flex-row items-center">
+                <Sparkles size={20} color={themeColors.primary} />
+                <Text className="ml-2 text-xl font-bold text-foreground">
+                  Per Te
+                </Text>
+              </View>
+              <Text className="text-xs text-muted-foreground">
+                {isCompleted
+                  ? 'Hai completato i raccomandati di oggi!'
+                  : 'Swipa per scoprire eventi'}
+              </Text>
+            </View>
           </View>
-          <Text className="text-sm text-muted-foreground mt-1">
-            {formatDisplayDate(selectedDate)}
-          </Text>
-        </View>
-      </View>
 
-      {/* Content */}
-      {isLoading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={themeColors.primary} />
-        </View>
-      ) : error ? (
-        <View className="flex-1 justify-center items-center px-4">
-          <Text className="text-destructive text-center">{error}</Text>
-        </View>
-      ) : recommendations.length === 0 ? (
-        <View className="flex-1 justify-center items-center px-4">
-          <View className="bg-muted rounded-lg p-6 items-center">
-            <Calendar size={48} color={themeColors.mutedForeground} />
-            <Text className="mt-4 text-muted-foreground text-center font-medium">
-              Nessun consiglio speciale per oggi
-            </Text>
-            <Text className="mt-2 text-muted-foreground text-center text-sm">
-              Controlla più tardi per i consigliati della giornata
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <FlatList
-          data={recommendations}
-          renderItem={({ item }) => (
-            <RecommendationCard
-              recommendation={item}
-              onPress={() => handleRecommendationPress(item)}
+          {/* Liked counter button */}
+          <Pressable
+            onPress={() => bottomSheetRef.current?.expand()}
+            className="flex-row items-center bg-primary/10 px-3 py-2 rounded-full"
+          >
+            <Heart
+              size={18}
+              color={themeColors.primary}
+              fill={likedEvents.length > 0 ? themeColors.primary : 'transparent'}
             />
-          )}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16 }}
-          scrollEnabled
+            {likedEvents.length > 0 && (
+              <Text className="ml-1.5 font-bold text-primary">
+                {likedEvents.length}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Swipe Stack */}
+        <View className="flex-1">
+          <SwipeStack
+            recommendations={remainingRecommendations}
+            onSwipeLeft={handleSwipeLeft}
+            onSwipeRight={handleSwipeRight}
+            isLoading={isLoading}
+            onComplete={handleComplete}
+            containerHeight={containerHeight}
+          />
+        </View>
+
+        {/* Progress indicator */}
+        {!isCompleted && eventRecommendations.length > 0 && (
+          <View className="px-4 pb-2">
+            <Text className="text-center text-xs text-muted-foreground">
+              {currentIndex + 1} / {eventRecommendations.length} eventi
+            </Text>
+          </View>
+        )}
+
+        {/* Liked Events Bottom Sheet */}
+        <LikedEventsList
+          ref={bottomSheetRef}
+          likedEvents={likedEvents}
+          onEventPress={handleEventPress}
+          onClearAll={handleClearAll}
+          autoExpand={autoExpandSheet}
         />
-      )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }

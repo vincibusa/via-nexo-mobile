@@ -14,6 +14,7 @@ export interface Conversation {
   title?: string;
   participants?: User[];
   is_group: boolean;
+  group_image_url?: string; // Event cover image for group chats
 }
 
 export interface LastMessage {

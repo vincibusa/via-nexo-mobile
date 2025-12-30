@@ -8,7 +8,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 items-center justify-center gap-6 p-6">
-      <Text className="text-3xl font-bold">Welcome to NEXO</Text>
+      <Text className="text-3xl font-bold">Benvenuto in Party Hub</Text>
 
       {user && (
         <View className="gap-2">

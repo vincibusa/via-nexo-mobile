@@ -23,7 +23,7 @@ export class ChatApiService {
     accessToken: string
   ): Promise<ChatSuggestionResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/ai/chat/suggestions`, {
+      const response = await fetch(`${this.baseUrl}${API_CONFIG.ENDPOINTS.CHAT_SUGGEST}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -33,11 +33,11 @@ export class ChatApiService {
       });
 
       if (!response.ok) {
-        const errorData: ChatApiError = await response.json();
+        const errorData = (await response.json()) as ChatApiError;
         throw new Error(errorData.error || 'Failed to get chat suggestions');
       }
 
-      return await response.json();
+      return (await response.json()) as ChatSuggestionResponse;
     } catch (error) {
       console.error('[ChatApi] Error getting suggestions:', error);
       throw error;
@@ -53,8 +53,9 @@ export class ChatApiService {
     offset: number = 0
   ): Promise<ChatHistoryEntry[]> {
     try {
+      // Note: Chat history is accessed via conversations endpoint
       const response = await fetch(
-        `${this.baseUrl}/api/ai/chat/history?limit=${limit}&offset=${offset}`,
+        `${this.baseUrl}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATIONS}?limit=${limit}&offset=${offset}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -63,11 +64,11 @@ export class ChatApiService {
       );
 
       if (!response.ok) {
-        const errorData: ChatApiError = await response.json();
+        const errorData = (await response.json()) as ChatApiError;
         throw new Error(errorData.error || 'Failed to get chat history');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { history?: ChatHistoryEntry[] };
       return data.history || [];
     } catch (error) {
       console.error('[ChatApi] Error getting history:', error);
@@ -85,7 +86,7 @@ export class ChatApiService {
   ): Promise<ChatConversation[]> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/api/ai/chat/conversations?limit=${limit}&offset=${offset}`,
+        `${this.baseUrl}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATIONS}?limit=${limit}&offset=${offset}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -94,11 +95,11 @@ export class ChatApiService {
       );
 
       if (!response.ok) {
-        const errorData: ChatApiError = await response.json();
+        const errorData = (await response.json()) as ChatApiError;
         throw new Error(errorData.error || 'Failed to get conversations');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { conversations?: ChatConversation[] };
       return data.conversations || [];
     } catch (error) {
       console.error('[ChatApi] Error getting conversations:', error);
@@ -115,7 +116,7 @@ export class ChatApiService {
   ): Promise<void> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/api/ai/chat/conversations/${conversationId}`,
+        `${this.baseUrl}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATION_BY_ID(conversationId)}`,
         {
           method: 'DELETE',
           headers: {
@@ -125,7 +126,7 @@ export class ChatApiService {
       );
 
       if (!response.ok) {
-        const errorData: ChatApiError = await response.json();
+        const errorData = (await response.json()) as ChatApiError;
         throw new Error(errorData.error || 'Failed to delete conversation');
       }
     } catch (error) {
@@ -139,7 +140,9 @@ export class ChatApiService {
    */
   async clearHistory(accessToken: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/ai/chat/history`, {
+      // Note: Chat history clearing might need a dedicated endpoint
+      // For now, this endpoint may not exist - check backend implementation
+      const response = await fetch(`${this.baseUrl}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATIONS}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -147,7 +150,7 @@ export class ChatApiService {
       });
 
       if (!response.ok) {
-        const errorData: ChatApiError = await response.json();
+        const errorData = (await response.json()) as ChatApiError;
         throw new Error(errorData.error || 'Failed to clear history');
       }
     } catch (error) {
@@ -165,7 +168,7 @@ export class ChatApiService {
   ): Promise<ChatHistoryEntry[]> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/api/ai/chat/conversations/${conversationId}/messages`,
+        `${this.baseUrl}${API_CONFIG.ENDPOINTS.CHAT_CONVERSATION_MESSAGES(conversationId)}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -174,11 +177,11 @@ export class ChatApiService {
       );
 
       if (!response.ok) {
-        const errorData: ChatApiError = await response.json();
+        const errorData = (await response.json()) as ChatApiError;
         throw new Error(errorData.error || 'Failed to get conversation');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { messages?: ChatHistoryEntry[] };
       return data.messages || [];
     } catch (error) {
       console.error('[ChatApi] Error getting conversation:', error);

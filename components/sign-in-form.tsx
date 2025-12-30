@@ -1,4 +1,3 @@
-import { SocialConnections } from '../components/social-connections';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -9,7 +8,6 @@ import {
 } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Separator } from '../components/ui/separator';
 import { Text } from '../components/ui/text';
 import { useAuth } from '../lib/contexts/auth';
 import { cn } from '../lib/utils';
@@ -17,6 +15,7 @@ import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, type TextInput, View } from 'react-native';
 import { useColorScheme } from 'nativewind';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 export function SignInForm() {
   const { colorScheme } = useColorScheme();
@@ -41,12 +40,14 @@ export function SignInForm() {
   const biometricPromptedRef = React.useRef(false);
   const lastLoginCredentialsRef = React.useRef<{ email: string; password: string } | null>(null);
 
+  const [showPassword, setShowPassword] = React.useState(false);
+
   const biometricLabel =
     biometricType === 'face'
       ? 'Face ID'
       : biometricType === 'fingerprint'
-        ? 'fingerprint'
-        : 'biometric authentication';
+        ? 'impronta digitale'
+        : 'autenticazione biometrica';
   const hasBiometricShortcut =
     Boolean(biometricPreference?.enabled && savedCredentials && biometricSupported);
 
@@ -67,7 +68,7 @@ export function SignInForm() {
 
   async function onSubmit() {
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError('Compila tutti i campi');
       return;
     }
 
@@ -142,7 +143,7 @@ export function SignInForm() {
     try {
       const authResult = await authenticateWithBiometrics();
       if (!authResult.success) {
-        setError(authResult.error ?? 'Biometric authentication failed');
+        setError(authResult.error ?? 'Autenticazione biometrica fallita');
         return;
       }
 
@@ -159,13 +160,16 @@ export function SignInForm() {
     await disableBiometrics();
   }
 
+  // Colore icone basato sul tema
+  const iconColor = colorScheme === 'dark' ? '#a3a3a3' : '#737373';
+
   return (
     <View className="gap-6">
       <Card className={cn("border-border/0 sm:border-border shadow-none sm:shadow-sm", colorScheme === 'dark' ? 'sm:shadow-white/5' : 'sm:shadow-black/5')}>
         <CardHeader>
-          <CardTitle className="text-center text-xl sm:text-left">Sign in to your app</CardTitle>
+          <CardTitle className="text-center text-xl sm:text-left">Accedi al tuo account</CardTitle>
           <CardDescription className="text-center sm:text-left">
-            Welcome back! Please sign in to continue
+            Bentornato! Accedi per continuare
           </CardDescription>
         </CardHeader>
         <CardContent className="gap-6">
@@ -174,12 +178,12 @@ export function SignInForm() {
               <Text className="text-destructive text-sm">{error}</Text>
             </View>
           ) : null}
-          <View className="gap-6">
+          <View className="gap-5">
             <View className="gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                placeholder="m@example.com"
+                placeholder="mario@esempio.com"
                 keyboardType="email-address"
                 autoComplete="email"
                 autoCapitalize="none"
@@ -202,25 +206,46 @@ export function SignInForm() {
                   onPress={() => {
                     // TODO: Navigate to forgot password screen
                   }}>
-                  <Text className="font-normal leading-4">Forgot your password?</Text>
+                  <Text className="font-normal leading-4">Password dimenticata?</Text>
                 </Button>
               </View>
-              <Input
-                ref={passwordInputRef}
-                id="password"
-                secureTextEntry
-                returnKeyType="send"
-                onSubmitEditing={onSubmit}
-                value={password}
-                onChangeText={setPassword}
-                editable={!isLoading}
-              />
+              <View className="relative">
+                <Input
+                  ref={passwordInputRef}
+                  id="password"
+                  secureTextEntry={!showPassword}
+                  returnKeyType="send"
+                  onSubmitEditing={onSubmit}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!isLoading}
+                  className="pr-11"
+                />
+                <Pressable
+                  className="absolute right-0 top-0 bottom-0 px-3 justify-center"
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
+                  ) : (
+                    <Eye size={20} color={iconColor} strokeWidth={1.5} />
+                  )}
+                </Pressable>
+              </View>
             </View>
             <Button className="w-full" onPress={onSubmit} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator /> : <Text>Continue</Text>}
+              {isLoading ? (
+                <View className="flex-row items-center gap-2">
+                  <ActivityIndicator color="white" size="small" />
+                  <Text>Accesso in corso...</Text>
+                </View>
+              ) : (
+                <Text>Continua</Text>
+              )}
             </Button>
             {hasBiometricShortcut ? (
-              <View className="space-y-2">
+              <View className="gap-2">
                 <Button
                   variant="outline"
                   className="w-full"
@@ -230,33 +255,27 @@ export function SignInForm() {
                   {isBiometricLoading ? (
                     <ActivityIndicator />
                   ) : (
-                    <Text>Unlock with {biometricLabel}</Text>
+                    <Text>Sblocca con {biometricLabel}</Text>
                   )}
                 </Button>
                 <Pressable onPress={onDisableBiometrics} disabled={isBiometricLoading}>
                   <Text className="text-center text-xs text-muted-foreground underline">
-                    Disable {biometricLabel} login
+                    Disattiva accesso con {biometricLabel}
                   </Text>
                 </Pressable>
               </View>
             ) : null}
           </View>
           <View className="flex-row items-center justify-center">
-            <Text className="text-center text-sm">Don&apos;t have an account? </Text>
+            <Text className="text-center text-sm">Non hai un account? </Text>
             <Pressable
               onPress={() => {
                 router.push('/(auth)/signup');
               }}
               disabled={isLoading}>
-              <Text className="text-sm underline underline-offset-4">Sign up</Text>
+              <Text className="text-sm underline underline-offset-4">Registrati</Text>
             </Pressable>
           </View>
-          <View className="flex-row items-center">
-            <Separator className="flex-1" />
-            <Text className="text-muted-foreground px-4 text-sm">or</Text>
-            <Separator className="flex-1" />
-          </View>
-          <SocialConnections />
         </CardContent>
       </Card>
     </View>

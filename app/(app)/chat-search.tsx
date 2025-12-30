@@ -5,6 +5,7 @@ import { QuickChips } from '../../components/chat/quick-chips';
 import { FilterPanel, type GuidedFilters } from '../../components/chat/filter-panel';
 import { ChatSuggestionCards } from '../../components/chat/chat-suggestion-cards';
 import { ConversationHistoryMenu } from '../../components/chat/conversation-history-menu';
+import { ChatBookingConfirmation } from '../../components/chat/chat-booking-confirmation';
 
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
@@ -29,6 +30,14 @@ interface Message {
   isUser: boolean;
   timestamp: Date;
   suggestions?: SuggestedPlace[]; // AI messages can include suggestions
+  swipeCompleted?: boolean; // SWIPE: Track if swipe was done (hide cards after)
+}
+
+interface BookingIntent {
+  id: string;
+  suggestedEventIds: string[];
+  selectedEventId?: string;
+  state: 'awaiting_selection' | 'selected' | 'confirming' | 'confirmed' | 'completed' | 'cancelled';
 }
 
 const QUICK_SUGGESTIONS = [
@@ -55,6 +64,9 @@ export default function ChatSearchScreen() {
   const [currentConversation, setCurrentConversation] = useState<ChatConversationWithMessages | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(!!conversationId);
   const [showHistoryMenu, setShowHistoryMenu] = useState(false);
+  const [bookingIntent, setBookingIntent] = useState<BookingIntent | null>(null);
+  const [selectedEventForBooking, setSelectedEventForBooking] = useState<any | null>(null);
+  const [swipeMode, setSwipeMode] = useState(false); // SWIPE: Track if swipe mode is active
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Load existing conversation if conversation_id is provided, or create new one
@@ -212,11 +224,293 @@ export default function ChatSearchScreen() {
     }
   };
 
+  /**
+   * Handle event booking selection
+   * User selected which event they want to book
+   */
+  const handleBookingSelect = async (eventId: string) => {
+    if (!bookingIntent || !session?.accessToken) {
+      console.error('[Booking] Cannot select event - no booking intent or session');
+      return;
+    }
+
+    console.log(`[Booking] User selected event: ${eventId}`);
+
+    // Fetch event details
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/events/${eventId}`, {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch event details');
+      }
+
+      const eventData = await response.json();
+      setSelectedEventForBooking(eventData);
+
+      // Update local state optimistically
+      setBookingIntent({
+        ...bookingIntent,
+        selectedEventId: eventId,
+        state: 'selected',
+      });
+    } catch (error) {
+      console.error('[Booking] Error fetching event details:', error);
+      Alert.alert('Errore', 'Impossibile caricare i dettagli dell\'evento');
+    }
+  };
+
+  /**
+   * Handle booking confirmation
+   * User confirmed they want to proceed with the booking
+   */
+  const handleBookingConfirm = async () => {
+    if (!bookingIntent || !session?.accessToken) {
+      console.error('[Booking] Cannot confirm - no booking intent or session');
+      return;
+    }
+
+    console.log(`[Booking] User confirmed booking for intent: ${bookingIntent.id}`);
+
+    // Update local state optimistically
+    setBookingIntent({
+      ...bookingIntent,
+      state: 'confirming',
+    });
+
+    // Send confirm action to backend
+    await handleSendBookingAction('confirm', undefined, bookingIntent.id);
+  };
+
+  /**
+   * Handle booking cancellation
+   * User cancelled the booking flow
+   */
+  const handleBookingCancel = async () => {
+    if (!bookingIntent || !session?.accessToken) {
+      console.error('[Booking] Cannot cancel - no booking intent or session');
+      return;
+    }
+
+    console.log(`[Booking] User cancelled booking for intent: ${bookingIntent.id}`);
+
+    // Close modal immediately
+    setSelectedEventForBooking(null);
+
+    // Update local state optimistically
+    setBookingIntent({
+      ...bookingIntent,
+      state: 'cancelled',
+    });
+
+    // Send cancel action to backend
+    await handleSendBookingAction('cancel', undefined, bookingIntent.id);
+
+    // Clear booking intent after cancellation
+    setTimeout(() => setBookingIntent(null), 1000);
+  };
+
+  /**
+   * Handle swipe completion
+   * User finished swiping through all suggestions
+   */
+  const handleSwipeComplete = async (likedIds: string[], passedIds: string[]) => {
+    if (!session?.accessToken || !location) {
+      console.error('[Swipe] Missing required data');
+      return;
+    }
+
+    console.log(`[Swipe] Completed - Liked: ${likedIds.length}, Passed: ${passedIds.length}`);
+
+    // Deactivate swipe mode
+    setSwipeMode(false);
+
+    // Mark the message with suggestions as swipe-completed (so cards don't show again)
+    setMessages((prev) => prev.map((msg) =>
+      msg.suggestions && msg.suggestions.length > 0
+        ? { ...msg, swipeCompleted: true }
+        : msg
+    ));
+
+    // If no liked events, just acknowledge
+    if (likedIds.length === 0) {
+      const noLikesMessage: Message = {
+        id: `ai-${Date.now()}`,
+        content: 'Nessun evento ti è piaciuto? Prova a descrivermi meglio cosa stai cercando!',
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, noLikesMessage]);
+      return;
+    }
+
+    // Send swipe_complete action to backend with liked event IDs
+    setIsTyping(true);
+
+    try {
+      // Use non-streaming version for swipe_complete (returns direct response, not async iterable)
+      const response = await chatService.getChatSuggestionsStream(
+        {
+          message: 'swipe_complete', // Placeholder message for swipe actions
+          location,
+          radius_km: 5,
+          conversation_id: currentConversation?.id,
+          booking_action: 'swipe_complete',
+          liked_event_ids: likedIds,
+        },
+        session.accessToken
+      );
+
+      // Handle direct response (React Native doesn't support streaming)
+      const aiMessage = response.conversationalResponse || '';
+
+      // Add AI response to messages
+      const newMessage: Message = {
+        id: `ai-${Date.now()}`,
+        content: aiMessage,
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, newMessage]);
+
+      // If backend created a booking intent, update state
+      if (response.bookingIntentId) {
+        setBookingIntent({
+          id: response.bookingIntentId,
+          suggestedEventIds: likedIds,
+          state: 'awaiting_selection',
+        });
+        console.log(`[Swipe] Booking intent updated: ${response.bookingIntentId}`);
+      }
+    } catch (error) {
+      console.error('[Swipe] Error processing swipe completion:', error);
+      Alert.alert('Errore', 'Impossibile processare i risultati');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  /**
+   * Send booking action to backend API
+   */
+  const handleSendBookingAction = async (
+    action: 'select' | 'confirm' | 'cancel',
+    eventId?: string,
+    intentId?: string
+  ) => {
+    if (!session?.accessToken || !location) {
+      console.error('[Booking] Missing required data for booking action');
+      return;
+    }
+
+    setIsTyping(true);
+
+    try {
+      // Call streaming API with booking action
+      const response = await chatService.getChatSuggestionsStream(
+        {
+          message: `booking_${action}`, // Placeholder message for booking actions
+          location,
+          radius_km: 5,
+          conversation_id: currentConversation?.id,
+          booking_action: action,
+          selected_event_id: eventId,
+          booking_intent_id: intentId,
+        },
+        session.accessToken,
+        (step, progressMessage) => {
+          console.log(`[Booking Stream] Progress: ${step} - ${progressMessage}`);
+        },
+        (content) => {
+          // Update AI message content in real-time during streaming
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastMessage = updated[updated.length - 1];
+
+            if (!lastMessage?.isUser) {
+              // Update existing AI message
+              updated[updated.length - 1] = {
+                ...lastMessage,
+                content: content,
+              };
+            } else {
+              // Create new AI message for first stream chunk
+              updated.push({
+                id: (Date.now() + 1).toString(),
+                content: content,
+                isUser: false,
+                timestamp: new Date(),
+              });
+            }
+
+            return updated;
+          });
+        }
+      );
+
+      // Add AI response to messages
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: response.conversationalResponse,
+        isUser: false,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastMessage = updated[updated.length - 1];
+
+        if (!lastMessage?.isUser) {
+          // Update existing AI message
+          updated[updated.length - 1] = aiMessage;
+        } else {
+          // Add new AI message
+          updated.push(aiMessage);
+        }
+
+        return updated;
+      });
+
+      // If booking was confirmed, update state to show success
+      if (action === 'confirm') {
+        setBookingIntent({
+          ...bookingIntent!,
+          state: 'confirmed',
+        });
+        // Modal will stay open to show success message
+        // User can close it manually via the onClose handler
+      }
+
+      // Save AI message to conversation
+      if (currentConversation && session?.accessToken) {
+        try {
+          await chatHistoryService.addMessage(currentConversation.id, {
+            content: response.conversationalResponse,
+            is_user: false,
+          }, session.accessToken);
+        } catch (error) {
+          console.error('Error saving booking response to conversation:', error);
+        }
+      }
+    } catch (error) {
+      console.error('[Booking] Error sending booking action:', error);
+      Alert.alert('Errore', 'Impossibile completare la prenotazione');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   const handleSendMessage = async (message: string) => {
     console.log('[ChatSearch] Sending message:', message);
     console.log('[ChatSearch] Location:', location);
     console.log('[ChatSearch] Session exists:', !!session);
     console.log('[ChatSearch] Access token exists:', !!session?.accessToken);
+
+    // Reset swipe mode for new message
+    setSwipeMode(false);
 
     // Add user message
     const userMessage: Message = {
@@ -428,6 +722,34 @@ export default function ChatSearchScreen() {
         return updated;
       });
 
+      // BOOKING FLOW: Capture booking intent if present
+      console.log(`[Booking] Response has bookingIntentId:`, response.bookingIntentId);
+      console.log(`[Booking] Response suggestions:`, response.suggestions?.length, response.suggestions);
+
+      if (response.bookingIntentId) {
+        const eventSuggestions = response.suggestions.filter((s: any) => s.type === 'event');
+        console.log(`[Booking] Filtered ${eventSuggestions.length} event suggestions from ${response.suggestions.length} total`);
+
+        if (eventSuggestions.length > 0) {
+          console.log(`[Booking] Booking intent created: ${response.bookingIntentId}`);
+
+          setBookingIntent({
+            id: response.bookingIntentId,
+            suggestedEventIds: eventSuggestions.map((s: any) => s.id),
+            state: 'awaiting_selection',
+          });
+
+          // SWIPE MODE: Activate if 2+ events suggested
+          if (eventSuggestions.length >= 2) {
+            console.log(`[Swipe] ✅ Activating swipe mode for ${eventSuggestions.length} events`);
+            setSwipeMode(true);
+          } else {
+            console.log(`[Swipe] ❌ Not activating swipe mode - only ${eventSuggestions.length} events (need 2+)`);
+          }
+        }
+      } else {
+        console.log(`[Booking] ❌ No bookingIntentId in response - swipe mode will not activate`);
+      }
 
       // If we have an existing conversation, save the AI message to it
       if (currentConversation && session?.accessToken) {
@@ -640,12 +962,23 @@ export default function ChatSearchScreen() {
                     isUser={msg.isUser}
                     timestamp={msg.timestamp}
                   />
-                  {/* Show suggestions inline with AI messages */}
-                  {!msg.isUser && msg.suggestions && msg.suggestions.length > 0 && (
-                    <View className="mt-4">
-                      <ChatSuggestionCards suggestions={msg.suggestions} />
-                    </View>
-                  )}
+                  {/* Show suggestions inline with AI messages - but not if swipe already completed */}
+                  {!msg.isUser && msg.suggestions && msg.suggestions.length > 0 && !msg.swipeCompleted && (() => {
+                    const mode = swipeMode ? 'swipe' : 'cards';
+                    console.log(`[Render] Displaying ${msg.suggestions.length} suggestions with mode: ${mode}, swipeMode=${swipeMode}`);
+                    return (
+                      <View className="mt-10">
+                        <ChatSuggestionCards
+                          suggestions={msg.suggestions}
+                          onBookingSelect={handleBookingSelect}
+                          bookingIntentId={bookingIntent?.id || null}
+                          selectedEventId={bookingIntent?.selectedEventId || null}
+                          displayMode={mode}
+                          onSwipeComplete={handleSwipeComplete}
+                        />
+                      </View>
+                    );
+                  })()}
                 </View>
               ))}
 
@@ -665,6 +998,21 @@ export default function ChatSearchScreen() {
             <ChatInput onSend={handleSendMessage} disabled={isTyping} />
           </View>
         </KeyboardAvoidingView>
+
+        {/* Booking Confirmation Modal */}
+        <ChatBookingConfirmation
+          visible={!!selectedEventForBooking && !!bookingIntent}
+          event={selectedEventForBooking}
+          bookingState={bookingIntent?.state || 'selected'}
+          onConfirm={handleBookingConfirm}
+          onCancel={handleBookingCancel}
+          onClose={() => {
+            setSelectedEventForBooking(null);
+            if (bookingIntent?.state === 'confirmed') {
+              setBookingIntent(null);
+            }
+          }}
+        />
       </SafeAreaView>
     </>
   );

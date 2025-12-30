@@ -88,8 +88,8 @@ export function VoiceMessageRecorder({
     const success = await startRecording();
     if (!success) {
       Alert.alert(
-        'Permission Required',
-        'Please grant microphone permission to record voice messages.',
+        'Permesso richiesto',
+        'Concedi il permesso al microfono per registrare messaggi vocali.',
         [{ text: 'OK' }]
       );
     }
@@ -101,12 +101,12 @@ export function VoiceMessageRecorder({
 
   const handleSend = async () => {
     if (!state.recordingUri || state.recordingDuration === 0) {
-      Alert.alert('Error', 'No recording to send');
+      Alert.alert('Errore', 'Nessuna registrazione da inviare');
       return;
     }
 
     if (state.recordingDuration < 1) {
-      Alert.alert('Too Short', 'Recording must be at least 1 second');
+      Alert.alert('Troppo breve', 'La registrazione deve durare almeno 1 secondo');
       return;
     }
 
@@ -128,8 +128,8 @@ export function VoiceMessageRecorder({
     } catch (error) {
       console.error('[VoiceMessageRecorder] Error sending voice message:', error);
       Alert.alert(
-        'Upload Failed',
-        error instanceof Error ? error.message : 'Failed to send voice message'
+        'Invio fallito',
+        error instanceof Error ? error.message : 'Impossibile inviare il messaggio vocale'
       );
     } finally {
       setIsUploading(false);
@@ -138,12 +138,12 @@ export function VoiceMessageRecorder({
 
   const handleDelete = async () => {
     Alert.alert(
-      'Delete Recording',
-      'Are you sure you want to delete this recording?',
+      'Elimina registrazione',
+      'Sei sicuro di voler eliminare questa registrazione?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Annulla', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Elimina',
           style: 'destructive',
           onPress: async () => {
             await deleteRecording();
@@ -170,7 +170,7 @@ export function VoiceMessageRecorder({
       >
         <View className="flex-row items-center justify-between mb-3">
           <Text className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-            Recording...
+            Registrazione...
           </Text>
           <Text className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {formatDuration(state.duration)} / {formatDuration(maxDuration)}
@@ -211,7 +211,7 @@ export function VoiceMessageRecorder({
       <View className="p-4 rounded-xl bg-muted border border-border">
         <View className="flex-row items-center justify-between mb-3">
           <Text className="text-sm font-medium text-foreground">
-            Voice Message Preview
+            Anteprima messaggio vocale
           </Text>
           <Text className="text-sm text-muted-foreground">
             {formatDuration(state.recordingDuration)}
@@ -234,7 +234,7 @@ export function VoiceMessageRecorder({
             </TouchableOpacity>
 
             <Text className="text-sm text-muted-foreground">
-              {state.isPlaying ? 'Playing...' : 'Tap to play'}
+              {state.isPlaying ? 'Riproduzione...' : 'Tocca per riprodurre'}
             </Text>
           </View>
 
@@ -264,7 +264,7 @@ export function VoiceMessageRecorder({
           >
             <X size={16} color={themeColors.foreground} className="mr-2" />
             <Text className="text-foreground">
-              Cancel
+              Annulla
             </Text>
           </TouchableOpacity>
 
@@ -278,12 +278,12 @@ export function VoiceMessageRecorder({
             {isUploading ? (
               <>
                 <ActivityIndicator size="small" color={themeColors.primaryForeground} className="mr-2" />
-                <Text className="text-primary-foreground">Sending...</Text>
+                <Text className="text-primary-foreground">Invio...</Text>
               </>
             ) : (
               <>
                 <Send size={16} color={themeColors.primaryForeground} className="mr-2" />
-                <Text className="text-primary-foreground">Send</Text>
+                <Text className="text-primary-foreground">Invia</Text>
               </>
             )}
           </TouchableOpacity>
@@ -296,10 +296,10 @@ export function VoiceMessageRecorder({
   return (
     <View className="p-4 rounded-xl bg-muted border border-border">
       <Text className="text-sm font-medium mb-3 text-foreground">
-        Record Voice Message
+        Registra messaggio vocale
       </Text>
       <Text className="text-xs mb-4 text-muted-foreground">
-        Hold to record, release to send. Maximum {maxDuration} seconds.
+        Tieni premuto per registrare, rilascia per inviare. Massimo {maxDuration} secondi.
       </Text>
 
       <View className="flex-row items-center justify-between">
@@ -309,7 +309,7 @@ export function VoiceMessageRecorder({
         >
           <X size={16} color={themeColors.foreground} className="mr-2" />
           <Text className="text-foreground">
-            Cancel
+            Annulla
           </Text>
         </TouchableOpacity>
 
@@ -318,7 +318,7 @@ export function VoiceMessageRecorder({
           className="px-4 py-2 rounded-lg flex-row items-center bg-primary"
         >
           <Mic size={16} color={themeColors.primaryForeground} className="mr-2" />
-          <Text className="text-primary-foreground">Start Recording</Text>
+          <Text className="text-primary-foreground">Inizia registrazione</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -14,10 +14,16 @@ interface ConversationListItemProps {
 export function ConversationListItem({
   conversation,
   onPress,
-  currentUserId
+  currentUserId,
 }: ConversationListItemProps) {
   const otherUser = conversation.other_user;
   const lastMessage = conversation.last_message;
+  const isGroupChat = conversation.is_group || conversation.type === 'group';
+
+  // For group chats, use title; for direct chats, use other user's name
+  const displayName = isGroupChat
+    ? (conversation.title || 'Chat di gruppo')
+    : (otherUser?.displayName || otherUser?.email || 'Utente sconosciuto');
 
   const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -62,21 +68,25 @@ export function ConversationListItem({
       onPress={onPress}
       className="flex-row items-center p-4 border-b border-border active:bg-muted"
     >
-      <Avatar alt={otherUser?.displayName || 'User'} className="w-14 h-14 mr-3">
-        {otherUser?.avatarUrl && (
-          <AvatarImage source={{ uri: otherUser.avatarUrl }} />
-        )}
-        <AvatarFallback>
-          <Text className="text-lg font-semibold">
-            {getInitials(otherUser?.displayName || otherUser?.email)}
-          </Text>
-        </AvatarFallback>
-      </Avatar>
+      <View className="relative mr-3">
+        <Avatar alt={displayName} className="w-16 h-16">
+          {isGroupChat && conversation.group_image_url ? (
+            <AvatarImage source={{ uri: conversation.group_image_url }} />
+          ) : !isGroupChat && otherUser?.avatarUrl ? (
+            <AvatarImage source={{ uri: otherUser.avatarUrl }} />
+          ) : null}
+          <AvatarFallback>
+            <Text className="text-lg font-semibold">
+              {isGroupChat ? '👥' : getInitials(otherUser?.displayName || otherUser?.email)}
+            </Text>
+          </AvatarFallback>
+        </Avatar>
+      </View>
 
       <View className="flex-1 justify-center">
         <View className="flex-row items-center justify-between mb-1">
           <Text className="text-base font-semibold flex-1" numberOfLines={1}>
-            {otherUser?.displayName || otherUser?.email || 'Utente sconosciuto'}
+            {displayName}
           </Text>
           {lastMessage && (
             <Text className="text-xs text-muted-foreground ml-2">

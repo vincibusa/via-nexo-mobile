@@ -1,6 +1,6 @@
 /**
- * Profile Screen - Instagram Style Redesign
- * Modern Instagram-like layout with header, story highlights, tabs, and content grid
+ * Profile Screen - RAVE ID Design
+ * Profile card with stats, level progress, and content tabs
  */
 
 import React, { useState } from 'react';
@@ -16,14 +16,13 @@ import { useAuth } from '../../../lib/contexts/auth';
 import { useSettings } from '../../../lib/contexts/settings';
 import { THEME } from '../../../lib/theme';
 
-// Import new components
-import { ProfileHeader } from '../../../components/profile/profile-header';
-import { StoryHighlights } from '../../../components/profile/story-highlights';
-import { ProfileReservations } from '../../../components/profile/profile-reservations';
-import { ProfileContentTabs } from '../../../components/profile/profile-content-tabs';
+// Import components
+import { RaveIdHeader } from '../../../components/profile/rave-id-header';
+import { ProfileContentTabsNew } from '../../../components/profile/profile-content-tabs-new';
 import { ProfileSettings } from '../../../components/profile/profile-settings';
 import { NotificationsSheet } from '../../../components/profile/notifications-sheet';
-import { useProfileData } from '../../../lib/hooks/useProfileData';
+import { ManagerToolsSection } from '../../../components/manager/manager-tools-section';
+import { useRaveScore } from '../../../lib/hooks/useRaveScore';
 import { API_CONFIG } from '../../../lib/config';
 
 export default function ProfileScreen() {
@@ -38,18 +37,27 @@ export default function ProfileScreen() {
   const themeColors = THEME.dark;
   const isDark = true;
 
-  // Use custom hook for data management
-  const { refreshing, error, refreshProfile, posts, isLoadingPosts } = useProfileData();
+  // State for refresh
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Refresh profile when screen is focused
+  // Load RAVE score
+  const { score: raveScore } = useRaveScore(user?.id);
+
+  // Refresh when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       if (user?.id) {
-        refreshProfile();
         loadUnreadNotificationsCount();
       }
-    }, [user?.id, refreshProfile])
+    }, [user?.id])
   );
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadUnreadNotificationsCount();
+    setRefreshing(false);
+  };
 
   // Load unread notifications count
   const loadUnreadNotificationsCount = async () => {
@@ -74,10 +82,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleEditProfile = () => {
-    router.push('/edit-profile' as any);
-  };
-
   const handleNavigate = (screen: string) => {
     router.push(`/${screen}` as any);
   };
@@ -89,10 +93,6 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
-
-  const handleCreateStory = () => {
-    router.push('/(app)/create-story' as any);
   };
 
   // Show loading state if no user
@@ -118,41 +118,26 @@ export default function ProfileScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={refreshProfile}
+            onRefresh={handleRefresh}
             tintColor={themeColors.foreground}
             colors={[themeColors.primary]}
           />
         }
       >
-        {/* Error message */}
-        {error && (
-          <View className="mx-4 mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-            <Text className="text-destructive text-sm">
-              {error}
-            </Text>
-          </View>
-        )}
-
-        {/* Profile Header - Instagram Style */}
-        <ProfileHeader
+        {/* RAVE ID Header with Profile Card */}
+        <RaveIdHeader
           user={user}
-          isDark={isDark}
-          onEditProfile={handleEditProfile}
+          raveScore={raveScore}
           onSettingsPress={() => setSettingsOpen(true)}
           onNotificationsPress={() => setNotificationsOpen(true)}
           unreadNotificationsCount={unreadNotificationsCount}
         />
 
-        {/* Story Highlights */}
-        <StoryHighlights onCreatePress={handleCreateStory} />
+        {/* Manager Tools Section - only visible for managers */}
+        {user?.role === 'manager' && <ManagerToolsSection />}
 
-        {/* Reservations Section */}
-        <ProfileReservations maxItems={5} />
-
-        {/* Content Tabs with Grid */}
-        <View className="mt-2">
-          <ProfileContentTabs posts={posts} isLoading={isLoadingPosts} />
-        </View>
+        {/* Content Tabs - Eventi Prenotati / Archivio Storie */}
+        <ProfileContentTabsNew />
 
         {/* Bottom spacing */}
         <View className="h-8" />

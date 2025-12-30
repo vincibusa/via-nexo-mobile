@@ -8,6 +8,7 @@ import {
   FlatList,
   Modal,
   TextInput,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -43,6 +44,7 @@ export default function ReservationScreen() {
   const [showFollowerModal, setShowFollowerModal] = useState(false);
   const [tempSelectedFollowers, setTempSelectedFollowers] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [wantsGroupChat, setWantsGroupChat] = useState(false);
 
   const loadEvent = useCallback(async () => {
     if (!id) return;
@@ -103,7 +105,9 @@ export default function ReservationScreen() {
     try {
       const { data, error } = await reservationsService.createReservation(
         event.id,
-        selectedFollowers
+        selectedFollowers,
+        undefined, // notes
+        wantsGroupChat
       );
 
       if (error) {
@@ -306,6 +310,26 @@ export default function ReservationScreen() {
                 </Pressable>
               )}
             </View>
+
+            {/* Group Chat Switch */}
+            <Card className="mb-6">
+              <CardContent className="p-4 flex-row items-center justify-between">
+                <View className="flex-1 mr-4">
+                  <Text className="font-semibold text-foreground mb-1">
+                    Chat di gruppo
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    Partecipa alla chat con gli altri iscritti all'evento
+                  </Text>
+                </View>
+                <Switch
+                  value={wantsGroupChat}
+                  onValueChange={setWantsGroupChat}
+                  trackColor={{ false: themeColors.mutedForeground + '40', true: themeColors.primary + '80' }}
+                  thumbColor={wantsGroupChat ? themeColors.primary : themeColors.mutedForeground}
+                />
+              </CardContent>
+            </Card>
 
             {/* Info Box */}
             <Card className="mb-6 border-primary/30 bg-primary/10">

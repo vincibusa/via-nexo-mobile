@@ -41,6 +41,15 @@ export interface UserProfile {
   bio?: string;
 }
 
+export interface ReservationGuest {
+  id: string;
+  reservation_id: string;
+  user_id: string;
+  checked_in: boolean;
+  checked_in_at?: string;
+  user?: UserProfile;
+}
+
 class ReservationsService {
   /**
    * Get all reservations for current user
@@ -81,6 +90,50 @@ class ReservationsService {
       return { data: data.reservations };
     } catch (error) {
       console.error('Get my reservations error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Get all reservations for a specific user (for viewing other profiles)
+   */
+  async getUserReservations(
+    userId: string,
+    offset = 0,
+    limit = 20
+  ): Promise<{ data?: Reservation[]; error?: string }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/user/${userId}?offset=${offset}&limit=${limit}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error:
+            errorData.error ||
+            'Failed to fetch user reservations',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.reservations };
+    } catch (error) {
+      console.error('Get user reservations error:', error);
       return { error: 'Network error' };
     }
   }
@@ -133,7 +186,8 @@ class ReservationsService {
   async createReservation(
     eventId: string,
     guestIds: string[] = [],
-    notes?: string
+    notes?: string,
+    wantsGroupChat: boolean = false
   ): Promise<{ data?: Reservation; error?: string }> {
     try {
       const session = await storage.getSession();
@@ -153,6 +207,7 @@ class ReservationsService {
         body: JSON.stringify({
           guest_ids: guestIds,
           notes,
+          wants_group_chat: wantsGroupChat,
         }),
       });
 

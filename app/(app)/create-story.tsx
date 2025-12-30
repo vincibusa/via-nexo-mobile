@@ -114,7 +114,7 @@ export default function CreateStoryScreen() {
     if (status !== 'granted') {
       Alert.alert(
         'Permesso richiesto',
-        'Per selezionare immagini dalla galleria, Nexo ha bisogno dell\'accesso alla tua libreria fotografica.',
+        'Per selezionare immagini dalla galleria, Party Hub ha bisogno dell\'accesso alla tua libreria fotografica.',
         [
           { text: 'Annulla', style: 'cancel' },
           { text: 'Apri Impostazioni', onPress: () => Linking.openURL('app-settings:') }
@@ -130,7 +130,7 @@ export default function CreateStoryScreen() {
     if (status !== 'granted') {
       Alert.alert(
         'Permesso richiesto',
-        'Per scattare foto, Nexo ha bisogno dell\'accesso alla fotocamera.',
+        'Per scattare foto, Party Hub ha bisogno dell\'accesso alla fotocamera.',
         [
           { text: 'Annulla', style: 'cancel' },
           { text: 'Apri Impostazioni', onPress: () => Linking.openURL('app-settings:') }

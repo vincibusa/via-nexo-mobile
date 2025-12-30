@@ -8,7 +8,9 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 import { Text } from '../../../components/ui/text';
 import { DiscoveryCard } from '../../../components/discovery/discovery-card';
 import { discoveryService } from '../../../lib/services/discovery';
@@ -22,6 +24,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function DiscoveryScreen() {
   const { session } = useAuth();
   const { addFavorite, removeFavorite, isFavorite, getFavoriteId } = useFavorites();
+  const insets = useSafeAreaInsets();
   const [discoveryItems, setDiscoveryItems] = useState<DiscoveryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,6 +32,17 @@ export default function DiscoveryScreen() {
   const flatListRef = useRef<FlatList>(null);
   const viewedItemsRef = useRef<Set<string>>(new Set());
   const themeColors = THEME.dark;
+  const isFocused = useIsFocused();
+
+  // Calculate available height excluding safe areas (top status bar + bottom tab bar)
+  const availableHeight = SCREEN_HEIGHT - insets.top - insets.bottom;
+
+  // Configure audio to play even in silent mode (iOS)
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+    });
+  }, []);
 
   useEffect(() => {
     loadDiscoveryFeed();
@@ -140,12 +154,13 @@ export default function DiscoveryScreen() {
   };
 
   const renderItem = ({ item, index }: { item: DiscoveryItem; index: number }) => (
-    <View style={{ height: SCREEN_HEIGHT }}>
+    <View style={{ height: availableHeight }}>
       <DiscoveryCard
         item={item}
-        isActive={activeIndex === index}
+        isActive={activeIndex === index && isFocused}
         onLike={() => handleLike(item)}
         onView={() => handleView(item)}
+        containerHeight={availableHeight}
       />
     </View>
   );
@@ -187,14 +202,14 @@ export default function DiscoveryScreen() {
         keyExtractor={(item) => item.id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
+        snapToInterval={availableHeight}
         snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={handleViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         getItemLayout={(_, index) => ({
-          length: SCREEN_HEIGHT,
-          offset: SCREEN_HEIGHT * index,
+          length: availableHeight,
+          offset: availableHeight * index,
           index,
         })}
         refreshControl={
@@ -212,4 +227,7 @@ export default function DiscoveryScreen() {
     </SafeAreaView>
   );
 }
+
+
+
 

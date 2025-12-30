@@ -11,6 +11,16 @@ export interface User {
   followingCount?: number;
   isPrivate?: boolean;
   isVerified?: boolean;
+  raveScore?: {
+    total: number;
+    presence: number;
+    trust: number;
+    crew: number;
+    presenceLabel: string;
+    trustLabel: string;
+    crewLabel: string;
+    updatedAt: string;
+  };
 }
 
 export interface Session {
@@ -38,6 +48,12 @@ export interface LoginResponse {
 
 export interface SignupResponse {
   user: User;
+  message: string;
+}
+
+export interface RefreshResponse {
+  user: User;
+  session: Session;
   message: string;
 }
 

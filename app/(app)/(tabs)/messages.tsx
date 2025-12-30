@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, FlatList, Alert, RefreshControl, Pressable, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
 import { Text } from '../../../components/ui/text';
 import { ActivityIndicator } from 'react-native';
@@ -8,10 +9,16 @@ import { useAuth } from '../../../lib/contexts/auth';
 import MessagingService from '../../../lib/services/messaging';
 import type { Conversation } from '../../../lib/types/messaging';
 import { MessageCircle, Plus, Search, X } from 'lucide-react-native';
-import { ConversationListItem } from '../../../components/messaging/ConversationListItem';
+import { SwipeableConversationItem } from '../../../components/messaging/SwipeableConversationItem';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
 import { useConversationsRealtime } from '../../../lib/hooks/useConversationsRealtime';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 
 export default function MessagesScreen() {
   const { session, user } = useAuth();
@@ -24,9 +31,31 @@ export default function MessagesScreen() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
   // Use dark theme (single theme for the app)
   const themeColors = THEME.dark;
+
+  // Animation values
+  const borderOpacity = useSharedValue(0);
+  const bgOpacity = useSharedValue(0.3);
+
+  // Animated styles for search bar
+  const animatedSearchBarStyle = useAnimatedStyle(() => ({
+    borderColor: `rgba(99, 102, 241, ${borderOpacity.value})`,
+    backgroundColor: `rgba(115, 115, 115, ${bgOpacity.value})`,
+  }));
+
+  // Handle focus animation
+  useEffect(() => {
+    if (isFocused || searchQuery.length > 0) {
+      borderOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
+    } else {
+      borderOpacity.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(0.3, { duration: 200, easing: Easing.out(Easing.ease) });
+    }
+  }, [isFocused, searchQuery, borderOpacity, bgOpacity]);
 
   // Filter conversations based on search query
   const filteredConversations = useMemo(() => {
@@ -106,6 +135,66 @@ export default function MessagesScreen() {
     router.push('/(app)/new-conversation' as any);
   };
 
+  const handleCancel = () => {
+    setSearchQuery('');
+    setIsFocused(false);
+  };
+
+  const handleDeleteConversation = (conversation: Conversation) => {
+    Alert.alert(
+      'Elimina conversazione',
+      `Sei sicuro di voler eliminare la conversazione con ${conversation.other_user?.displayName || 'questo utente'}?`,
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await MessagingService.deleteConversation(conversation.id);
+              setConversations((prev) => prev.filter((c) => c.id !== conversation.id));
+            } catch (error) {
+              console.error('Error deleting conversation:', error);
+              Alert.alert('Errore', 'Impossibile eliminare la conversazione');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleArchiveConversation = async (conversation: Conversation) => {
+    try {
+      await MessagingService.archiveConversation(conversation.id);
+      setConversations((prev) => prev.filter((c) => c.id !== conversation.id));
+      Alert.alert('Archiviata', 'Conversazione archiviata con successo');
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+      Alert.alert('Errore', 'Impossibile archiviare la conversazione');
+    }
+  };
+
+  const handleMuteConversation = async (conversation: Conversation) => {
+    try {
+      const isMuted = conversation.is_muted;
+      await MessagingService.muteConversation(conversation.id, !isMuted);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversation.id ? { ...c, is_muted: !isMuted } : c
+        )
+      );
+      Alert.alert(
+        isMuted ? 'Notifiche attivate' : 'Silenziata',
+        isMuted
+          ? 'Riceverai notifiche per questa conversazione'
+          : 'Non riceverai notifiche per questa conversazione'
+      );
+    } catch (error) {
+      console.error('Error muting conversation:', error);
+      Alert.alert('Errore', 'Impossibile modificare le notifiche');
+    }
+  };
+
   const renderEmpty = () => (
     <View className="flex-1 items-center justify-center px-6 py-12">
       <MessageCircle size={64} color={themeColors.mutedForeground} />
@@ -129,38 +218,45 @@ export default function MessagesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <Stack.Screen
-        options={{
-          title: 'Messaggi',
-          headerShown: true,
-          headerBackTitle: ' ',
-        }}
-      />
+
 
       {/* Search Bar and New Conversation Button */}
       <View className="px-4 py-3 flex-row items-center gap-3">
-        <View className="flex-1 flex-row items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
+        <Animated.View
+          style={[animatedSearchBarStyle]}
+          className="flex-1 flex-row items-center gap-2 rounded-full px-4 py-3 border"
+        >
           <Search size={18} color={themeColors.mutedForeground} />
           <TextInput
             placeholder="Cerca conversazioni"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor={themeColors.mutedForeground}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholderTextColor="#737373"
             className="flex-1 py-0 text-base text-foreground leading-5"
             autoCapitalize="none"
+            returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color={themeColors.mutedForeground} />
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <X size={18} color={themeColors.mutedForeground} />
             </TouchableOpacity>
           )}
-        </View>
-        <TouchableOpacity
-          onPress={handleNewConversation}
-          className="w-10 h-10 items-center justify-center rounded-xl bg-primary"
-        >
-          <Plus size={22} color={themeColors.primaryForeground} />
-        </TouchableOpacity>
+        </Animated.View>
+        {(isFocused || searchQuery.length > 0) && (
+          <TouchableOpacity onPress={handleCancel}>
+            <Text className="text-base font-medium text-primary">Annulla</Text>
+          </TouchableOpacity>
+        )}
+        {!(isFocused || searchQuery.length > 0) && (
+          <TouchableOpacity
+            onPress={handleNewConversation}
+            className="w-10 h-10 items-center justify-center rounded-xl bg-primary"
+          >
+            <Plus size={22} color={themeColors.primaryForeground} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading && conversations.length === 0 ? (
@@ -171,32 +267,37 @@ export default function MessagesScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredConversations}
-          renderItem={({ item }) => (
-            <ConversationListItem
-              conversation={item}
-              onPress={() => handleConversationPress(item)}
-              currentUserId={user?.id || ''}
-            />
-          )}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{
-            flexGrow: 1,
-          }}
-          ListEmptyComponent={renderEmpty}
-          ListFooterComponent={renderFooter}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={handleRefresh}
-              tintColor={themeColors.foreground}
-              colors={[themeColors.primary]}
-            />
-          }
-        />
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <FlatList
+            data={filteredConversations}
+            renderItem={({ item }) => (
+              <SwipeableConversationItem
+                conversation={item}
+                currentUserId={user?.id || ''}
+                onPress={() => handleConversationPress(item)}
+                onDelete={() => handleDeleteConversation(item)}
+                onArchive={() => handleArchiveConversation(item)}
+                onMute={() => handleMuteConversation(item)}
+              />
+            )}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{
+              flexGrow: 1,
+            }}
+            ListEmptyComponent={renderEmpty}
+            ListFooterComponent={renderFooter}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={themeColors.foreground}
+                colors={[themeColors.primary]}
+              />
+            }
+          />
+        </GestureHandlerRootView>
       )}
     </SafeAreaView>
   );

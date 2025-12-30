@@ -1,4 +1,3 @@
-import { SocialConnections } from '../components/social-connections';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -9,7 +8,6 @@ import {
 } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Separator } from '../components/ui/separator';
 import { Text } from '../components/ui/text';
 import { useAuth } from '../lib/contexts/auth';
 import { useRouter } from 'expo-router';
@@ -17,11 +15,14 @@ import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { cn } from '../lib/utils';
+import { Eye, EyeOff, Check } from 'lucide-react-native';
+import { PasswordStrengthIndicator } from './password-strength-indicator';
 
 export function SignUpForm() {
   const { colorScheme } = useColorScheme();
   const { signup } = useAuth();
   const router = useRouter();
+  const emailInputRef = React.useRef<TextInput>(null);
   const passwordInputRef = React.useRef<TextInput>(null);
   const confirmPasswordInputRef = React.useRef<TextInput>(null);
   const [displayName, setDisplayName] = React.useState('');
@@ -30,6 +31,14 @@ export function SignUpForm() {
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+
+  const passwordsMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
+
+  function onDisplayNameSubmitEditing() {
+    emailInputRef.current?.focus();
+  }
 
   function onEmailSubmitEditing() {
     passwordInputRef.current?.focus();
@@ -41,17 +50,17 @@ export function SignUpForm() {
 
   async function onSubmit() {
     if (!email || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
+      setError('Compila tutti i campi obbligatori');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Le password non coincidono');
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError('La password deve avere almeno 8 caratteri');
       return;
     }
 
@@ -64,8 +73,8 @@ export function SignUpForm() {
         setError(result.error);
       } else {
         Alert.alert(
-          'Success!',
-          'Account created successfully. Please check your email to verify your account.',
+          'Fatto!',
+          'Account creato con successo. Controlla la tua email per verificare l\'account.',
           [
             {
               text: 'OK',
@@ -79,13 +88,16 @@ export function SignUpForm() {
     }
   }
 
+  // Colore icone basato sul tema
+  const iconColor = colorScheme === 'dark' ? '#a3a3a3' : '#737373';
+
   return (
     <View className="gap-6">
       <Card className={cn("border-border/0 sm:border-border shadow-none sm:shadow-sm", colorScheme === 'dark' ? 'sm:shadow-white/5' : 'sm:shadow-black/5')}>
         <CardHeader>
-          <CardTitle className="text-center text-xl sm:text-left">Create your account</CardTitle>
+          <CardTitle className="text-center text-xl sm:text-left">Crea il tuo account</CardTitle>
           <CardDescription className="text-center sm:text-left">
-            Welcome! Please fill in the details to get started.
+            Benvenuto! Compila i dati per iniziare.
           </CardDescription>
         </CardHeader>
         <CardContent className="gap-6">
@@ -94,24 +106,26 @@ export function SignUpForm() {
               <Text className="text-destructive text-sm">{error}</Text>
             </View>
           ) : null}
-          <View className="gap-6">
+          <View className="gap-5">
             <View className="gap-1.5">
-              <Label htmlFor="displayName">Display Name (Optional)</Label>
+              <Label htmlFor="displayName">Nome visualizzato (Opzionale)</Label>
               <Input
                 id="displayName"
-                placeholder="Your name"
+                placeholder="Il tuo nome"
                 autoCapitalize="words"
                 value={displayName}
                 onChangeText={setDisplayName}
                 editable={!isLoading}
                 returnKeyType="next"
+                onSubmitEditing={onDisplayNameSubmitEditing}
               />
             </View>
             <View className="gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
+                ref={emailInputRef}
                 id="email"
-                placeholder="m@example.com"
+                placeholder="mario@esempio.com"
                 keyboardType="email-address"
                 autoComplete="email"
                 autoCapitalize="none"
@@ -125,52 +139,89 @@ export function SignUpForm() {
             </View>
             <View className="gap-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input
-                ref={passwordInputRef}
-                id="password"
-                placeholder="At least 8 characters"
-                secureTextEntry
-                returnKeyType="next"
-                onSubmitEditing={onPasswordSubmitEditing}
-                value={password}
-                onChangeText={setPassword}
-                editable={!isLoading}
-              />
+              <View className="relative">
+                <Input
+                  ref={passwordInputRef}
+                  id="password"
+                  placeholder="Almeno 8 caratteri"
+                  secureTextEntry={!showPassword}
+                  returnKeyType="next"
+                  onSubmitEditing={onPasswordSubmitEditing}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!isLoading}
+                  className="pr-11"
+                />
+                <Pressable
+                  className="absolute right-0 top-0 bottom-0 px-3 justify-center"
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
+                  ) : (
+                    <Eye size={20} color={iconColor} strokeWidth={1.5} />
+                  )}
+                </Pressable>
+              </View>
+              {password.length > 0 && <PasswordStrengthIndicator password={password} />}
             </View>
             <View className="gap-1.5">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                ref={confirmPasswordInputRef}
-                id="confirmPassword"
-                placeholder="Re-enter your password"
-                secureTextEntry
-                returnKeyType="send"
-                onSubmitEditing={onSubmit}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                editable={!isLoading}
-              />
+              <View className="flex-row items-center">
+                <Label htmlFor="confirmPassword">Conferma Password</Label>
+                {passwordsMatch && (
+                  <View className="ml-2">
+                    <Check size={16} color="#22c55e" strokeWidth={2} />
+                  </View>
+                )}
+              </View>
+              <View className="relative">
+                <Input
+                  ref={confirmPasswordInputRef}
+                  id="confirmPassword"
+                  placeholder="Reinserisci la password"
+                  secureTextEntry={!showConfirmPassword}
+                  returnKeyType="send"
+                  onSubmitEditing={onSubmit}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  editable={!isLoading}
+                  className="pr-11"
+                />
+                <Pressable
+                  className="absolute right-0 top-0 bottom-0 px-3 justify-center"
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} color={iconColor} strokeWidth={1.5} />
+                  ) : (
+                    <Eye size={20} color={iconColor} strokeWidth={1.5} />
+                  )}
+                </Pressable>
+              </View>
             </View>
             <Button className="w-full" onPress={onSubmit} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator /> : <Text>Continue</Text>}
+              {isLoading ? (
+                <View className="flex-row items-center gap-2">
+                  <ActivityIndicator color="white" size="small" />
+                  <Text>Creazione in corso...</Text>
+                </View>
+              ) : (
+                <Text>Continua</Text>
+              )}
             </Button>
           </View>
           <View className="flex-row items-center justify-center">
-            <Text className="text-center text-sm">Already have an account? </Text>
+            <Text className="text-center text-sm">Hai già un account? </Text>
             <Pressable
               onPress={() => {
                 router.push('/(auth)/login');
               }}
               disabled={isLoading}>
-              <Text className="text-sm underline underline-offset-4">Sign in</Text>
+              <Text className="text-sm underline underline-offset-4">Accedi</Text>
             </Pressable>
           </View>
-          <View className="flex-row items-center">
-            <Separator className="flex-1" />
-            <Text className="text-muted-foreground px-4 text-sm">or</Text>
-            <Separator className="flex-1" />
-          </View>
-          <SocialConnections />
         </CardContent>
       </Card>
     </View>

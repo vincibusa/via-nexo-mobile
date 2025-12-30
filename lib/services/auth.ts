@@ -1,5 +1,5 @@
 import { API_CONFIG } from '../../lib/config';
-import type { LoginResponse, SignupResponse, User } from '../../lib/types/auth';
+import type { LoginResponse, SignupResponse, User, RefreshResponse } from '../../lib/types/auth';
 
 class AuthService {
   private async request<T>(
@@ -61,6 +61,13 @@ class AuthService {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+    });
+  }
+
+  async refreshToken(refreshToken: string) {
+    return this.request<RefreshResponse>(API_CONFIG.ENDPOINTS.REFRESH, {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     });
   }
 }
