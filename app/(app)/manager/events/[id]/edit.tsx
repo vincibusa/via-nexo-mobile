@@ -187,6 +187,11 @@ export default function EditEventScreen() {
           capacity: event.capacity,
           lista_nominativa_enabled: event.lista_nominativa_enabled,
           max_guests_per_reservation: event.max_guests_per_reservation,
+          prive_enabled: event.prive_enabled,
+          prive_min_price: event.prive_min_price,
+          prive_max_seats: event.prive_max_seats,
+          prive_deposit_required: event.prive_deposit_required,
+          prive_total_capacity: event.prive_total_capacity,
         }}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}

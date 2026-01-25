@@ -95,3 +95,29 @@ export function getEventCountdown(startDateTime: string): string {
     return 'Data non disponibile';
   }
 }
+
+/**
+ * Check if an event is in the past based on its start datetime
+ */
+export function isEventPast(eventStartDatetime: string): boolean {
+  try {
+    const eventDate = new Date(eventStartDatetime);
+    const now = new Date();
+    return eventDate < now;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Check if an event is in the future based on its start datetime
+ */
+export function isEventFuture(eventStartDatetime: string): boolean {
+  try {
+    const eventDate = new Date(eventStartDatetime);
+    const now = new Date();
+    return eventDate > now;
+  } catch (error) {
+    return false;
+  }
+}

@@ -47,7 +47,7 @@ export function MapLinkButton({ latitude, longitude, label, address }: MapLinkBu
   return (
     <Button variant="outline" onPress={openMaps} className="flex-row gap-2">
       <MapPin size={18} color={themeColors.foreground} />
-      <Text>Apri in Maps</Text>
+      <Text>Ottieni indicazioni</Text>
     </Button>
   );
 }

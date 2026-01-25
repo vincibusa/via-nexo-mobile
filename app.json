@@ -4,14 +4,14 @@
     "slug": "nexo-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "nexo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#A80002"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,6 +20,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.busalacchi.nexo",
       "buildNumber": "1",
+      "splash": {
+        "image": "./assets/images/splash.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#A80002"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Party Hub utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Party Hub utilizza la tua posizione per mostrarti locali ed eventi nelle vicinanze.",
@@ -31,9 +36,14 @@
     },
     "android": {
       "edgeToEdgeEnabled": false,
+      "splash": {
+        "image": "./assets/images/splash.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#A80002"
+      },
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.png",
-        "backgroundColor": "#000000"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#A80002"
       },
       "package": "com.busalacchi.nexo",
       "versionCode": 1,
@@ -52,9 +62,17 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/logo.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#A80002",
+          "image": "./assets/images/splash.png",
+          "imageWidth": 200
+        }
+      ],
       "expo-router",
       [
         "expo-location",
@@ -65,8 +83,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/logo.png",
-          "color": "#0f172a"
+          "icon": "./assets/images/icon.png",
+          "color": "#A80002"
         }
       ]
     ],

@@ -14,6 +14,12 @@ export interface EventDetail {
   ticket_price_max?: number;
   ticket_url?: string;
   ticket_availability: 'available' | 'sold_out' | 'limited';
+  prive_enabled?: boolean;
+  prive_min_price?: number;
+  prive_max_seats?: number;
+  prive_total_capacity?: number;
+  capacity?: number;
+  max_guests_per_reservation?: number;
   place?: {
     id: string;
     name: string;

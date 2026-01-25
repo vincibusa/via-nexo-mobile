@@ -431,7 +431,8 @@ export default function ConversationScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          headerBackTitle: ' ',
+          headerBackTitle: '',
+          headerBackTitleVisible: false,
           headerTitle: renderHeaderTitle,
         }}
       />

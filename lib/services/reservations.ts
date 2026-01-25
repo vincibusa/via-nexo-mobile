@@ -1,5 +1,10 @@
 import { API_CONFIG } from '../../lib/config';
 import { storage } from '../../lib/storage';
+import type {
+  OpenTable,
+  JoinRequest,
+  JoinRequestWithReservation,
+} from '../types/reservations';
 
 export interface Reservation {
   id: string;
@@ -12,6 +17,11 @@ export interface Reservation {
   checked_in_at?: string;
   created_at: string;
   updated_at: string;
+  reservation_type?: 'pista' | 'prive';
+  is_open_table?: boolean;
+  open_table_description?: string;
+  open_table_min_budget?: number;
+  open_table_available_spots?: number;
   event?: {
     id: string;
     title: string;
@@ -56,7 +66,8 @@ class ReservationsService {
    */
   async getMyReservations(
     offset = 0,
-    limit = 20
+    limit = 20,
+    includePast = true
   ): Promise<{ data?: Reservation[]; error?: string }> {
     try {
       const session = await storage.getSession();
@@ -65,7 +76,7 @@ class ReservationsService {
       }
       const token = session.accessToken;
 
-      const url = `${API_CONFIG.BASE_URL}/api/reservations/my?offset=${offset}&limit=${limit}`;
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/my?offset=${offset}&limit=${limit}&include_past=${includePast}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -100,7 +111,8 @@ class ReservationsService {
   async getUserReservations(
     userId: string,
     offset = 0,
-    limit = 20
+    limit = 20,
+    includePast = true
   ): Promise<{ data?: Reservation[]; error?: string }> {
     try {
       const session = await storage.getSession();
@@ -109,7 +121,7 @@ class ReservationsService {
       }
       const token = session.accessToken;
 
-      const url = `${API_CONFIG.BASE_URL}/api/reservations/user/${userId}?offset=${offset}&limit=${limit}`;
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/user/${userId}?offset=${offset}&limit=${limit}&include_past=${includePast}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -187,7 +199,12 @@ class ReservationsService {
     eventId: string,
     guestIds: string[] = [],
     notes?: string,
-    wantsGroupChat: boolean = false
+    wantsGroupChat: boolean = false,
+    reservationType: 'pista' | 'prive' = 'pista',
+    isOpenTable: boolean = false,
+    openTableDescription?: string,
+    openTableMinBudget?: number,
+    openTableAvailableSpots?: number
   ): Promise<{ data?: Reservation; error?: string }> {
     try {
       const session = await storage.getSession();
@@ -198,17 +215,28 @@ class ReservationsService {
 
       const url = `${API_CONFIG.BASE_URL}/api/events/${eventId}/reservations`;
 
+      const body: any = {
+        guest_ids: guestIds,
+        notes,
+        wants_group_chat: wantsGroupChat,
+        reservation_type: reservationType,
+      };
+
+      // Add open table fields only for prive reservations
+      if (reservationType === 'prive' && isOpenTable) {
+        body.is_open_table = true;
+        body.open_table_description = openTableDescription;
+        body.open_table_min_budget = openTableMinBudget;
+        body.open_table_available_spots = openTableAvailableSpots;
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          guest_ids: guestIds,
-          notes,
-          wants_group_chat: wantsGroupChat,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -223,7 +251,7 @@ class ReservationsService {
       }
 
       const data = await response.json();
-      return { data };
+      return { data: data.reservation || data };
     } catch (error) {
       console.error('Create reservation error:', error);
       return { error: 'Network error' };
@@ -253,17 +281,41 @@ class ReservationsService {
         },
       });
 
+      const responseText = await response.text();
+      console.log('[Reservations] Cancel response:', {
+        status: response.status,
+        ok: response.ok,
+        text: responseText,
+      });
+
       if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({})) as any;
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { error: responseText || 'Unknown error' };
+        }
+        console.error('[Reservations] Cancel error:', {
+          status: response.status,
+          error: errorData,
+        });
         return {
           error:
             errorData.error ||
-            'Failed to cancel reservation',
+            `Failed to cancel reservation (${response.status})`,
         };
       }
 
+      // Verify response is successful
+      let data: any = {};
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        console.warn('[Reservations] Failed to parse response:', e);
+        // If response is empty or invalid JSON but status is OK, consider it success
+        data = {};
+      }
+      console.log('[Reservations] Cancel success:', data);
       return {};
     } catch (error) {
       console.error('Cancel reservation error:', error);
@@ -432,6 +484,255 @@ class ReservationsService {
       return { data };
     } catch (error) {
       console.error('Verify QR code error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Get open tables for an event
+   */
+  async getOpenTables(
+    eventId: string
+  ): Promise<{ data?: OpenTable[]; error?: string }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      const url = `${API_CONFIG.BASE_URL}/api/events/${eventId}/open-tables`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error: errorData.error || 'Failed to fetch open tables',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.open_tables || [] };
+    } catch (error) {
+      console.error('Get open tables error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Send a join request to an open table
+   */
+  async sendJoinRequest(
+    reservationId: string,
+    message?: string
+  ): Promise<{ data?: JoinRequest; error?: string }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/${reservationId}/join-request`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error: errorData.error || 'Failed to send join request',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.join_request };
+    } catch (error) {
+      console.error('Send join request error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Get join requests for a reservation (owner only)
+   */
+  async getJoinRequests(
+    reservationId: string,
+    status?: 'pending' | 'approved' | 'rejected'
+  ): Promise<{ data?: JoinRequest[]; error?: string }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      let url = `${API_CONFIG.BASE_URL}/api/reservations/${reservationId}/join-requests`;
+      if (status) {
+        url += `?status=${status}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error: errorData.error || 'Failed to fetch join requests',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.join_requests || [] };
+    } catch (error) {
+      console.error('Get join requests error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Approve a join request
+   */
+  async approveJoinRequest(
+    reservationId: string,
+    requestId: string
+  ): Promise<{ data?: JoinRequest; error?: string }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/${reservationId}/join-requests/${requestId}/approve`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error: errorData.error || 'Failed to approve join request',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.join_request };
+    } catch (error) {
+      console.error('Approve join request error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Reject a join request
+   */
+  async rejectJoinRequest(
+    reservationId: string,
+    requestId: string
+  ): Promise<{ data?: JoinRequest; error?: string }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/${reservationId}/join-requests/${requestId}/reject`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error: errorData.error || 'Failed to reject join request',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.join_request };
+    } catch (error) {
+      console.error('Reject join request error:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Get all pending join requests for current user's open tables
+   */
+  async getMyPendingRequests(): Promise<{
+    data?: JoinRequestWithReservation[];
+    error?: string;
+  }> {
+    try {
+      const session = await storage.getSession();
+      if (!session?.accessToken) {
+        return { error: 'Not authenticated' };
+      }
+      const token = session.accessToken;
+
+      const url = `${API_CONFIG.BASE_URL}/api/reservations/my-pending-requests`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({})) as any;
+        return {
+          error: errorData.error || 'Failed to fetch pending requests',
+        };
+      }
+
+      const data = await response.json();
+      return { data: data.requests || [] };
+    } catch (error) {
+      console.error('Get my pending requests error:', error);
       return { error: 'Network error' };
     }
   }

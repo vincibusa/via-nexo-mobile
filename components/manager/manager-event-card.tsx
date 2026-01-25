@@ -3,8 +3,8 @@
  * Compact card for displaying events in the manager's events list
  */
 
-import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Calendar, MapPin, Edit } from 'lucide-react-native';
 import type { ManagerEvent } from '../../lib/types/manager';
@@ -15,6 +15,16 @@ interface ManagerEventCardProps {
 
 export function ManagerEventCard({ event }: ManagerEventCardProps) {
   const router = useRouter();
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  // Reset image state when event changes (important for FlatList reuse)
+  useEffect(() => {
+    if (event.cover_image_url) {
+      setImageError(false);
+      setImageLoading(true);
+    }
+  }, [event.cover_image_url, event.id]);
 
   // Format date
   const eventDate = new Date(event.start_datetime);
@@ -38,16 +48,38 @@ export function ManagerEventCard({ event }: ManagerEventCardProps) {
     >
       <View className="flex-row">
         {/* Cover Image */}
-        <View className="w-24 h-24 bg-muted">
-          {event.cover_image_url ? (
-            <Image
-              source={{ uri: event.cover_image_url }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
+        <View className="w-24 h-24 bg-muted overflow-hidden">
+          {event.cover_image_url && !imageError ? (
+            <>
+              {imageLoading && (
+                <View className="absolute w-full h-full items-center justify-center bg-muted">
+                  <ActivityIndicator size="small" color="#888" />
+                </View>
+              )}
+              <Image
+                key={`${event.id}-${event.cover_image_url}`}
+                source={{ uri: event.cover_image_url }}
+                className="w-full h-full"
+                resizeMode="cover"
+                onError={(error) => {
+                  console.error('[ManagerEventCard] Image load error:', error.nativeEvent.error);
+                  console.error('[ManagerEventCard] Failed URL:', event.cover_image_url);
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+                onLoad={() => {
+                  console.log('[ManagerEventCard] Image loaded successfully');
+                  setImageLoading(false);
+                }}
+                onLoadStart={() => {
+                  setImageLoading(true);
+                  setImageError(false);
+                }}
+              />
+            </>
           ) : (
             <View className="w-full h-full bg-muted items-center justify-center">
-              <Calendar size={32} className="text-muted-foreground" />
+              <Calendar size={32} color="#888" />
             </View>
           )}
         </View>

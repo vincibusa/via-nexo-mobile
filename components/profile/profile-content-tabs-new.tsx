@@ -4,7 +4,7 @@
  * Fetches real data from reservations and stories APIs
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import {
   View,
   FlatList,
@@ -12,6 +12,8 @@ import {
   useWindowDimensions,
   Image,
   ActivityIndicator,
+  Animated,
+  InteractionManager,
 } from 'react-native'
 import { Text } from '../ui/text'
 import { useSettings } from '../../lib/contexts/settings'
@@ -20,7 +22,9 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { reservationsService, Reservation } from '../../lib/services/reservations'
 import { API_CONFIG } from '../../lib/config'
 import { useAuth } from '../../lib/contexts/auth'
-import { Calendar, Clock, MapPin } from 'lucide-react-native'
+import { Calendar, Clock, MapPin, Ticket, Image as ImageIcon, Bell } from 'lucide-react-native'
+import { isEventPast } from '../../lib/utils/date'
+import { ProfileRequestsTab } from './profile-requests-tab'
 
 interface Story {
   id: string
@@ -48,14 +52,16 @@ interface GridItem {
       name: string
     }
   }
+  isPast?: boolean
 }
 
 interface ProfileContentTabsNewProps {
   userId?: string // If provided, show external user's profile; otherwise show current user's
 }
 
+
 export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {}) {
-  const [activeTab, setActiveTab] = useState<'reservations' | 'stories'>('reservations')
+  const [activeTab, setActiveTab] = useState<'reservations' | 'stories' | 'requests'>('reservations')
   const { width } = useWindowDimensions()
   const { settings } = useSettings()
   const { user, session } = useAuth()
@@ -65,9 +71,28 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
   const [stories, setStories] = useState<Story[]>([])
   const [isLoadingReservations, setIsLoadingReservations] = useState(true)
   const [isLoadingStories, setIsLoadingStories] = useState(true)
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  
 
   // Check if viewing external profile
   const isExternalProfile = !!userId
+
+  // Load pending requests count (only for current user, not external profiles)
+  const loadPendingRequestsCount = useCallback(async () => {
+    if (isExternalProfile || !user) return
+
+    try {
+      const { data, error } = await reservationsService.getMyPendingRequests()
+      if (!error && data) {
+        setPendingRequestsCount(data.length)
+      } else {
+        setPendingRequestsCount(0)
+      }
+    } catch (error) {
+      console.error('Error loading pending requests count:', error)
+      setPendingRequestsCount(0)
+    }
+  }, [isExternalProfile, user])
 
   const effectiveTheme = settings?.theme === 'system' ? 'dark' : settings?.theme || 'dark'
   const themeColors = THEME[effectiveTheme]
@@ -83,9 +108,10 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     setIsLoadingReservations(true)
     try {
       // If userId provided, fetch that user's reservations; otherwise fetch current user's
+      // includePast defaults to true to show all events (past and future)
       const { data, error } = userId
-        ? await reservationsService.getUserReservations(userId, 0, 50)
-        : await reservationsService.getMyReservations(0, 50)
+        ? await reservationsService.getUserReservations(userId, 0, 50, true)
+        : await reservationsService.getMyReservations(0, 50, true)
 
       if (!error && data) {
         setReservations(data)
@@ -132,7 +158,8 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     useCallback(() => {
       fetchReservations()
       fetchStories()
-    }, [fetchReservations, fetchStories])
+      loadPendingRequestsCount()
+    }, [fetchReservations, fetchStories, loadPendingRequestsCount])
   )
 
   // Format date helper
@@ -148,6 +175,7 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
   // Transform reservations to GridItem format
   const reservationItems: GridItem[] = reservations.map((r) => {
     const dateInfo = r.event?.start_datetime ? formatDate(r.event.start_datetime) : undefined
+    const isPast = r.event?.start_datetime ? isEventPast(r.event.start_datetime) : false
     return {
       id: r.id,
       image: r.event?.cover_image_url,
@@ -156,6 +184,7 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
       type: 'reservation',
       dateInfo,
       event: r.event,
+      isPast,
     }
   })
 
@@ -168,7 +197,11 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     type: 'story',
   }))
 
-  const items = activeTab === 'reservations' ? reservationItems : storyItems
+  // Memoize items to ensure they update when activeTab changes
+  const items = useMemo(() => {
+    return activeTab === 'reservations' ? reservationItems : storyItems
+  }, [activeTab, reservationItems, storyItems])
+
   const isLoading = activeTab === 'reservations' ? isLoadingReservations : isLoadingStories
 
   const handleItemPress = (item: GridItem) => {
@@ -234,6 +267,23 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
                 style={{ color: themeColors.mutedForeground }}
               >
                 {item.dateInfo.month}
+              </Text>
+            </View>
+          )}
+
+          {/* Past event badge overlay in top-right for reservations */}
+          {isReservation && item.isPast && (
+            <View
+              className="absolute top-2 right-2 rounded-md px-2 py-1 z-10"
+              style={{
+                backgroundColor: themeColors.muted + 'E6', // 90% opacity
+              }}
+            >
+              <Text
+                className="text-[8px] font-semibold uppercase"
+                style={{ color: themeColors.mutedForeground }}
+              >
+                Passato
               </Text>
             </View>
           )}
@@ -362,51 +412,120 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     </View>
   )
 
-  return (
-    <View className="mt-4">
-      {/* Pill Tabs */}
-      <View className="flex-row px-4 mb-4 gap-3">
-        {/* Eventi Prenotati Tab */}
-        <TouchableOpacity
-          onPress={() => setActiveTab('reservations')}
-          className="flex-1 py-3 rounded-full border-2 items-center"
-          style={{
-            borderColor: activeTab === 'reservations' ? themeColors.primary : themeColors.border,
-            backgroundColor: 'transparent',
-          }}
-        >
-          <Text
-            className="text-sm font-semibold uppercase tracking-wide"
-            style={{
-              color: activeTab === 'reservations' ? themeColors.primary : themeColors.mutedForeground,
-            }}
-          >
-            Eventi Prenotati
-          </Text>
-        </TouchableOpacity>
+  // Tab configuration - memoized to prevent recreation on every render
+  const tabs = useMemo(() => [
+    {
+      id: 'reservations' as const,
+      label: 'Prenotazioni',
+      icon: Ticket,
+      count: reservations.length,
+    },
+    {
+      id: 'stories' as const,
+      label: 'Storie',
+      icon: ImageIcon,
+      count: stories.length,
+    },
+    ...(!isExternalProfile
+      ? [
+          {
+            id: 'requests' as const,
+            label: 'Richieste',
+            icon: Bell,
+            count: pendingRequestsCount,
+            badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+          },
+        ]
+      : []),
+  ], [reservations.length, stories.length, pendingRequestsCount, isExternalProfile])
 
-        {/* Archivio Storie Tab */}
-        <TouchableOpacity
-          onPress={() => setActiveTab('stories')}
-          className="flex-1 py-3 rounded-full border-2 items-center"
-          style={{
-            borderColor: activeTab === 'stories' ? themeColors.primary : themeColors.border,
-            backgroundColor: 'transparent',
-          }}
-        >
-          <Text
-            className="text-sm font-semibold uppercase tracking-wide"
-            style={{
-              color: activeTab === 'stories' ? themeColors.primary : themeColors.mutedForeground,
-            }}
-          >
-            Archivio Storie
-          </Text>
-        </TouchableOpacity>
+  // Calculate tab width - memoized
+  const tabWidth = useMemo(() => (width - 32) / tabs.length, [width, tabs.length])
+
+
+  return (
+    <View className="mt-6">
+      {/* Modern Segmented Control Style Tabs */}
+      <View
+        className="mx-4 mb-6 rounded-xl overflow-hidden"
+        style={{
+          backgroundColor: themeColors.muted,
+          padding: 4,
+        }}
+      >
+        <View className="flex-row">
+          {/* Tab Buttons - Inline with direct style props */}
+          {tabs.map((tab, index) => {
+            const Icon = tab.icon
+            const isTabActive = activeTab === tab.id
+            const iconColor = isTabActive ? themeColors.foreground : themeColors.mutedForeground
+            const textColor = isTabActive ? themeColors.foreground : themeColors.mutedForeground
+            const badgeColor = isTabActive ? themeColors.primary : themeColors.destructive
+            
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => setActiveTab(tab.id)}
+                activeOpacity={0.7}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 8,
+                  minHeight: 44,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Icon
+                    size={16}
+                    color={iconColor}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: '600',
+                      color: textColor,
+                    }}
+                  >
+                    {tab.label}
+                  </Text>
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <View
+                      style={{
+                        marginLeft: 4,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingHorizontal: 4,
+                        backgroundColor: badgeColor,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: '#fff',
+                        }}
+                      >
+                        {tab.badge > 9 ? '9+' : tab.badge}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
       </View>
 
-      {/* Content Grid */}
-      {isLoading ? (
+      {/* Content */}
+      {activeTab === 'requests' ? (
+        <ProfileRequestsTab />
+      ) : isLoading ? (
         <View className="items-center justify-center py-12">
           <ActivityIndicator size="large" color={themeColors.primary} />
         </View>
@@ -414,11 +533,13 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
         renderEmptyState()
       ) : (
         <FlatList
+          key={activeTab} // Force re-render when tab changes
           data={items}
           renderItem={renderGridItem}
           keyExtractor={(item) => item.id}
           numColumns={2}
           scrollEnabled={false}
+          nestedScrollEnabled={false}
           contentContainerStyle={{
             paddingHorizontal: horizontalPadding,
           }}

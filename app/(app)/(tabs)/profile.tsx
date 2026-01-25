@@ -138,9 +138,6 @@ export default function ProfileScreen() {
 
         {/* Content Tabs - Eventi Prenotati / Archivio Storie */}
         <ProfileContentTabsNew />
-
-        {/* Bottom spacing */}
-        <View className="h-8" />
       </ScrollView>
 
       {/* Settings Bottom Sheet */}

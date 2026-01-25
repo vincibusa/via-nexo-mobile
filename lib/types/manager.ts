@@ -34,6 +34,11 @@ export interface ManagerEvent {
   embeddings_status?: string;
   lista_nominativa_enabled?: boolean;
   max_guests_per_reservation?: number;
+  prive_enabled?: boolean;
+  prive_min_price?: number | null;
+  prive_max_seats?: number | null;
+  prive_deposit_required?: number | null;
+  prive_total_capacity?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +64,11 @@ export interface EventFormData {
   capacity?: number;
   lista_nominativa_enabled?: boolean;
   max_guests_per_reservation?: number;
+  prive_enabled?: boolean;
+  prive_min_price?: number | null;
+  prive_max_seats?: number | null;
+  prive_deposit_required?: number | null;
+  prive_total_capacity?: number | null;
 }
 
 export interface ManagerPlace {

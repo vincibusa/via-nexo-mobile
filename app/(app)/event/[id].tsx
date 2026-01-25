@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
 import { ExpandableText } from '../../../components/common/expandable-text';
 import { ShareButton } from '../../../components/common/share-button';
+import { MapLinkButton } from '../../../components/common/map-link-button';
 import { eventsService, type EventDetail } from '../../../lib/services/events';
 import { useFavorites } from '../../../lib/contexts/favorites';
 import { useAuth } from '../../../lib/contexts/auth';
@@ -274,6 +275,16 @@ export default function EventDetailScreen() {
                 </View>
               </View>
             </Pressable>
+          )}
+
+          {/* Map Directions Button */}
+          {event.place && event.place.latitude && event.place.longitude && (
+            <MapLinkButton
+              latitude={event.place.latitude}
+              longitude={event.place.longitude}
+              label={event.place.name}
+              address={event.place.address}
+            />
           )}
 
           {/* Description */}

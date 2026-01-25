@@ -58,59 +58,10 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
   const iconColor = isDark ? '#fff' : '#000';
   const mutedColor = isDark ? '#888' : '#666';
 
-  const [formData, setFormData] = useState<Partial<EventFormData>>({
-    title: '',
-    description: '',
-    event_type: 'concert',
-    start_datetime: new Date().toISOString(),
-    end_datetime: undefined,
-    doors_open_time: undefined,
-    place_id: '',
-    is_published: false,
-    is_listed: true,
-    cover_image_url: '',
-    promo_video_url: '',
-    genre: [],
-    lineup: [],
-    ticket_url: '',
-    ticket_price_min: undefined,
-    ticket_price_max: undefined,
-    tickets_available: true,
-    capacity: undefined,
-    lista_nominativa_enabled: false,
-    max_guests_per_reservation: 5,
-    ...initialData,
-  });
-
-  const [places, setPlaces] = useState<ManagerPlace[]>([]);
-  const [loadingPlaces, setLoadingPlaces] = useState(true);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-  const [showDoorsOpenTimePicker, setShowDoorsOpenTimePicker] = useState(false);
-  const [showPlaceModal, setShowPlaceModal] = useState(false);
-  const [placeSearch, setPlaceSearch] = useState('');
-  const [newGenreInput, setNewGenreInput] = useState('');
-  const [newLineupInput, setNewLineupInput] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  const eventTypes = [
-    { value: 'concert', label: 'Concerto', icon: '🎵' },
-    { value: 'dj_set', label: 'DJ Set', icon: '🎧' },
-    { value: 'theme_night', label: 'Serata a Tema', icon: '🎭' },
-    { value: 'private_party', label: 'Festa Privata', icon: '🎉' },
-    { value: 'live_music', label: 'Musica Live', icon: '🎸' },
-    { value: 'karaoke', label: 'Karaoke', icon: '🎤' },
-    { value: 'other', label: 'Altro', icon: '✨' },
-  ];
-
-  // Update form data when initialData changes (for edit mode)
-  useEffect(() => {
+  const [formData, setFormData] = useState<Partial<EventFormData>>(() => {
+    // Initialize with initialData if available, otherwise use defaults
     if (initialData && Object.keys(initialData).length > 0) {
-      console.log('[EventForm] Updating form with initialData:', {
-        title: initialData.title,
-        place_id: initialData.place_id,
-      });
-      setFormData({
+      return {
         title: initialData.title || '',
         description: initialData.description || '',
         event_type: initialData.event_type || 'concert',
@@ -131,12 +82,111 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
         capacity: initialData.capacity,
         lista_nominativa_enabled: initialData.lista_nominativa_enabled ?? false,
         max_guests_per_reservation: initialData.max_guests_per_reservation || 5,
+        prive_enabled: initialData.prive_enabled ?? false,
+        prive_min_price: initialData.prive_min_price ?? null,
+        prive_max_seats: initialData.prive_max_seats ?? 10,
+        prive_deposit_required: initialData.prive_deposit_required ?? null,
+        prive_total_capacity: initialData.prive_total_capacity ?? 50,
+      };
+    }
+    // Default values for new event
+    return {
+      title: '',
+      description: '',
+      event_type: 'concert',
+      start_datetime: new Date().toISOString(),
+      end_datetime: undefined,
+      doors_open_time: undefined,
+      place_id: '',
+      is_published: false,
+      is_listed: true,
+      cover_image_url: '',
+      promo_video_url: '',
+      genre: [],
+      lineup: [],
+      ticket_url: '',
+      ticket_price_min: undefined,
+      ticket_price_max: undefined,
+      tickets_available: true,
+      capacity: undefined,
+      lista_nominativa_enabled: false,
+      max_guests_per_reservation: 5,
+      prive_enabled: false,
+      prive_min_price: null,
+      prive_max_seats: 10,
+      prive_deposit_required: null,
+      prive_total_capacity: 50,
+    };
+  });
+
+  const [places, setPlaces] = useState<ManagerPlace[]>([]);
+  const [loadingPlaces, setLoadingPlaces] = useState(true);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [showDoorsOpenTimePicker, setShowDoorsOpenTimePicker] = useState(false);
+  const [showPlaceModal, setShowPlaceModal] = useState(false);
+  const [placeSearch, setPlaceSearch] = useState('');
+  const [newGenreInput, setNewGenreInput] = useState('');
+  const [newLineupInput, setNewLineupInput] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  const eventTypes = [
+    { value: 'concert', label: 'Concerto', icon: '🎵' },
+    { value: 'dj_set', label: 'DJ Set', icon: '🎧' },
+    { value: 'theme_night', label: 'Serata a Tema', icon: '🎭' },
+    { value: 'private_party', label: 'Festa Privata', icon: '🎉' },
+    { value: 'live_music', label: 'Musica Live', icon: '🎸' },
+    { value: 'karaoke', label: 'Karaoke', icon: '🎤' },
+    { value: 'other', label: 'Altro', icon: '✨' },
+  ];
+
+  // Update form data when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      console.log('[EventForm] Updating form with initialData:', {
+        title: initialData.title,
+        place_id: initialData.place_id,
+        cover_image_url: initialData.cover_image_url,
+        hasCoverImage: !!initialData.cover_image_url,
       });
+      setFormData((prev) => ({
+        ...prev,
+        title: initialData.title || '',
+        description: initialData.description || '',
+        event_type: initialData.event_type || 'concert',
+        start_datetime: initialData.start_datetime || new Date().toISOString(),
+        end_datetime: initialData.end_datetime,
+        doors_open_time: initialData.doors_open_time,
+        place_id: initialData.place_id || '',
+        is_published: initialData.is_published ?? false,
+        is_listed: initialData.is_listed ?? true,
+        cover_image_url: initialData.cover_image_url || '',
+        promo_video_url: initialData.promo_video_url || '',
+        genre: initialData.genre || [],
+        lineup: initialData.lineup || [],
+        ticket_url: initialData.ticket_url || '',
+        ticket_price_min: initialData.ticket_price_min,
+        ticket_price_max: initialData.ticket_price_max,
+        tickets_available: initialData.tickets_available ?? true,
+        capacity: initialData.capacity,
+        lista_nominativa_enabled: initialData.lista_nominativa_enabled ?? false,
+        max_guests_per_reservation: initialData.max_guests_per_reservation || 5,
+        prive_enabled: initialData.prive_enabled ?? false,
+        prive_min_price: initialData.prive_min_price ?? null,
+        prive_max_seats: initialData.prive_max_seats ?? 10,
+        prive_deposit_required: initialData.prive_deposit_required ?? null,
+        prive_total_capacity: initialData.prive_total_capacity ?? 50,
+      }));
+      console.log('[EventForm] FormData updated, cover_image_url:', initialData.cover_image_url || 'empty');
     }
   }, [
     initialData?.title,
     initialData?.place_id,
     initialData?.start_datetime,
+    initialData?.cover_image_url,
+    initialData?.id, // Add id to detect when a different event is loaded
   ]);
 
   // Load places
@@ -279,6 +329,16 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
     place.city.toLowerCase().includes(placeSearch.toLowerCase())
   );
 
+  // Debug: Log formData.cover_image_url when it changes
+  useEffect(() => {
+    console.log('[EventForm] formData.cover_image_url changed:', formData.cover_image_url);
+    // Reset image error state when URL changes
+    if (formData.cover_image_url) {
+      setImageError(false);
+      setImageLoading(true);
+    }
+  }, [formData.cover_image_url]);
+
   return (
     <ScrollView className="flex-1 bg-background" showsVerticalScrollIndicator={false}>
       <View className="p-4 gap-6">
@@ -329,16 +389,72 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
             <Text className="text-lg font-bold text-foreground">Immagine di Copertina</Text>
           </View>
 
-          {formData.cover_image_url ? (
-            <View className="relative">
+          {formData.cover_image_url && formData.cover_image_url.trim() !== '' && !imageError ? (
+            <View style={{ position: 'relative' }}>
+              {console.log('[EventForm] Rendering image with URL:', formData.cover_image_url)}
+              {imageLoading && (
+                <View style={{ 
+                  position: 'absolute', 
+                  width: '100%', 
+                  height: 192, 
+                  borderRadius: 12,
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  backgroundColor: '#1a1a1a',
+                  zIndex: 1,
+                }}>
+                  <ActivityIndicator size="small" color="#888" />
+                </View>
+              )}
               <Image
+                key={formData.cover_image_url}
                 source={{ uri: formData.cover_image_url }}
-                className="w-full h-48 rounded-xl"
+                style={{ 
+                  width: '100%', 
+                  height: 192, 
+                  borderRadius: 12,
+                  backgroundColor: '#1a1a1a',
+                }}
                 resizeMode="cover"
+                onError={(error) => {
+                  console.error('[EventForm] Image load error:', error.nativeEvent.error);
+                  console.error('[EventForm] Failed URL:', formData.cover_image_url);
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+                onLoad={() => {
+                  console.log('[EventForm] Image loaded successfully:', formData.cover_image_url);
+                  setImageLoading(false);
+                }}
+                onLoadStart={() => {
+                  console.log('[EventForm] Image load started:', formData.cover_image_url);
+                  setImageLoading(true);
+                  setImageError(false);
+                }}
               />
               <TouchableOpacity
-                onPress={() => updateField('cover_image_url', '')}
-                className="absolute top-2 right-2 bg-red-500 w-10 h-10 rounded-full items-center justify-center shadow-lg"
+                onPress={() => {
+                  updateField('cover_image_url', '');
+                  setImageError(false);
+                  setImageLoading(false);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  backgroundColor: '#ef4444',
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 3.84,
+                  elevation: 5,
+                  zIndex: 2,
+                }}
               >
                 <Trash2 size={20} color="white" />
               </TouchableOpacity>
@@ -850,10 +966,10 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
           {/* Capacity & Max Guests */}
           {formData.lista_nominativa_enabled && (
             <>
-              {/* Total Capacity */}
+              {/* Total Capacity - Pista */}
               <View>
                 <Text className="text-sm font-semibold text-foreground mb-2">
-                  Posti Totali Disponibili
+                  Posti Disponibili Pista
                 </Text>
                 <View className="flex-row items-center bg-muted rounded-xl px-4 py-3.5">
                   <Users size={18} color={mutedColor} />
@@ -876,7 +992,7 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
                   />
                 </View>
                 <Text className="text-xs text-muted-foreground mt-2">
-                  Numero massimo totale di persone che possono prenotarsi
+                  Numero massimo di posti disponibili per la pista (lista nominativa)
                 </Text>
               </View>
 
@@ -907,6 +1023,157 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
                 </View>
                 <Text className="text-xs text-muted-foreground mt-2">
                   Numero massimo di ospiti che un utente può portare con sé
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* PRIVE SECTION */}
+        <View className="gap-4">
+          <View className="flex-row items-center gap-2 mb-2">
+            <Users size={20} color={iconColor} />
+            <Text className="text-lg font-bold text-foreground">Configurazione Pista/Privé</Text>
+          </View>
+
+          {/* Enable Prive Toggle */}
+          <View className="flex-row items-center justify-between bg-muted/50 p-4 rounded-xl border border-border">
+            <View className="flex-1 mr-3">
+              <Text className="text-foreground font-semibold text-base">
+                Abilita distinzione Pista/Privé
+              </Text>
+              <Text className="text-sm text-muted-foreground mt-0.5">
+                Permetti prenotazioni tavoli VIP oltre alla lista pista
+              </Text>
+            </View>
+            <Switch
+              value={formData.prive_enabled}
+              onValueChange={(value) => updateField('prive_enabled', value)}
+              trackColor={{ false: '#444', true: '#10b981' }}
+              thumbColor={formData.prive_enabled ? '#fff' : '#ccc'}
+            />
+          </View>
+
+          {/* Prive Configuration */}
+          {formData.prive_enabled && (
+            <>
+              {/* Total Prive Capacity */}
+              <View>
+                <Text className="text-sm font-semibold text-foreground mb-2">
+                  Posti Totali Privé
+                </Text>
+                <View className="flex-row items-center bg-muted rounded-xl px-4 py-3.5">
+                  <Users size={18} color={mutedColor} />
+                  <TextInput
+                    value={formData.prive_total_capacity?.toString() || '50'}
+                    onChangeText={(value) => updateField('prive_total_capacity', parseInt(value) || 50)}
+                    placeholder="50"
+                    placeholderTextColor={mutedColor}
+                    keyboardType="numeric"
+                    className="flex-1 text-foreground text-base ml-2"
+                    style={{
+                      padding: 0,
+                      paddingVertical: 0,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                      margin: 0,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
+                    }}
+                  />
+                </View>
+                <Text className="text-xs text-muted-foreground mt-2">
+                  Numero totale di posti disponibili per i tavoli privé
+                </Text>
+              </View>
+
+              {/* Max Seats Per Table */}
+              <View>
+                <Text className="text-sm font-semibold text-foreground mb-2">
+                  Posti Massimi per Tavolo
+                </Text>
+                <View className="flex-row items-center bg-muted rounded-xl px-4 py-3.5">
+                  <Users size={18} color={mutedColor} />
+                  <TextInput
+                    value={formData.prive_max_seats?.toString() || '10'}
+                    onChangeText={(value) => updateField('prive_max_seats', parseInt(value) || 10)}
+                    placeholder="10"
+                    placeholderTextColor={mutedColor}
+                    keyboardType="numeric"
+                    className="flex-1 text-foreground text-base ml-2"
+                    style={{
+                      padding: 0,
+                      paddingVertical: 0,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                      margin: 0,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
+                    }}
+                  />
+                </View>
+                <Text className="text-xs text-muted-foreground mt-2">
+                  Numero massimo di persone per tavolo privé
+                </Text>
+              </View>
+
+              {/* Min Price */}
+              <View>
+                <Text className="text-sm font-semibold text-foreground mb-2">
+                  Prezzo Minimo Tavolo (€)
+                </Text>
+                <View className="flex-row items-center bg-muted rounded-xl px-4 py-3.5">
+                  <Euro size={18} color={mutedColor} />
+                  <TextInput
+                    value={formData.prive_min_price?.toString() || ''}
+                    onChangeText={(value) => updateField('prive_min_price', value ? parseFloat(value) : null)}
+                    placeholder="100.00"
+                    placeholderTextColor={mutedColor}
+                    keyboardType="decimal-pad"
+                    className="flex-1 text-foreground text-base ml-2"
+                    style={{
+                      padding: 0,
+                      paddingVertical: 0,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                      margin: 0,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
+                    }}
+                  />
+                </View>
+                <Text className="text-xs text-muted-foreground mt-2">
+                  Prezzo minimo richiesto per prenotare un tavolo privé
+                </Text>
+              </View>
+
+              {/* Deposit Required */}
+              <View>
+                <Text className="text-sm font-semibold text-foreground mb-2">
+                  Deposito Richiesto (€)
+                </Text>
+                <View className="flex-row items-center bg-muted rounded-xl px-4 py-3.5">
+                  <Euro size={18} color={mutedColor} />
+                  <TextInput
+                    value={formData.prive_deposit_required?.toString() || ''}
+                    onChangeText={(value) => updateField('prive_deposit_required', value ? parseFloat(value) : null)}
+                    placeholder="50.00"
+                    placeholderTextColor={mutedColor}
+                    keyboardType="decimal-pad"
+                    className="flex-1 text-foreground text-base ml-2"
+                    style={{
+                      padding: 0,
+                      paddingVertical: 0,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                      margin: 0,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
+                    }}
+                  />
+                </View>
+                <Text className="text-xs text-muted-foreground mt-2">
+                  Deposito richiesto al momento della prenotazione (opzionale)
                 </Text>
               </View>
             </>

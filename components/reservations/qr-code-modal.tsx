@@ -99,6 +99,7 @@ export function QRCodeModal({
       onChange={handleSheetChange}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
+      topInset={insets.top}
       backgroundStyle={{
         backgroundColor: themeColors.card,
       }}
@@ -129,6 +130,28 @@ export function QRCodeModal({
             <ScrollView className="flex-1 p-4">
               {/* Event Info */}
               <View className="mb-6">
+                {/* Reservation Type Badge */}
+                {reservation.reservation_type && (
+                  <View className="mb-3">
+                    <View
+                      className={`px-3 py-1.5 rounded-full self-start ${
+                        reservation.reservation_type === 'prive'
+                          ? 'bg-purple-500/20 border border-purple-500/30'
+                          : 'bg-green-500/20 border border-green-500/30'
+                      }`}
+                    >
+                      <Text
+                        className={`text-sm font-bold uppercase tracking-wide ${
+                          reservation.reservation_type === 'prive'
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : 'text-green-600 dark:text-green-400'
+                        }`}
+                      >
+                        {reservation.reservation_type === 'prive' ? 'PRIVÉ' : 'PISTA'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
                 <Text className="font-semibold text-foreground mb-2">
                   {reservation.event?.title}
                 </Text>
@@ -145,13 +168,22 @@ export function QRCodeModal({
               </View>
 
               {/* QR Code */}
-              <View className="items-center bg-muted p-4 rounded-lg mb-6">
+              <View
+                className={`items-center p-4 rounded-lg mb-6 ${
+                  reservation.reservation_type === 'prive'
+                    ? 'bg-purple-500/10 border-2 border-purple-500/30'
+                    : reservation.reservation_type === 'pista'
+                    ? 'bg-green-500/10 border-2 border-green-500/30'
+                    : 'bg-muted'
+                }`}
+              >
                 {reservation.qr_code_token ? (
                   <QRCode
                     value={JSON.stringify({
                       type: 'nexo_reservation',
                       token: reservation.qr_code_token,
-                      v: 1,
+                      reservation_type: reservation.reservation_type || 'pista',
+                      v: 2,
                     })}
                     size={qrSize}
                     color={themeColors.foreground}
@@ -176,6 +208,29 @@ export function QRCodeModal({
                     {reservation.total_guests}
                   </Text>
                 </View>
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-xs text-muted-foreground">
+                    Tipo prenotazione
+                  </Text>
+                  <Text className="font-semibold text-foreground capitalize">
+                    {reservation.reservation_type === 'prive'
+                      ? 'Privé'
+                      : reservation.reservation_type === 'pista'
+                      ? 'Pista'
+                      : 'Standard'}
+                  </Text>
+                </View>
+                {reservation.is_open_table &&
+                  reservation.open_table_available_spots !== undefined && (
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-xs text-muted-foreground">
+                        Posti disponibili
+                      </Text>
+                      <Text className="font-semibold text-foreground">
+                        {reservation.open_table_available_spots}
+                      </Text>
+                    </View>
+                  )}
                 <View className="flex-row justify-between">
                   <Text className="text-xs text-muted-foreground">
                     Stato

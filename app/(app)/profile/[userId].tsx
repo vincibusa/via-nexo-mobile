@@ -1,9 +1,9 @@
-import { View, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { Text } from '../../../components/ui/text';
 import { useAuth } from '../../../lib/contexts/auth';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MoreVertical } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { cn } from '../../../lib/utils';
 import { useColorScheme } from 'nativewind';
@@ -13,6 +13,7 @@ import { useSettings } from '../../../lib/contexts/settings';
 import { RaveIdHeader } from '../../../components/profile/rave-id-header';
 import { ProfileContentTabsNew } from '../../../components/profile/profile-content-tabs-new';
 import type { RaveScore } from '../../../lib/types/rave-score';
+import MessagingService from '../../../lib/services/messaging';
 
 interface UserProfile {
   id: string;
@@ -26,6 +27,22 @@ interface UserProfile {
   following_count: number;
   is_verified: boolean;
   is_followed: boolean;
+  role?: 'user' | 'admin' | 'manager';
+}
+
+interface ProfileApiResponse {
+  id: string;
+  display_name: string;
+  email: string;
+  avatar_url?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  followers_count?: number;
+  following_count?: number;
+  is_verified?: boolean;
+  is_followed?: boolean;
+  role?: 'user' | 'admin' | 'manager';
 }
 
 export default function UserProfileScreen() {
@@ -39,6 +56,7 @@ export default function UserProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [openingConversation, setOpeningConversation] = useState(false);
 
   const isOwnProfile = userId === currentUser?.id;
 
@@ -62,7 +80,7 @@ export default function UserProfileScreen() {
         throw new Error('Failed to fetch profile');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as ProfileApiResponse;
       setProfile({
         id: data.id,
         display_name: data.display_name,
@@ -75,6 +93,7 @@ export default function UserProfileScreen() {
         following_count: data.following_count || 0,
         is_verified: data.is_verified || false,
         is_followed: data.is_followed || false,
+        role: data.role || 'user',
       });
       setIsFollowing(data.is_followed || false);
     } catch (error) {
@@ -100,7 +119,7 @@ export default function UserProfileScreen() {
         return;
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as RaveScore;
       setRaveScore(data);
     } catch (error) {
       console.error('Error fetching RAVE score:', error);
@@ -138,6 +157,50 @@ export default function UserProfileScreen() {
       } : null);
     } catch (error) {
       console.error('Error toggling follow:', error);
+    }
+  };
+
+  const handleMessage = async () => {
+    if (!currentUser?.id || !profile?.id || openingConversation) return;
+
+    setOpeningConversation(true);
+
+    try {
+      let conversationId: string | null = null;
+
+      // First, try to find existing conversation with this user
+      try {
+        const conversationsResponse = await MessagingService.getConversations(50, 0);
+        const existingConversation = conversationsResponse.conversations.find(
+          (conv) => conv.other_user?.id === profile.id && conv.type === 'direct'
+        );
+
+        if (existingConversation) {
+          conversationId = existingConversation.id;
+        }
+      } catch (searchError) {
+        // If searching fails, we'll just create a new conversation
+        // The API will handle if it already exists
+        console.log('Could not search existing conversations, will create new one');
+      }
+
+      // If no existing conversation found, create one
+      // The API will return existing conversation if it already exists
+      if (!conversationId) {
+        const response = await MessagingService.createConversation({
+          other_user_id: profile.id,
+        });
+        conversationId = response.conversation_id;
+      }
+
+      // Navigate to the conversation using replace to avoid duplicate screens
+      if (conversationId) {
+        router.replace(`/(app)/conversation/${conversationId}` as any);
+      }
+    } catch (error) {
+      console.error('Error opening conversation:', error);
+      Alert.alert('Errore', 'Impossibile aprire la conversazione');
+      setOpeningConversation(false);
     }
   };
 
@@ -184,9 +247,7 @@ export default function UserProfileScreen() {
           <ArrowLeft size={24} color={themeColors.foreground} />
         </TouchableOpacity>
         <Text className="text-lg font-semibold">@{profile.email.split('@')[0]}</Text>
-        <TouchableOpacity>
-          <MoreVertical size={24} color={themeColors.foreground} />
-        </TouchableOpacity>
+        <View className="w-6" />
       </View>
 
       <ScrollView
@@ -206,6 +267,7 @@ export default function UserProfileScreen() {
           user={{
             id: profile.id,
             email: profile.email,
+            role: profile.role || 'user',
             displayName: profile.display_name,
             avatarUrl: profile.avatar_url,
           }}
@@ -213,14 +275,7 @@ export default function UserProfileScreen() {
           variant="external"
           isFollowing={isFollowing}
           onFollowPress={handleFollow}
-          onMessagePress={() => {
-            // TODO: Implement messaging
-            console.log('Message button pressed');
-          }}
-          onMorePress={() => {
-            // TODO: Implement more options
-            console.log('More button pressed');
-          }}
+          onMessagePress={handleMessage}
         />
 
         {/* Content Tabs - Eventi Prenotati / Archivio Storie */}

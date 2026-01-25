@@ -9,7 +9,7 @@ import { View, TouchableOpacity } from 'react-native'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Text } from '../ui/text'
 import { Button } from '../ui/button'
-import { Bell, Settings, MessageCircle, MoreHorizontal } from 'lucide-react-native'
+import { Bell, Settings, MessageCircle } from 'lucide-react-native'
 import { useSettings } from '../../lib/contexts/settings'
 import { THEME } from '../../lib/theme'
 import { Progress } from '../ui/progress'
@@ -26,7 +26,6 @@ interface RaveIdHeaderProps {
   onNotificationsPress?: () => void
   onFollowPress?: () => void
   onMessagePress?: () => void
-  onMorePress?: () => void
   unreadNotificationsCount?: number
 }
 
@@ -47,7 +46,6 @@ export function RaveIdHeader({
   onNotificationsPress,
   onFollowPress,
   onMessagePress,
-  onMorePress,
   unreadNotificationsCount = 0,
 }: RaveIdHeaderProps) {
   const { settings } = useSettings()
@@ -214,14 +212,6 @@ export function RaveIdHeader({
           >
             <MessageCircle size={16} color={themeColors.foreground} style={{ marginRight: 4 }} />
             <Text className="font-semibold">Messaggio</Text>
-          </Button>
-
-          <Button
-            variant="outline"
-            className="px-4"
-            onPress={onMorePress}
-          >
-            <MoreHorizontal size={20} color={themeColors.foreground} />
           </Button>
         </View>
       )}

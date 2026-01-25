@@ -35,9 +35,10 @@ export function ProfileReservations({ maxItems = 5, userId }: ProfileReservation
     setIsLoading(true);
     try {
       // If userId is provided, fetch that user's reservations; otherwise fetch current user's
+      // includePast defaults to true to show all events (past and future)
       const { data, error } = userId
-        ? await reservationsService.getUserReservations(userId, 0, 50)
-        : await reservationsService.getMyReservations(0, 50);
+        ? await reservationsService.getUserReservations(userId, 0, 50, true)
+        : await reservationsService.getMyReservations(0, 50, true);
 
       if (!error && data) {
         // Sort by created_at descending (most recent first)

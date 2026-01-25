@@ -16,6 +16,8 @@ import { ChevronLeft, Trash } from 'lucide-react-native';
 import { Reservation, reservationsService } from '../../../lib/services/reservations';
 import { QRCodeModal } from '../../../components/reservations/qr-code-modal';
 import { formatDateTime } from '../../../lib/utils/date';
+import { MapLinkButton } from '../../../components/common/map-link-button';
+import { placesService } from '../../../lib/services/places';
 
 export default function ReservationDetailScreen() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function ReservationDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [showQRModal, setShowQRModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [placeCoordinates, setPlaceCoordinates] = useState<{ latitude: number; longitude: number; name: string; address: string } | null>(null);
 
   const loadReservation = useCallback(async () => {
     if (!id) return;
@@ -37,6 +40,23 @@ export default function ReservationDetailScreen() {
       const { data, error } = await reservationsService.getReservation(id);
       if (!error && data) {
         setReservation(data);
+        
+        // Load place coordinates if place ID is available
+        if (data.event?.place?.id) {
+          try {
+            const { data: placeData, error: placeError } = await placesService.getPlaceById(data.event.place.id);
+            if (!placeError && placeData && placeData.latitude && placeData.longitude) {
+              setPlaceCoordinates({
+                latitude: placeData.latitude,
+                longitude: placeData.longitude,
+                name: placeData.name,
+                address: placeData.address,
+              });
+            }
+          } catch (placeErr) {
+            console.error('Error loading place coordinates:', placeErr);
+          }
+        }
       }
     } catch (error) {
       console.error('Load reservation error:', error);
@@ -68,11 +88,30 @@ export default function ReservationDetailScreen() {
               const { error } = await reservationsService.cancelReservation(
                 reservation.id
               );
-              if (!error) {
-                router.back();
+              if (error) {
+                Alert.alert(
+                  'Errore',
+                  error || 'Impossibile cancellare la prenotazione'
+                );
+              } else {
+                // Success - show confirmation and navigate back
+                Alert.alert(
+                  'Prenotazione cancellata',
+                  'La prenotazione è stata cancellata con successo',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => router.back(),
+                    },
+                  ]
+                );
               }
             } catch (error) {
               console.error('Cancel reservation error:', error);
+              Alert.alert(
+                'Errore',
+                'Si è verificato un errore durante la cancellazione della prenotazione'
+              );
             } finally {
               setIsDeleting(false);
             }
@@ -145,6 +184,18 @@ export default function ReservationDetailScreen() {
             </Text>
           )}
         </View>
+
+        {/* Map Directions Button */}
+        {placeCoordinates && (
+          <View className="mb-6">
+            <MapLinkButton
+              latitude={placeCoordinates.latitude}
+              longitude={placeCoordinates.longitude}
+              label={placeCoordinates.name}
+              address={placeCoordinates.address}
+            />
+          </View>
+        )}
 
         {/* Status and Details */}
         <View className="bg-muted/50 p-4 rounded-lg mb-6">
