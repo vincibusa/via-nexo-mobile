@@ -1,19 +1,25 @@
-// Funzione per ottenere l'IP locale del computer di sviluppo
-const getLocalIP = (): string => {
+// Funzione per ottenere l'URL del backend
+const getBackendURL = (): string => {
   // In produzione, usa l'URL di produzione
   // @ts-ignore - __DEV__ is a React Native global
   if (!global.__DEV__) return 'https://via-nexo-new.vercel.app';
 
-  // In sviluppo, usa l'IP locale del computer
-  // Puoi ottenere il tuo IP locale con: ipconfig (Windows) o ifconfig (Mac/Linux)
-  // Sostituisci con il tuo IP locale
-  return 'http://192.168.1.70:3000';
+  // In sviluppo, usa la variabile d'ambiente EXPO_PUBLIC_DEV_API_URL
+  // Impostare in .env.local: EXPO_PUBLIC_DEV_API_URL=http://192.168.x.x:3000
+  // Nota: In Expo, le variabili d'ambiente devono iniziare con EXPO_PUBLIC_
+  const devURL = 'http://192.168.1.70:3000';
+
+  if (devURL) {
+    return devURL;
+  }
+
+  // Fallback a localhost se l'env var non è impostata
+  return 'http://localhost:3000';
 };
 
 export const API_CONFIG = {
-  // Cambia con l'URL del tuo backend in produzione
-  // In sviluppo usa l'IP locale del computer invece di localhost
-  BASE_URL: getLocalIP(),
+  // URL backend automatico: produzione via Vercel, sviluppo da EXPO_PUBLIC_DEV_API_URL
+  BASE_URL: getBackendURL(),
 
   // Default location fallback (Rome center)
   DEFAULT_LOCATION: {

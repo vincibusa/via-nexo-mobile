@@ -53,7 +53,7 @@ export default function ScannerScreen() {
       if (
         !qrData ||
         qrData.type !== 'nexo_reservation' ||
-        qrData.v !== 1 ||
+        (qrData.v !== 1 && qrData.v !== 2) ||
         !qrData.token
       ) {
         Alert.alert('Errore', 'QR code non valido');

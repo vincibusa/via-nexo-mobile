@@ -175,7 +175,7 @@ class EventRecommendationsService {
     accessToken: string,
     latitude: number,
     longitude: number,
-    radiusKm: number = 10
+    radiusKm: number = 50
   ): Promise<{ data?: EventRecommendation[]; error?: string }> {
     try {
       const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TRENDING_EVENTS}`;

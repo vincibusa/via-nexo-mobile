@@ -1,13 +1,16 @@
 /**
  * Manager Stack Layout
  * Stack navigation for manager-specific screens
+ * Protected by role-based access control (manager, admin only)
  */
 
 import { Stack } from 'expo-router';
+import { ProtectedRoute } from '../../../lib/components/ProtectedRoute';
 
 export default function ManagerLayout() {
   return (
-    <Stack
+    <ProtectedRoute allowedRoles={['manager', 'admin']}>
+      <Stack
       screenOptions={{
         headerStyle: {
           backgroundColor: '#000',
@@ -49,5 +52,6 @@ export default function ManagerLayout() {
         }}
       />
     </Stack>
+    </ProtectedRoute>
   );
 }

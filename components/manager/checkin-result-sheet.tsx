@@ -87,6 +87,28 @@ export function CheckinResultSheet({
               {/* Event Info */}
               {reservation.event && (
                 <View className="border-t border-border pt-3">
+                  {/* Reservation Type Badge */}
+                  {reservation.reservation_type && (
+                    <View className="mb-2">
+                      <View
+                        className={`px-3 py-1.5 rounded-full self-start ${
+                          reservation.reservation_type === 'prive'
+                            ? 'bg-purple-500/20 border border-purple-500/30'
+                            : 'bg-green-500/20 border border-green-500/30'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-bold uppercase tracking-wide ${
+                            reservation.reservation_type === 'prive'
+                              ? 'text-purple-600 dark:text-purple-400'
+                              : 'text-green-600 dark:text-green-400'
+                          }`}
+                        >
+                          {reservation.reservation_type === 'prive' ? 'PRIVÉ' : 'PISTA'}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                   <View className="flex-row items-center mb-2">
                     <Calendar size={16} className="text-muted-foreground mr-2" />
                     <Text className="text-foreground font-medium">

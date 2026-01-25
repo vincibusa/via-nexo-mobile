@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Tabs } from 'expo-router';
 import { Home, User, Search, MessageCircle, Play } from 'lucide-react-native';
 import { View, Text } from 'react-native';
@@ -26,25 +26,26 @@ export default function TabLayout() {
   const theme = NAV_THEME.dark;
   const [unreadMessages, setUnreadMessages] = useState(0);
 
+  // PERFORMANCE: Memoize loadUnreadCount to prevent interval restart on each render
+  const loadUnreadCount = useCallback(async () => {
+    if (!session?.accessToken) return;
+
+    try {
+      const messagingService = MessagingService;
+      const count = await messagingService.getTotalUnreadCount();
+      setUnreadMessages(count);
+    } catch (error) {
+      console.error('Error loading unread messages:', error);
+    }
+  }, [session?.accessToken]);
+
   useEffect(() => {
-    const loadUnreadCount = async () => {
-      if (!session?.accessToken) return;
-
-      try {
-        const messagingService = MessagingService;
-        const count = await messagingService.getTotalUnreadCount();
-        setUnreadMessages(count);
-      } catch (error) {
-        console.error('Error loading unread messages:', error);
-      }
-    };
-
     loadUnreadCount();
 
     // Refresh every 30 seconds
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
-  }, [session?.accessToken]);
+  }, [loadUnreadCount]);
 
   return (
     <Tabs

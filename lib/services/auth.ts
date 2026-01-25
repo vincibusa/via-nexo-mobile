@@ -34,7 +34,10 @@ class AuthService {
   }
 
   async login(email: string, password: string) {
-    return this.request<LoginResponse>(API_CONFIG.ENDPOINTS.LOGIN, {
+    // Add platform=mobile query parameter to allow all user types to login from mobile
+    // Web dashboard restricts to admin/manager only via dashboard-specific login
+    const loginUrl = `${API_CONFIG.ENDPOINTS.LOGIN}?platform=mobile`;
+    return this.request<LoginResponse>(loginUrl, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });

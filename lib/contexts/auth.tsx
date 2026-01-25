@@ -357,14 +357,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const persistBiometricState = async (email: string, password: string) => {
-    if (!password) {
-      throw new Error('Missing password for biometric login');
+  const persistBiometricState = async (email: string, userId: string, refreshToken: string) => {
+    if (!refreshToken) {
+      throw new Error('Missing refresh token for biometric login');
     }
 
+    // SECURITY: We store only the refresh token (never the password)
+    // Biometric unlock will use the refresh token to get a new access token
     const credentials: SavedCredentials = {
       email,
-      password,
+      userId,
+      refreshToken,
       createdAt: Date.now(),
     };
 
@@ -380,8 +383,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setSavedCredentials(credentials);
     setBiometricPreferenceState(preference);
-    
-    console.log('Biometric credentials saved successfully');
+
+    console.log('Biometric state saved successfully (refresh token only)');
   };
 
   const applyAuthenticatedState = async (authUser: User, authSession: Session) => {
@@ -455,13 +458,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const enableBiometrics = async (email: string, password: string) => {
-    if (!email || !password) {
-      return { error: 'Email and password are required to enable biometrics' };
+  const enableBiometrics = async (email?: string, password?: string) => {
+    // Use current session if available, otherwise use provided credentials
+    // New behavior: Store refresh token only (never password)
+
+    if (!user) {
+      return { error: 'Must be logged in to enable biometrics' };
+    }
+
+    if (!session?.refreshToken) {
+      return { error: 'Invalid session. Please login again.' };
     }
 
     try {
-      await persistBiometricState(email, password);
+      // SECURITY: Store only refresh token, never password
+      await persistBiometricState(user.email, user.id, session.refreshToken);
       return {};
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to enable biometrics';
@@ -476,46 +487,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithSavedCredentials = async () => {
-    // Verifica che le credenziali siano nel formato corretto
-    if (!savedCredentials?.email || !('password' in savedCredentials) || !savedCredentials.password) {
-      console.log('No valid saved credentials available:', { 
+    // Verify credentials have refresh token (not password)
+    if (!savedCredentials?.email || !savedCredentials?.refreshToken) {
+      console.log('No valid saved credentials available:', {
         hasEmail: !!savedCredentials?.email,
-        hasPassword: savedCredentials && 'password' in savedCredentials,
-        credentials: savedCredentials 
+        hasRefreshToken: !!savedCredentials?.refreshToken,
       });
-      
-      // Se ci sono credenziali nel formato vecchio, cancellale
-      if (savedCredentials && 'refreshToken' in savedCredentials) {
-        console.log('Clearing old credentials format...');
-        await Promise.all([
-          storage.deleteCredentials(),
-          storage.deleteBiometricPreference(),
-        ]);
-        setSavedCredentials(null);
-        setBiometricPreferenceState(null);
-      }
-      
+
       return { error: 'No saved credentials available. Please login again and enable biometrics.' };
     }
 
-    console.log('Attempting login with saved credentials for:', savedCredentials.email);
-    const { data, error } = await authService.login(
-      savedCredentials.email,
-      savedCredentials.password
-    );
+    console.log('Attempting login with biometric saved credentials for:', savedCredentials.email);
+
+    // Use refresh token to get new access token (NO password needed!)
+    const { data, error } = await authService.refreshToken(savedCredentials.refreshToken);
 
     if (error) {
-      console.error('Login with saved credentials failed:', error);
+      console.error('Biometric login with refresh token failed:', error);
       return { error: error.message };
     }
 
     if (data) {
       await applyAuthenticatedState(data.user, data.session);
-      console.log('Login with saved credentials successful');
+      console.log('Biometric login with refresh token successful');
       return {};
     }
 
-    return { error: 'Unable to login with saved credentials' };
+    return { error: 'Unable to login with biometric credentials' };
   };
 
   const authenticateWithBiometrics = async () => {

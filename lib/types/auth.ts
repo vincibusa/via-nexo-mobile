@@ -31,7 +31,8 @@ export interface Session {
 
 export interface SavedCredentials {
   email: string;
-  password: string;
+  refreshToken: string;
+  userId: string;
   createdAt: number;
 }
 
