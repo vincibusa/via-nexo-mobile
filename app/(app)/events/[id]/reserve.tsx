@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { useColorScheme } from 'nativewind';
 import { useSettings } from '../../../../lib/contexts/settings';
 import { THEME } from '../../../../lib/theme';
@@ -57,6 +58,11 @@ export default function ReservationScreen() {
   const [selectedTableForJoin, setSelectedTableForJoin] = useState<string | null>(null);
   const [joinRequestMessage, setJoinRequestMessage] = useState('');
   const [isSendingJoinRequest, setIsSendingJoinRequest] = useState(false);
+
+  // Location for booking validation (FASE 3)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const loadEvent = useCallback(async () => {
     if (!id) return;
@@ -113,6 +119,39 @@ export default function ReservationScreen() {
     loadEvent();
   }, [loadEvent]);
 
+  // Fetch user location when component mounts (FASE 3)
+  useEffect(() => {
+    const fetchLocation = async () => {
+      setIsLoadingLocation(true);
+
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setLocationError('Permesso di localizzazione negato');
+          setIsLoadingLocation(false);
+          return;
+        }
+
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        setUserLocation({
+          lat: location.coords.latitude,
+          lon: location.coords.longitude,
+        });
+        setLocationError(null);
+      } catch (error) {
+        console.error('Location fetch error:', error);
+        setLocationError('Impossibile recuperare la posizione');
+      } finally {
+        setIsLoadingLocation(false);
+      }
+    };
+
+    fetchLocation();
+  }, []);
+
   // Reload followers when screen is focused
   useFocusEffect(
     useCallback(() => {
@@ -162,9 +201,42 @@ export default function ReservationScreen() {
   const handleReserve = async () => {
     if (!event) return;
 
+    // Validate location is available (FASE 3)
+    if (!userLocation) {
+      Alert.alert(
+        'Posizione richiesta',
+        'La tua posizione è necessaria per completare la prenotazione. Riprova a rilevare la posizione.',
+        [
+          {
+            text: 'Riprova',
+            onPress: async () => {
+              setIsLoadingLocation(true);
+              try {
+                const location = await Location.getCurrentPositionAsync({
+                  accuracy: Location.Accuracy.Balanced,
+                });
+                setUserLocation({
+                  lat: location.coords.latitude,
+                  lon: location.coords.longitude,
+                });
+                setLocationError(null);
+              } catch (error) {
+                console.error('Location retry error:', error);
+                setLocationError('Impossibile recuperare la posizione');
+              } finally {
+                setIsLoadingLocation(false);
+              }
+            },
+          },
+          { text: 'Annulla', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const { data, error } = await reservationsService.createReservation(
+      const { data, error, details } = await reservationsService.createReservation(
         event.id,
         selectedFollowers,
         undefined, // notes
@@ -173,12 +245,21 @@ export default function ReservationScreen() {
         isOpenTable,
         openTableDescription || undefined,
         openTableMinBudget ? parseFloat(openTableMinBudget) : undefined,
-        openTableAvailableSpots ? parseInt(openTableAvailableSpots, 10) : undefined
+        openTableAvailableSpots ? parseInt(openTableAvailableSpots, 10) : undefined,
+        userLocation // FASE 2: Send user location for distance validation
       );
 
       if (error) {
+        // Handle distance validation errors (FASE 2)
+        if (error.includes('must be within') && details) {
+          Alert.alert(
+            'Troppo lontano',
+            `Devi essere entro ${details.max_booking_radius_km}km da ${details.venue_name} per prenotare questo evento.\n\nDistanza attuale: ${details.current_distance_km}km\n\n${details.venue_address}`,
+            [{ text: 'OK' }]
+          );
+        }
         // Handle overlap errors with user-friendly messages
-        if (error.includes('overlapping')) {
+        else if (error.includes('overlapping')) {
           Alert.alert(
             'Eventi sovrapposti',
             'Tu o uno dei tuoi ospiti avete già una prenotazione per un evento che si svolge nello stesso orario.',
@@ -301,6 +382,35 @@ export default function ReservationScreen() {
                 </Text>
               </CardContent>
             </Card>
+
+            {/* Location Status Indicator (FASE 3) */}
+            {isLoadingLocation ? (
+              <Card className="mb-6 bg-muted">
+                <CardContent className="p-4 flex-row items-center gap-3">
+                  <ActivityIndicator size="small" color={themeColors.primary} />
+                  <Text className="text-muted-foreground flex-1">
+                    Rilevamento posizione...
+                  </Text>
+                </CardContent>
+              </Card>
+            ) : locationError ? (
+              <Card className="mb-6 bg-destructive/10">
+                <CardContent className="p-4">
+                  <Text className="text-destructive font-semibold">
+                    ⚠️ {locationError}
+                  </Text>
+                </CardContent>
+              </Card>
+            ) : userLocation ? (
+              <Card className="mb-6 bg-primary/10">
+                <CardContent className="p-4 flex-row items-center gap-2">
+                  <Text className="text-primary font-semibold">✓</Text>
+                  <Text className="text-primary flex-1">
+                    📍 Posizione rilevata
+                  </Text>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* Reservation Type Selection */}
             {priveEnabled && (
@@ -702,9 +812,9 @@ export default function ReservationScreen() {
               </Pressable>
               <Pressable
                 onPress={handleReserve}
-                disabled={isSubmitting || totalPeople > maxGuests || (reservationType === 'prive' && priveMode !== 'create')}
+                disabled={isSubmitting || totalPeople > maxGuests || (reservationType === 'prive' && priveMode !== 'create') || !userLocation}
                 className={`flex-1 py-3 rounded-lg items-center bg-primary ${
-                  isSubmitting || totalPeople > maxGuests || (reservationType === 'prive' && priveMode !== 'create') ? 'opacity-50' : ''
+                  isSubmitting || totalPeople > maxGuests || (reservationType === 'prive' && priveMode !== 'create') || !userLocation ? 'opacity-50' : ''
                 }`}
               >
                 {isSubmitting ? (

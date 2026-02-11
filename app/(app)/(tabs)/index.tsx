@@ -3,18 +3,18 @@
  * Uses extracted components for better maintainability
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View,
-  ScrollView,
   RefreshControl,
-  Platform,
+  ScrollView,
   Text,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useSettings } from '../../../lib/contexts/settings';
 import { THEME } from '../../../lib/theme';
+import { useGlassCapability } from '../../../lib/glass/use-glass-capability';
 
 // Import extracted components
 import { HomeMap } from '../../../components/home/home-map';
@@ -24,8 +24,8 @@ import { useHomeData } from '../../../lib/hooks/useHomeData';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { settings } = useSettings();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const mapRef = useRef<any>(null);
 
   // Use dark theme (single theme for the app)
@@ -43,16 +43,34 @@ export default function HomeScreen() {
     onRefresh,
     handleOpenCreateMenu,
     handleCloseCreateMenu,
-    incrementStoriesRefresh,
   } = useHomeData();
 
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | undefined>();
+  const lastPlaceNavigationRef = useRef<{ id: string; timestamp: number } | null>(null);
+
+  // Use the glass capability hook for automatic detection
+  const { hasLiquidGlass } = useGlassCapability();
 
   const handlePlacePress = (place: any) => {
+    const now = Date.now();
+    const lastNavigation = lastPlaceNavigationRef.current;
+
+    if (
+      lastNavigation &&
+      lastNavigation.id === place.id &&
+      now - lastNavigation.timestamp < 800
+    ) {
+      return;
+    }
+
+    lastPlaceNavigationRef.current = { id: place.id, timestamp: now };
     setSelectedPlaceId(place.id);
     // Navigate to place detail
     router.push(`/place/${place.id}` as any);
   };
+
+  const contentBottomPadding = insets.bottom + 96;
+  const overlayBottomOffset = 120;
 
   // Show loading state
   if (isLoadingPlaces && places.length === 0) {
@@ -74,6 +92,7 @@ export default function HomeScreen() {
       <View className="flex-1">
         <ScrollView
           className="flex-1"
+          scrollEnabled={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -82,10 +101,10 @@ export default function HomeScreen() {
               colors={[themeColors.primary]}
             />
           }
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: contentBottomPadding }}
         >
           {/* Map View */}
-          <View className="flex-1 min-h-[400px]">
+          <View className="flex-1" style={{ height: windowHeight }}>
             <HomeMap
               places={places}
               location={location}
@@ -123,6 +142,8 @@ export default function HomeScreen() {
           }}
           location={location}
           mapRef={mapRef.current}
+          canUseLiquidGlass={hasLiquidGlass}
+          floatingBottomOffset={overlayBottomOffset}
         />
       </View>
     </View>

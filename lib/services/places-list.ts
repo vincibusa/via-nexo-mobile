@@ -43,9 +43,7 @@ class PlacesListService {
       if (filters.has_events !== undefined) {
         params.append('has_events', filters.has_events.toString());
       }
-      if (filters.max_distance_km !== undefined) {
-        params.append('max_distance_km', filters.max_distance_km.toString());
-      }
+      // NOTE: max_distance_km removed (FASE 1) - users see all places
       if (filters.sort) {
         params.append('sort', filters.sort);
       }

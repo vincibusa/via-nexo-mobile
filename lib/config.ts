@@ -7,7 +7,7 @@ const getBackendURL = (): string => {
   // In sviluppo, usa la variabile d'ambiente EXPO_PUBLIC_DEV_API_URL
   // Impostare in .env.local: EXPO_PUBLIC_DEV_API_URL=http://192.168.x.x:3000
   // Nota: In Expo, le variabili d'ambiente devono iniziare con EXPO_PUBLIC_
-  const devURL = 'http://192.168.1.70:3000';
+  const devURL = 'http://192.168.1.48:3000';
 
   if (devURL) {
     return devURL;

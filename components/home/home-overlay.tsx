@@ -7,9 +7,16 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sparkles, Navigation } from 'lucide-react-native';
+import { Sparkles, Navigation, Sliders } from 'lucide-react-native';
+import { GlassView } from '../glass/glass-view';
 import { CreateMenuSheet } from '../social/create-menu-sheet';
+import { PlaceTypeFilterSheet } from './place-type-filter-sheet';
 import { dailyRecommendationsService } from '../../lib/services/daily-recommendations';
+import { useModalContext } from '../../app/(app)/(tabs)/_layout';
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 
 interface HomeOverlayProps {
   showCreateMenu: boolean;
@@ -26,6 +33,8 @@ interface HomeOverlayProps {
   };
   location: { lat: number; lon: number } | null;
   mapRef: any;
+  canUseLiquidGlass?: boolean;
+  floatingBottomOffset?: number;
 }
 
 export function HomeOverlay({
@@ -36,10 +45,21 @@ export function HomeOverlay({
   themeColors,
   location,
   mapRef,
+  canUseLiquidGlass = false,
+  floatingBottomOffset = 20,
 }: HomeOverlayProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [hasRecommendations, setHasRecommendations] = useState(false);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const { isModalOpen } = useModalContext();
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsFilterSheetOpen(false);
+      return () => setIsFilterSheetOpen(false);
+    }, [])
+  );
 
   const getJustifyContent = (): 'flex-start' | 'flex-end' | 'space-between' => {
     if (hasRecommendations && location) return 'space-between';
@@ -49,7 +69,7 @@ export function HomeOverlay({
 
   const buttonsContainerStyle = {
     ...styles.buttonsContainer,
-    bottom: insets.bottom + 20,
+    bottom: insets.bottom + floatingBottomOffset,
     justifyContent: getJustifyContent(),
   };
 
@@ -90,17 +110,31 @@ export function HomeOverlay({
     router.push('/(app)/daily-recommendations' as any);
   };
 
+  // Animated style for dimming buttons when modal is open
+  const buttonsDimStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(isModalOpen ? 0.25 : 1, { duration: 250 }),
+  }));
+
   return (
     <>
       {/* Create Menu Sheet */}
       <CreateMenuSheet
         isOpen={showCreateMenu}
         onClose={onCloseCreateMenu}
+        canUseLiquidGlass={canUseLiquidGlass}
+      />
+
+      {/* Place Type Filter Sheet */}
+      <PlaceTypeFilterSheet
+        isOpen={isFilterSheetOpen}
+        onClose={() => setIsFilterSheetOpen(false)}
+        canUseLiquidGlass={canUseLiquidGlass}
       />
 
       {/* Bottom buttons row - Recommendations and Location */}
-      <View
-        style={buttonsContainerStyle}
+      <Animated.View
+        style={[buttonsContainerStyle, buttonsDimStyle]}
+        pointerEvents={isModalOpen ? 'none' : 'auto'}
       >
         {/* Daily Recommendations Button */}
         {hasRecommendations && (
@@ -112,19 +146,49 @@ export function HomeOverlay({
           </TouchableOpacity>
         )}
 
-        {/* Location Button */}
+        {/* Location and Filter Buttons Group */}
         {location && (
-          <TouchableOpacity
-            onPress={centerOnUserLocation}
-            style={[styles.button, { backgroundColor: themeColors.card }]}
-          >
-            <Navigation 
-              size={24} 
-              color={themeColors.primary} 
-            />
-          </TouchableOpacity>
+          <View style={styles.verticalButtonsGroup}>
+            {/* Filter Button */}
+            <TouchableOpacity
+              onPress={() => setIsFilterSheetOpen(true)}
+              activeOpacity={0.85}
+            >
+              <GlassView
+                intensity="light"
+                tint="extraLight"
+                isInteractive
+                style={styles.glassButton}
+              >
+                <Sliders
+                  size={28}
+                  color="#FFFFFF"
+                />
+              </GlassView>
+            </TouchableOpacity>
+
+            {/* Location Button */}
+            <TouchableOpacity
+              onPress={centerOnUserLocation}
+              activeOpacity={0.85}
+            >
+              <GlassView
+                intensity="light"
+                tint="extraLight"
+                isInteractive
+                style={styles.glassButton}
+              >
+                <View style={styles.iconWrapper}>
+                  <Navigation
+                    size={28}
+                    color="#FFFFFF"
+                  />
+                </View>
+              </GlassView>
+            </TouchableOpacity>
+          </View>
         )}
-      </View>
+      </Animated.View>
     </>
   );
 }
@@ -141,14 +205,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   button: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 999,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  verticalButtonsGroup: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+  },
+  glassButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 9,
+  },
+  fallbackGlassButton: {
+    backgroundColor: 'rgba(24, 26, 32, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  iconWrapper: {
+    transform: [{ translateX: 1 }, { translateY: 1 }],
   },
 });

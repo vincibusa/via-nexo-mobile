@@ -15,6 +15,7 @@ interface FiltersStore {
 
 const defaultPlacesFilters: PlacesFilters = {
   sort: 'distance',
+  max_distance_km: 20,
 };
 
 const defaultEventsFilters: EventsFilters = {

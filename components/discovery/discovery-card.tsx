@@ -15,6 +15,8 @@ import type { DiscoveryItem } from '../../lib/types/discovery';
 import { useRouter } from 'expo-router';
 import { Share } from 'react-native';
 import { CommentsSheet } from './comments-sheet';
+import { GlassView } from '../glass/glass-view';
+import { useGlassCapability } from '../../lib/glass/use-glass-capability';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,7 +35,8 @@ export function DiscoveryCard({ item, isActive, onLike, onView, containerHeight 
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const themeColors = THEME.dark;
-  
+  const { hasLiquidGlass } = useGlassCapability();
+
   const styles = useMemo(() => createStyles(containerHeight), [containerHeight]);
 
   useEffect(() => {
@@ -114,11 +117,15 @@ export function DiscoveryCard({ item, isActive, onLike, onView, containerHeight 
       </View>
 
       {/* Info Button - Top Right */}
-      <Pressable
-        onPress={handleInfoPress}
-        style={styles.topInfoButton}
-      >
-        <Info size={24} color="white" />
+      <Pressable onPress={handleInfoPress} style={styles.topInfoButtonContainer}>
+        <GlassView
+          intensity="light"
+          tint="extraLight"
+          isInteractive
+          style={styles.glassInfoButton}
+        >
+          <Info size={24} color="white" />
+        </GlassView>
       </Pressable>
 
       {/* Bottom Info */}
@@ -201,27 +208,28 @@ const createStyles = (containerHeight: number) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#000',
   },
-  topInfoButton: {
+  topInfoButtonContainer: {
     position: 'absolute',
     top: 50,
     right: 16,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    zIndex: 10,
+  },
+  glassInfoButton: {
     borderRadius: 24,
     padding: 12,
-    zIndex: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 9,
   },
   bottomInfo: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 80,
     left: 0,
     right: 80,
     padding: 20,
-    paddingBottom: 0,
+    paddingBottom: 20,
   },
   eventInfo: {
     marginBottom: 16,
@@ -247,7 +255,7 @@ const createStyles = (containerHeight: number) => StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 16,
-    bottom: 20,
+    bottom: 140,
     alignItems: 'center',
     gap: 20,
   },

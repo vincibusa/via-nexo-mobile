@@ -204,8 +204,9 @@ class ReservationsService {
     isOpenTable: boolean = false,
     openTableDescription?: string,
     openTableMinBudget?: number,
-    openTableAvailableSpots?: number
-  ): Promise<{ data?: Reservation; error?: string }> {
+    openTableAvailableSpots?: number,
+    userLocation?: { lat: number; lon: number }
+  ): Promise<{ data?: Reservation; error?: string; details?: any }> {
     try {
       const session = await storage.getSession();
       if (!session?.accessToken) {
@@ -220,6 +221,7 @@ class ReservationsService {
         notes,
         wants_group_chat: wantsGroupChat,
         reservation_type: reservationType,
+        user_location: userLocation, // FASE 2: Send user location for distance validation
       };
 
       // Add open table fields only for prive reservations
@@ -247,6 +249,7 @@ class ReservationsService {
           error:
             errorData.error ||
             'Failed to create reservation',
+          details: errorData.details, // Include error details for distance validation errors
         };
       }
 

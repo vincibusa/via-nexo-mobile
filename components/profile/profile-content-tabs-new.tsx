@@ -20,11 +20,13 @@ import { useSettings } from '../../lib/contexts/settings'
 import { THEME } from '../../lib/theme'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { reservationsService, Reservation } from '../../lib/services/reservations'
+import { managerService } from '../../lib/services/manager'
 import { API_CONFIG } from '../../lib/config'
 import { useAuth } from '../../lib/contexts/auth'
 import { Calendar, Clock, MapPin, Ticket, Image as ImageIcon, Bell } from 'lucide-react-native'
 import { isEventPast } from '../../lib/utils/date'
 import { ProfileRequestsTab } from './profile-requests-tab'
+import type { ManagerEvent } from '../../lib/types/manager'
 
 interface Story {
   id: string
@@ -40,7 +42,7 @@ interface GridItem {
   image?: string
   title?: string
   subtitle?: string
-  type: 'reservation' | 'story'
+  type: 'reservation' | 'story' | 'event'
   dateInfo?: {
     day: number
     month: string
@@ -61,7 +63,8 @@ interface ProfileContentTabsNewProps {
 
 
 export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {}) {
-  const [activeTab, setActiveTab] = useState<'reservations' | 'stories' | 'requests'>('reservations')
+  // Determine initial tab based on user role (will be updated after user is loaded)
+  const [activeTab, setActiveTab] = useState<'reservations' | 'stories' | 'requests' | 'events'>('reservations')
   const { width } = useWindowDimensions()
   const { settings } = useSettings()
   const { user, session } = useAuth()
@@ -69,13 +72,16 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
 
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [stories, setStories] = useState<Story[]>([])
+  const [managerEvents, setManagerEvents] = useState<ManagerEvent[]>([])
   const [isLoadingReservations, setIsLoadingReservations] = useState(true)
   const [isLoadingStories, setIsLoadingStories] = useState(true)
+  const [isLoadingManagerEvents, setIsLoadingManagerEvents] = useState(true)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
-  
+
 
   // Check if viewing external profile
   const isExternalProfile = !!userId
+  const isManager = user?.role === 'manager' && !isExternalProfile
 
   // Load pending requests count (only for current user, not external profiles)
   const loadPendingRequestsCount = useCallback(async () => {
@@ -123,6 +129,22 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     }
   }, [userId])
 
+  // Fetch manager events
+  const fetchManagerEvents = useCallback(async () => {
+    if (!isManager) return
+    setIsLoadingManagerEvents(true)
+    try {
+      const { data, error } = await managerService.getMyEvents(1, 50, 'upcoming')
+      if (!error && data?.events) {
+        setManagerEvents(data.events)
+      }
+    } catch (error) {
+      console.error('Error fetching manager events:', error)
+    } finally {
+      setIsLoadingManagerEvents(false)
+    }
+  }, [isManager])
+
   // Fetch stories (including expired ones for archive)
   const fetchStories = useCallback(async () => {
     if (!session?.accessToken) return
@@ -153,13 +175,21 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     }
   }, [userId, user?.id, session?.accessToken])
 
+  // Set default tab to 'events' for managers
+  useEffect(() => {
+    if (isManager && activeTab === 'reservations') {
+      setActiveTab('events')
+    }
+  }, [isManager])
+
   // Load data when screen is focused
   useFocusEffect(
     useCallback(() => {
       fetchReservations()
       fetchStories()
+      fetchManagerEvents()
       loadPendingRequestsCount()
-    }, [fetchReservations, fetchStories, loadPendingRequestsCount])
+    }, [fetchReservations, fetchStories, fetchManagerEvents, loadPendingRequestsCount])
   )
 
   // Format date helper
@@ -197,12 +227,38 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     type: 'story',
   }))
 
+  // Transform manager events to GridItem format
+  const managerEventItems: GridItem[] = managerEvents.map((e) => {
+    const dateInfo = e.start_datetime ? formatDate(e.start_datetime) : undefined
+    const isPast = e.start_datetime ? isEventPast(e.start_datetime) : false
+    return {
+      id: e.id,
+      image: e.cover_image_url,
+      title: e.title,
+      subtitle: e.place?.name,
+      type: 'event',
+      dateInfo,
+      event: {
+        start_datetime: e.start_datetime,
+        place: e.place,
+      },
+      isPast,
+    }
+  })
+
   // Memoize items to ensure they update when activeTab changes
   const items = useMemo(() => {
-    return activeTab === 'reservations' ? reservationItems : storyItems
-  }, [activeTab, reservationItems, storyItems])
+    if (activeTab === 'reservations') return reservationItems
+    if (activeTab === 'events') return managerEventItems
+    return storyItems
+  }, [activeTab, reservationItems, storyItems, managerEventItems])
 
-  const isLoading = activeTab === 'reservations' ? isLoadingReservations : isLoadingStories
+  const isLoading =
+    activeTab === 'reservations'
+      ? isLoadingReservations
+      : activeTab === 'events'
+        ? isLoadingManagerEvents
+        : isLoadingStories
 
   const handleItemPress = (item: GridItem) => {
     // Disable navigation for external profiles (security - no QR code access)
@@ -210,12 +266,14 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
 
     if (item.type === 'reservation') {
       router.push(`/(app)/reservations/${item.id}` as any)
+    } else if (item.type === 'event') {
+      router.push(`/(app)/event/${item.id}` as any)
     }
     // Stories could navigate to a story viewer
   }
 
   const renderGridItem = ({ item }: { item: GridItem }) => {
-    const isReservation = item.type === 'reservation'
+    const isReservationOrEvent = item.type === 'reservation' || item.type === 'event'
 
     return (
       <TouchableOpacity
@@ -248,8 +306,8 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
             </View>
           )}
 
-          {/* Date badge overlay in top-left for reservations */}
-          {isReservation && item.dateInfo && (
+          {/* Date badge overlay in top-left for reservations and events */}
+          {isReservationOrEvent && item.dateInfo && (
             <View
               className="absolute top-2 left-2 rounded-md px-2 py-1 items-center z-10"
               style={{
@@ -271,8 +329,8 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
             </View>
           )}
 
-          {/* Past event badge overlay in top-right for reservations */}
-          {isReservation && item.isPast && (
+          {/* Past event badge overlay in top-right for reservations and events */}
+          {isReservationOrEvent && item.isPast && (
             <View
               className="absolute top-2 right-2 rounded-md px-2 py-1 z-10"
               style={{
@@ -289,7 +347,7 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
           )}
 
           {/* Gradient overlay at bottom for text readability */}
-          {isReservation && (
+          {isReservationOrEvent && (
             <>
               {/* Gradient overlay using multiple Views for smooth transition */}
               <View
@@ -407,19 +465,28 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
       <Text className="text-muted-foreground text-center">
         {activeTab === 'reservations'
           ? 'Nessuna prenotazione'
-          : 'Nessuna storia pubblicata'}
+          : activeTab === 'events'
+            ? 'Nessun evento creato'
+            : 'Nessuna storia pubblicata'}
       </Text>
     </View>
   )
 
   // Tab configuration - memoized to prevent recreation on every render
   const tabs = useMemo(() => [
-    {
-      id: 'reservations' as const,
-      label: 'Prenotazioni',
-      icon: Ticket,
-      count: reservations.length,
-    },
+    isManager
+      ? {
+          id: 'events' as const,
+          label: 'Eventi',
+          icon: Calendar,
+          count: managerEvents.length,
+        }
+      : {
+          id: 'reservations' as const,
+          label: 'Prenotazioni',
+          icon: Ticket,
+          count: reservations.length,
+        },
     {
       id: 'stories' as const,
       label: 'Storie',
@@ -437,7 +504,14 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
           },
         ]
       : []),
-  ], [reservations.length, stories.length, pendingRequestsCount, isExternalProfile])
+  ], [
+    isManager,
+    managerEvents.length,
+    reservations.length,
+    stories.length,
+    pendingRequestsCount,
+    isExternalProfile,
+  ])
 
   // Calculate tab width - memoized
   const tabWidth = useMemo(() => (width - 32) / tabs.length, [width, tabs.length])

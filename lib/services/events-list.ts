@@ -76,9 +76,7 @@ class EventsListService {
         // Default to upcoming events
         params.append('time_filter', 'upcoming');
       }
-      if (filters.max_distance_km !== undefined) {
-        params.append('max_distance_km', filters.max_distance_km.toString());
-      }
+      // NOTE: max_distance_km removed (FASE 1) - users see all events
       if (filters.sort) {
         params.append('sort', filters.sort);
       }

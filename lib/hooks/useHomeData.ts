@@ -9,6 +9,7 @@ import { placesListService } from '../services/places-list';
 import type { Place } from '../types/suggestion';
 import { API_CONFIG } from '../config';
 import { useAuth } from '../contexts/auth';
+import { useFiltersStore } from '../stores/filters-store';
 
 export interface HomeDataState {
   places: Place[];
@@ -34,6 +35,7 @@ export interface UseHomeDataReturn extends HomeDataState {
  */
 export function useHomeData(): UseHomeDataReturn {
   const { user } = useAuth();
+  const { placesFilters } = useFiltersStore();
 
   const [state, setState] = useState<HomeDataState>({
     places: [],
@@ -91,9 +93,12 @@ export function useHomeData(): UseHomeDataReturn {
       if (!mounted) return;
       setState(prev => ({ ...prev, location: userLocation }));
 
-      // Fetch places within 20km radius
+      // Fetch places with filters from store
       const { data, error } = await placesListService.getPlaces(
-        { max_distance_km: 20 }, // filter places within 20km
+        {
+          max_distance_km: 20,
+          ...placesFilters,
+        },
         userLocation
       );
 
@@ -118,10 +123,10 @@ export function useHomeData(): UseHomeDataReturn {
     }
   };
 
-  // Initial fetch
+  // Initial fetch and refresh when category filter changes
   useEffect(() => {
     fetchPlaces();
-  }, []);
+  }, [placesFilters.category]);
 
   const onRefresh = async () => {
     setState(prev => ({ ...prev, refreshing: true, isLoadingPlaces: true }));

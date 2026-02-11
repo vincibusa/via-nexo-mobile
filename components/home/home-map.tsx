@@ -276,7 +276,6 @@ export function HomeMap({
           >
             <PlaceMarker
               place={place}
-              onPress={onPlacePress}
               isSelected={selectedPlaceId === place.id}
             />
           </Marker>

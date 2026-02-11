@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   X,
+  ArrowLeft,
   Camera,
   AlertCircle,
   Type,
@@ -24,6 +25,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { useColorScheme } from 'nativewind';
@@ -157,12 +159,19 @@ export default function CreateStoryScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setImage(result.assets[0].uri);
+        const originalUri = result.assets[0].uri;
+
+        // Convert to JPEG (handles HEIC, PNG, WebP, AVIF, BMP, etc.)
+        const jpegUri = await convertImageToJPEG(originalUri);
+
+        setImage(jpegUri); // Now always JPEG
         resetEditor();
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      setError('Errore durante la selezione dell\'immagine');
+      const errorMessage = error instanceof Error ? error.message : 'Errore durante la selezione dell\'immagine';
+      setError(errorMessage);
+      Alert.alert('Errore', errorMessage, [{ text: 'OK' }]);
     }
   };
 
@@ -181,12 +190,19 @@ export default function CreateStoryScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setImage(result.assets[0].uri);
+        const originalUri = result.assets[0].uri;
+
+        // Convert to JPEG (camera might save as HEIC on iOS)
+        const jpegUri = await convertImageToJPEG(originalUri);
+
+        setImage(jpegUri); // Now always JPEG
         resetEditor();
       }
     } catch (error) {
       console.error('Error opening camera:', error);
-      setError('Errore durante l\'uso della fotocamera');
+      const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'uso della fotocamera';
+      setError(errorMessage);
+      Alert.alert('Errore', errorMessage, [{ text: 'OK' }]);
     }
   };
 
@@ -230,6 +246,28 @@ export default function CreateStoryScreen() {
     }
   };
 
+  /**
+   * Converts any image format to JPEG using expo-image-manipulator
+   * Supports HEIC, PNG, WebP, AVIF, BMP → JPEG
+   */
+  const convertImageToJPEG = async (imageUri: string): Promise<string> => {
+    try {
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [], // No transformations, just format conversion
+        {
+          format: ImageManipulator.SaveFormat.JPEG,
+          compress: 0.8, // 80% quality: good balance between file size and visual quality
+        }
+      );
+
+      return manipulatedImage.uri;
+    } catch (error) {
+      console.error('Error converting image to JPEG:', error);
+      throw new Error('Impossibile convertire l\'immagine. Riprova.');
+    }
+  };
+
   const handlePost = async () => {
     if (!image) return;
 
@@ -246,9 +284,9 @@ export default function CreateStoryScreen() {
       // Create file object from image URI
       const fileName = `story-${Date.now()}.jpg`;
       const file = {
-        uri: image,
+        uri: image, // Converted to JPEG by convertImageToJPEG()
         name: fileName,
-        type: 'image/jpeg',
+        type: 'image/jpeg', // Always JPEG after conversion (supports HEIC, PNG, WebP, etc.)
       };
 
       // Upload image to Supabase Storage
@@ -517,8 +555,12 @@ export default function CreateStoryScreen() {
         <View className="flex-1">
           {/* Header */}
           <View className="absolute top-0 left-0 right-0 z-10 flex-row items-center justify-between p-4">
-            <TouchableOpacity onPress={() => setImage(null)}>
-              <X size={24} color="white" />
+            <TouchableOpacity
+              onPress={() => setImage(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Torna alla selezione immagine"
+            >
+              <ArrowLeft size={24} color="white" />
             </TouchableOpacity>
             <Text className="font-semibold text-white">
               La tua storia
@@ -651,8 +693,12 @@ export default function CreateStoryScreen() {
       <View className="flex-1 flex-col">
         {/* Header */}
         <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-          <TouchableOpacity onPress={() => router.back()}>
-            <X size={24} className="text-foreground" />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Torna indietro"
+          >
+            <ArrowLeft size={24} color={themeColors.foreground} />
           </TouchableOpacity>
           <Text className="text-lg font-semibold">Nuova Storia</Text>
           <View className="w-6" />

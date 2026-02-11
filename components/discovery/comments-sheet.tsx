@@ -6,7 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { TextInput } from 'react-native';
 import { X, Heart, Send } from 'lucide-react-native';
 import { Text } from '../ui/text';
@@ -17,6 +17,7 @@ import { THEME } from '../../lib/theme';
 import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
 import { Dimensions } from 'react-native';
+import { GlassSurface } from '../glass/glass-surface';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -43,7 +44,8 @@ export function CommentsSheet({ isOpen, onClose, discoveryItemId }: CommentsShee
   const { session, user } = useAuth();
   const { settings } = useSettings();
   const { colorScheme } = useColorScheme();
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const inputRef = useRef<TextInput>(null);
   
   const effectiveTheme = settings?.theme === 'system'
     ? (colorScheme === 'dark' ? 'dark' : 'light')
@@ -55,24 +57,31 @@ export function CommentsSheet({ isOpen, onClose, discoveryItemId }: CommentsShee
   const [newComment, setNewComment] = useState('');
   const [isPosting, setIsPosting] = useState(false);
 
-  // Snap points: 45% and 70% of screen height
+  // Snap points: 45% and 90% of full screen height
+  // Opens at 90% to ensure input is always visible even with comments
   const snapPoints = useMemo(() => [
     SCREEN_HEIGHT * 0.45,
-    SCREEN_HEIGHT * 0.7,
+    SCREEN_HEIGHT * 0.90,
   ], []);
 
   useEffect(() => {
     if (isOpen) {
-      bottomSheetRef.current?.snapToIndex(0); // Start at 45%
+      bottomSheetRef.current?.present(); // Open modal
       fetchComments();
     } else {
-      bottomSheetRef.current?.close();
+      bottomSheetRef.current?.dismiss();
     }
   }, [isOpen, discoveryItemId]);
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       onClose();
+    } else if (index === 1) {
+      // Snap point massimo (90%) - apri tastiera automaticamente
+      // Delay più lungo per assicurarsi che l'animazione sia completata
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 400);
     }
   }, [onClose]);
 
@@ -210,24 +219,21 @@ export function CommentsSheet({ isOpen, onClose, discoveryItemId }: CommentsShee
       </Avatar>
 
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-          <Text style={{ fontWeight: '600', color: themeColors.foreground }}>
-            {item.user?.username}
-          </Text>
-          <Text style={{ fontSize: 12, color: themeColors.mutedForeground }}>
-            {timeAgo(item.created_at)}
-          </Text>
-        </View>
-        <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 20, color: themeColors.foreground }}>
-          {item.content}
-        </Text>
-        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <TouchableOpacity 
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, flex: 1 }}>
+            <Text style={{ fontWeight: '600', color: themeColors.foreground }}>
+              {item.user?.username}
+            </Text>
+            <Text style={{ fontSize: 12, color: themeColors.mutedForeground }}>
+              {timeAgo(item.created_at)}
+            </Text>
+          </View>
+          <TouchableOpacity
             onPress={() => handleLikeComment(item.id)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
-            <Heart 
-              size={14} 
+            <Heart
+              size={16}
               color={item.is_liked ? themeColors.destructive : themeColors.mutedForeground}
               fill={item.is_liked ? themeColors.destructive : 'none'}
             />
@@ -236,27 +242,40 @@ export function CommentsSheet({ isOpen, onClose, discoveryItemId }: CommentsShee
             </Text>
           </TouchableOpacity>
         </View>
+        <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 20, color: themeColors.foreground }}>
+          {item.content}
+        </Text>
       </View>
     </View>
   ), [themeColors, handleLikeComment]);
 
-  if (!isOpen) return null;
-
   return (
-    <BottomSheet
+    <BottomSheetModal
       ref={bottomSheetRef}
-      index={0}
+      index={1}
       snapPoints={snapPoints}
       onChange={handleSheetChange}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
-      backgroundStyle={{ backgroundColor: themeColors.background }}
-      handleIndicatorStyle={{ backgroundColor: themeColors.mutedForeground }}
-      keyboardBehavior="interactive"
+      backgroundStyle={{ backgroundColor: 'transparent' }}
+      handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.35)' }}
+      keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
+      bottomInset={0}
     >
-      <BottomSheetView style={{ flex: 1 }}>
+      <GlassSurface
+        variant="sheet"
+        intensity="regular"
+        tint="extraLight"
+        style={{
+          flex: 1,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          paddingBottom: 0
+        }}
+      >
+        <BottomSheetView style={{ flex: 1, paddingBottom: 0 }}>
         {/* Header - Always visible */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: themeColors.border }}>
           <Text style={{ fontSize: 18, fontWeight: '600', color: themeColors.foreground }}>
@@ -290,22 +309,21 @@ export function CommentsSheet({ isOpen, onClose, discoveryItemId }: CommentsShee
         )}
 
         {/* Comment Input - Always visible at bottom */}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        >
-          <View style={{ borderTopWidth: 1, borderTopColor: themeColors.border, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: themeColors.background }}>
+        <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Avatar style={{ height: 40, width: 40 }}>
-                <AvatarImage source={{ uri: user?.avatar_url || '' }} />
+                {user?.avatarUrl && user.avatarUrl.trim() !== '' ? (
+                  <AvatarImage source={{ uri: user.avatarUrl }} />
+                ) : null}
                 <AvatarFallback>
                   <Text style={{ fontSize: 12, fontWeight: '600' }}>
-                    {user?.email?.charAt(0).toUpperCase()}
+                    {user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                   </Text>
                 </AvatarFallback>
               </Avatar>
               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, backgroundColor: themeColors.muted + '30', paddingHorizontal: 16, paddingVertical: 10 }}>
                 <TextInput
+                  ref={inputRef}
                   placeholder="Aggiungi un commento..."
                   placeholderTextColor={themeColors.mutedForeground}
                   value={newComment}
@@ -330,9 +348,9 @@ export function CommentsSheet({ isOpen, onClose, discoveryItemId }: CommentsShee
               </View>
             </View>
           </View>
-        </KeyboardAvoidingView>
       </BottomSheetView>
-    </BottomSheet>
+      </GlassSurface>
+    </BottomSheetModal>
   );
 }
 

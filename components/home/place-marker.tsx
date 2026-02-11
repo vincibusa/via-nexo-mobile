@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { useSettings } from '../../lib/contexts/settings';
 import { THEME } from '../../lib/theme';
@@ -13,7 +13,6 @@ import { MapPin, Utensils, Beer, Coffee, Wine, Music, Pizza } from 'lucide-react
 
 interface PlaceMarkerProps {
   place: Place;
-  onPress: (place: Place) => void;
   isSelected?: boolean;
 }
 
@@ -74,7 +73,7 @@ const getPlaceIconColor = (category: string, primaryColor: string) => {
   return primaryColor;
 };
 
-export function PlaceMarker({ place, onPress, isSelected = false }: PlaceMarkerProps) {
+export function PlaceMarker({ place, isSelected = false }: PlaceMarkerProps) {
   const { colorScheme } = useColorScheme();
   const { settings } = useSettings();
   
@@ -89,11 +88,7 @@ export function PlaceMarker({ place, onPress, isSelected = false }: PlaceMarkerP
   const iconColor = getPlaceIconColor(place.category, themeColors.primary);
 
   return (
-    <TouchableOpacity
-      onPress={() => onPress(place)}
-      activeOpacity={0.7}
-      className="items-center"
-    >
+    <View className="items-center">
       {/* Marker */}
       <View
         className={`items-center justify-center rounded-full border-2 ${
@@ -128,6 +123,6 @@ export function PlaceMarker({ place, onPress, isSelected = false }: PlaceMarkerP
           </Text>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }

@@ -34,8 +34,8 @@ export default function DiscoveryScreen() {
   const themeColors = THEME.dark;
   const isFocused = useIsFocused();
 
-  // Calculate available height excluding safe areas (top status bar + bottom tab bar)
-  const availableHeight = SCREEN_HEIGHT - insets.top - insets.bottom;
+  // Full screen height for immersive video experience
+  const availableHeight = SCREEN_HEIGHT;
 
   // Configure audio to play even in silent mode (iOS)
   useEffect(() => {
