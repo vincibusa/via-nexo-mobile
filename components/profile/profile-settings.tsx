@@ -11,8 +11,6 @@ import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/botto
 import {
   Bell,
   Globe,
-  Moon,
-  Sun,
   Info,
   FileText,
   Shield,
@@ -44,8 +42,7 @@ export function ProfileSettings({
   const { hasPermission, requestPermission } = usePushNotifications();
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  const themeColors = THEME[isDark ? 'dark' : 'light'];
 
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['60%'], []);

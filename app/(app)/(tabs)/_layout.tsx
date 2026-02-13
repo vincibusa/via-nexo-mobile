@@ -24,6 +24,7 @@ import Animated, {
 import { NAV_THEME } from '../../../lib/theme';
 import MessagingService from '../../../lib/services/messaging';
 import { useAuth } from '../../../lib/contexts/auth';
+import { useColorScheme } from 'nativewind';
 
 type TabRouteName = 'index' | 'search' | 'discovery' | 'messages' | 'profile';
 
@@ -37,7 +38,6 @@ const TAB_LABELS: Record<TabRouteName, string> = {
 
 const MAIN_ROUTES: TabRouteName[] = ['index', 'discovery', 'messages', 'profile'];
 const ACTIVE_COLOR = '#4DA7FF';
-const INACTIVE_COLOR = 'rgba(255, 255, 255, 0.55)';
 const CAPSULE_HORIZONTAL_PADDING = 10;
 const CAPSULE_VERTICAL_PADDING = 8;
 const SCRUB_HAPTIC_COOLDOWN = 60;
@@ -72,11 +72,13 @@ function AnimatedTabIcon({
   focused,
   unreadMessages,
   pressed,
+  inactiveColor,
 }: {
   routeName: TabRouteName;
   focused: boolean;
   unreadMessages: number;
   pressed: SharedValue<number>;
+  inactiveColor: string;
 }) {
   const size = 22;
   const strokeInactive = 1.9;
@@ -96,7 +98,7 @@ function AnimatedTabIcon({
   });
 
   const getIcon = () => {
-    const color = focused ? ACTIVE_COLOR : INACTIVE_COLOR;
+    const color = focused ? ACTIVE_COLOR : inactiveColor;
     const stroke = focused ? strokeActive : strokeInactive;
 
     switch (routeName) {
@@ -139,6 +141,7 @@ function TabItem({
   unreadMessages,
   onPress,
   label,
+  inactiveColor,
 }: {
   route: { key: string; name: string; params?: object };
   index: number;
@@ -148,6 +151,7 @@ function TabItem({
   unreadMessages: number;
   onPress: (route: { key: string; name: string; params?: object }) => void;
   label: string;
+  inactiveColor: string;
 }) {
   const pressed = useSharedValue(0);
   const routeName = route.name as TabRouteName;
@@ -177,7 +181,7 @@ function TabItem({
 
     return {
       transform: [{ scale }],
-      color: visualFocused ? ACTIVE_COLOR : INACTIVE_COLOR,
+      color: visualFocused ? ACTIVE_COLOR : inactiveColor,
       opacity: interpolate(
         pressed.value,
         [0, 1],
@@ -203,6 +207,7 @@ function TabItem({
           focused={visualFocused}
           unreadMessages={unreadMessages}
           pressed={pressed}
+          inactiveColor={inactiveColor}
         />
         <Animated.Text style={[styles.mainItemLabel, labelStyle]}>
           {label}
@@ -219,9 +224,13 @@ function AppleLiquidTabBar({
   navigation,
   unreadMessages,
   isDimmed,
+  inactiveColor,
+  isDark,
 }: BottomTabBarProps & {
   unreadMessages: number;
   isDimmed: boolean;
+  inactiveColor: string;
+  isDark: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const [capsuleWidth, setCapsuleWidth] = useState(0);
@@ -417,12 +426,13 @@ function AppleLiquidTabBar({
               style={[
                 styles.searchPressable,
                 isRouteFocused(searchRoute.key) && styles.searchPressableFocused,
+                !isDark && styles.searchPressableFocusedLight,
               ]}
             >
               <Animated.View style={searchIconStyle}>
                 <Search
                   size={24}
-                  color={isRouteFocused(searchRoute.key) ? ACTIVE_COLOR : INACTIVE_COLOR}
+                  color={isRouteFocused(searchRoute.key) ? ACTIVE_COLOR : inactiveColor}
                   strokeWidth={isRouteFocused(searchRoute.key) ? 2.2 : 1.9}
                 />
               </Animated.View>
@@ -456,6 +466,7 @@ function AppleLiquidTabBar({
               pointerEvents="none"
               style={[
                 styles.focusPill,
+                !isDark && styles.focusPillLight,
                 indicatorStyle,
                 { left: CAPSULE_HORIZONTAL_PADDING + slotWidth * 0.06 },
               ]}
@@ -485,6 +496,7 @@ function AppleLiquidTabBar({
                   unreadMessages={unreadMessages}
                   onPress={handlePress}
                   label={label}
+                  inactiveColor={inactiveColor}
                 />
               );
             })}
@@ -497,7 +509,11 @@ function AppleLiquidTabBar({
 
 export default function TabLayout() {
   const { session } = useAuth();
-  const theme = NAV_THEME.dark;
+  const { colorScheme } = useColorScheme();
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const theme = NAV_THEME[themeMode];
+  const isDark = themeMode === 'dark';
+  const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(17, 24, 39, 0.6)';
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -535,6 +551,8 @@ export default function TabLayout() {
             {...props}
             unreadMessages={unreadMessages}
             isDimmed={isModalOpen}
+            inactiveColor={inactiveColor}
+            isDark={isDark}
           />
         )}
       >
@@ -579,6 +597,9 @@ const styles = StyleSheet.create({
   searchPressableFocused: {
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
+  searchPressableFocusedLight: {
+    backgroundColor: 'rgba(15,23,42,0.08)',
+  },
   mainCapsule: {
     flex: 1,
     maxWidth: 340,
@@ -601,6 +622,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
+  focusPillLight: {
+    backgroundColor: 'rgba(15,23,42,0.08)',
+  },
   mainItem: {
     height: 56,
     borderRadius: 24,
@@ -614,7 +638,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     lineHeight: 12,
-    color: INACTIVE_COLOR,
+    color: 'rgba(255, 255, 255, 0.55)',
   },
   iconWrapper: {
     position: 'relative',

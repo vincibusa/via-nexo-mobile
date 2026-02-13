@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { THEME } from '../../../lib/theme';
 import { useGlassCapability } from '../../../lib/glass/use-glass-capability';
+import { useColorScheme } from 'nativewind';
 
 // Import extracted components
 import { HomeMap } from '../../../components/home/home-map';
@@ -27,10 +28,11 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const mapRef = useRef<any>(null);
+  const { colorScheme } = useColorScheme();
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
-  const isDark = true;
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const themeColors = THEME[themeMode];
+  const isDark = themeMode === 'dark';
 
   // Use custom hook for data management
   const {

@@ -10,7 +10,14 @@ import { View, Platform } from 'react-native';
 import { GlassView as ExpoGlassView } from 'expo-glass-effect';
 import { BlurView } from 'expo-blur';
 import { useGlassCapability } from '../../lib/glass/use-glass-capability';
-import { BLUR_INTENSITY, TINT_COLORS, FALLBACK_COLORS, FALLBACK_BORDER, FALLBACK_SHADOW } from '../../lib/glass/constants';
+import { useColorScheme } from 'nativewind';
+import {
+  BLUR_INTENSITY,
+  TINT_COLORS_BY_THEME,
+  FALLBACK_COLORS_BY_THEME,
+  FALLBACK_BORDER_BY_THEME,
+  FALLBACK_SHADOW,
+} from '../../lib/glass/constants';
 import type { GlassViewProps, GlassIntensity, GlassTint } from '../../lib/glass/types';
 
 /**
@@ -23,15 +30,19 @@ function getBlurAmount(intensity: GlassIntensity): number {
 /**
  * Get tint color for the glass effect
  */
-function getTintColor(tint: GlassTint, intensity: GlassIntensity): string {
-  return TINT_COLORS[tint][intensity];
+function getTintColor(
+  tint: GlassTint,
+  intensity: GlassIntensity,
+  themeMode: 'light' | 'dark'
+): string {
+  return TINT_COLORS_BY_THEME[themeMode][tint][intensity];
 }
 
 /**
  * Get fallback background color
  */
-function getFallbackColor(intensity: GlassIntensity): string {
-  return FALLBACK_COLORS[intensity];
+function getFallbackColor(intensity: GlassIntensity, themeMode: 'light' | 'dark'): string {
+  return FALLBACK_COLORS_BY_THEME[themeMode][intensity];
 }
 
 /**
@@ -75,6 +86,8 @@ export function GlassView({
   ...rest
 }: GlassViewProps) {
   const { capability } = useGlassCapability();
+  const { colorScheme } = useColorScheme();
+  const themeMode: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
 
   // Route to appropriate implementation based on capability
   switch (capability) {
@@ -86,7 +99,7 @@ export function GlassView({
 
       // Fallback to glass-effect for now
       const glassEffectStyle = mapToGlassEffectStyle(intensity);
-      const tintColor = getTintColor(tint, intensity);
+      const tintColor = getTintColor(tint, intensity, themeMode);
 
       return (
         <ExpoGlassView
@@ -104,7 +117,7 @@ export function GlassView({
     case 'glass-effect': {
       // Use expo-glass-effect (current iOS implementation)
       const glassEffectStyle = mapToGlassEffectStyle(intensity);
-      const tintColor = getTintColor(tint, intensity);
+      const tintColor = getTintColor(tint, intensity, themeMode);
 
       return (
         <ExpoGlassView
@@ -122,12 +135,12 @@ export function GlassView({
     case 'blur': {
       // Use expo-blur for Android
       const blurAmount = getBlurAmount(intensity);
-      const tintColor = getTintColor(tint, intensity);
+      const tintColor = getTintColor(tint, intensity, themeMode);
 
       return (
         <BlurView
           intensity={blurAmount}
-          tint={tint === 'light' ? 'light' : 'dark'}
+          tint={themeMode}
           style={[
             style,
             {
@@ -144,15 +157,16 @@ export function GlassView({
     case 'fallback':
     default: {
       // Fallback for non-supported platforms or accessibility mode
-      const backgroundColor = getFallbackColor(intensity);
+      const backgroundColor = getFallbackColor(intensity, themeMode);
+      const border = FALLBACK_BORDER_BY_THEME[themeMode];
 
       return (
         <View
           style={[
             {
               backgroundColor,
-              borderWidth: FALLBACK_BORDER.width,
-              borderColor: FALLBACK_BORDER.color,
+              borderWidth: border.width,
+              borderColor: border.color,
               ...Platform.select({
                 ios: {
                   shadowColor: FALLBACK_SHADOW.color,

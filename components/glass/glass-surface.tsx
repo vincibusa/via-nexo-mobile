@@ -9,6 +9,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { GlassView } from './glass-view';
 import type { GlassSurfaceProps } from '../../lib/glass/types';
+import { useColorScheme } from 'nativewind';
 
 /**
  * GlassSurface Component
@@ -38,14 +39,23 @@ export function GlassSurface({
   children,
   ...rest
 }: GlassSurfaceProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   // Set defaults based on variant
   // Modal uses iOS Control Center style (prominent glassmorphism)
   const defaultIntensity = intensity || (variant === 'modal' ? 'prominent' : 'light');
-  const defaultTint = tint || (variant === 'modal' ? 'prominent' : 'extraLight');
+  const defaultTint = tint || (variant === 'modal' ? (isDark ? 'prominent' : 'light') : 'extraLight');
+
+  const modalThemeStyle =
+    variant === 'modal'
+      ? (isDark ? styles.modalDark : styles.modalLight)
+      : null;
 
   // Apply dimmed opacity if requested
   const surfaceStyle = [
     variantStyles[variant],
+    modalThemeStyle,
     dimmed && styles.dimmed,
     style,
   ];
@@ -132,5 +142,12 @@ const styles = StyleSheet.create({
    */
   dimmed: {
     opacity: 0.25,
+  },
+  modalDark: {
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  modalLight: {
+    borderColor: 'rgba(15, 23, 42, 0.12)',
+    shadowOpacity: 0.2,
   },
 });

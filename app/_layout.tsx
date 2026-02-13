@@ -18,6 +18,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../lib/query-client';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useColorScheme } from 'nativewind';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -25,14 +26,18 @@ export {
 } from 'expo-router';
 
 function AppContent() {
-  // Use dark theme (single theme for the app)
-  const theme = 'dark';
+  const { colorScheme, setColorScheme } = useColorScheme();
+  const resolvedTheme = colorScheme === 'dark' ? 'dark' : 'light';
+
+  useEffect(() => {
+    setColorScheme('system');
+  }, [setColorScheme]);
 
   return (
-    <ThemeProvider value={NAV_THEME[theme]}>
+    <ThemeProvider value={NAV_THEME[resolvedTheme]}>
       <StatusBar 
-        style="light" 
-        backgroundColor={NAV_THEME[theme].colors.background}
+        style={resolvedTheme === 'dark' ? 'light' : 'dark'}
+        backgroundColor={NAV_THEME[resolvedTheme].colors.background}
         translucent={false}
       />
       <Stack screenOptions={{

@@ -162,7 +162,7 @@ export function HomeOverlay({
               >
                 <Sliders
                   size={28}
-                  color="#FFFFFF"
+                  color={themeColors.foreground}
                 />
               </GlassView>
             </TouchableOpacity>
@@ -181,7 +181,7 @@ export function HomeOverlay({
                 <View style={styles.iconWrapper}>
                   <Navigation
                     size={28}
-                    color="#FFFFFF"
+                    color={themeColors.foreground}
                   />
                 </View>
               </GlassView>

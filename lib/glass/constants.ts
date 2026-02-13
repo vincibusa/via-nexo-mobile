@@ -15,7 +15,7 @@ export const BLUR_INTENSITY = {
   ultraDark: 50,    // Maximum blur for backdrops
 } as const;
 
-// Tint colors as rgba values for each intensity level (dark mode default)
+// Tint colors as rgba values for each intensity level (dark mode palette)
 export const TINT_COLORS = {
   light: {
     light: 'rgba(50, 52, 58, 0.3)',
@@ -52,6 +52,47 @@ export const TINT_COLORS = {
   },
 } as const;
 
+// Light mode palette for glass tinting
+export const TINT_COLORS_LIGHT = {
+  light: {
+    light: 'rgba(255, 255, 255, 0.5)',
+    medium: 'rgba(255, 255, 255, 0.58)',
+    regular: 'rgba(255, 255, 255, 0.64)',
+    dark: 'rgba(255, 255, 255, 0.7)',
+    prominent: 'rgba(255, 255, 255, 0.76)',
+    ultraDark: 'rgba(255, 255, 255, 0.82)',
+  },
+  dark: {
+    light: 'rgba(40, 45, 55, 0.1)',
+    medium: 'rgba(35, 40, 50, 0.14)',
+    regular: 'rgba(30, 35, 45, 0.18)',
+    dark: 'rgba(24, 30, 40, 0.24)',
+    prominent: 'rgba(20, 26, 36, 0.3)',
+    ultraDark: 'rgba(16, 22, 32, 0.36)',
+  },
+  extraLight: {
+    light: 'rgba(255, 255, 255, 0.66)',
+    medium: 'rgba(255, 255, 255, 0.72)',
+    regular: 'rgba(255, 255, 255, 0.78)',
+    dark: 'rgba(255, 255, 255, 0.84)',
+    prominent: 'rgba(255, 255, 255, 0.88)',
+    ultraDark: 'rgba(255, 255, 255, 0.92)',
+  },
+  prominent: {
+    light: 'rgba(248, 249, 252, 0.78)',
+    medium: 'rgba(244, 246, 250, 0.84)',
+    regular: 'rgba(240, 243, 248, 0.88)',
+    dark: 'rgba(236, 240, 246, 0.92)',
+    prominent: 'rgba(232, 237, 244, 0.94)',
+    ultraDark: 'rgba(228, 234, 242, 0.96)',
+  },
+} as const;
+
+export const TINT_COLORS_BY_THEME = {
+  dark: TINT_COLORS,
+  light: TINT_COLORS_LIGHT,
+} as const;
+
 // iOS-style spring configuration for animations (matches existing pattern from _layout.tsx)
 export const APPLE_SPRING_CONFIG = {
   mass: 1,
@@ -85,10 +126,32 @@ export const FALLBACK_COLORS = {
   dark: 'rgba(10, 10, 12, 0.8)',
 } as const;
 
+export const FALLBACK_COLORS_LIGHT = {
+  light: 'rgba(255, 255, 255, 0.62)',
+  medium: 'rgba(255, 255, 255, 0.7)',
+  regular: 'rgba(255, 255, 255, 0.78)',
+  dark: 'rgba(246, 248, 252, 0.88)',
+} as const;
+
+export const FALLBACK_COLORS_BY_THEME = {
+  dark: FALLBACK_COLORS,
+  light: FALLBACK_COLORS_LIGHT,
+} as const;
+
 // Border styling for fallback mode
 export const FALLBACK_BORDER = {
   width: 1,
   color: 'rgba(255, 255, 255, 0.12)',
+} as const;
+
+export const FALLBACK_BORDER_LIGHT = {
+  width: 1,
+  color: 'rgba(15, 23, 42, 0.08)',
+} as const;
+
+export const FALLBACK_BORDER_BY_THEME = {
+  dark: FALLBACK_BORDER,
+  light: FALLBACK_BORDER_LIGHT,
 } as const;
 
 // Shadow configuration for fallback mode

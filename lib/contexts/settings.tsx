@@ -24,6 +24,11 @@ const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
 };
 
+const normalizeSettings = (value: UserSettings): UserSettings => ({
+  ...value,
+  theme: 'system',
+});
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -41,16 +46,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       // Try to load from AsyncStorage first (cache)
       const cached = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
       if (cached) {
-        setSettings(JSON.parse(cached));
+        const cachedSettings = normalizeSettings(JSON.parse(cached) as UserSettings);
+        setSettings(cachedSettings);
       }
 
       // If user is logged in, fetch from server
       if (session?.accessToken) {
         try {
           const serverSettings = await settingsService.getSettings(session.accessToken);
-          setSettings(serverSettings);
+          const normalizedServerSettings = normalizeSettings(serverSettings);
+          setSettings(normalizedServerSettings);
           // Update cache
-          await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(serverSettings));
+          await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(normalizedServerSettings));
         } catch (error) {
           console.error('Failed to fetch settings from server:', error);
           // Keep cached settings if server fetch fails
@@ -78,18 +85,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      const { theme: _ignoredTheme, ...safeUpdates } = updates;
+
       // Optimistic update
-      const newSettings = { ...settings, ...updates } as UserSettings;
+      const newSettings = normalizeSettings({ ...settings, ...safeUpdates } as UserSettings);
       setSettings(newSettings);
 
       // Update server
-      const serverSettings = await settingsService.updateSettings(updates, session.accessToken);
+      const serverSettings = await settingsService.updateSettings(safeUpdates, session.accessToken);
       
       // Update with server response
-      setSettings(serverSettings);
+      const normalizedServerSettings = normalizeSettings(serverSettings);
+      setSettings(normalizedServerSettings);
       
       // Update cache
-      await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(serverSettings));
+      await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(normalizedServerSettings));
 
       // Handle push notification registration if push_enabled is being updated
       if (updates.push_enabled !== undefined) {

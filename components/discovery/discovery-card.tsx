@@ -17,6 +17,7 @@ import { Share } from 'react-native';
 import { CommentsSheet } from './comments-sheet';
 import { GlassView } from '../glass/glass-view';
 import { useGlassCapability } from '../../lib/glass/use-glass-capability';
+import { useColorScheme } from 'nativewind';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,7 +35,9 @@ export function DiscoveryCard({ item, isActive, onLike, onView, containerHeight 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const themeColors = THEME.dark;
+  const { colorScheme } = useColorScheme();
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const themeColors = THEME[themeMode];
   const { hasLiquidGlass } = useGlassCapability();
 
   const styles = useMemo(() => createStyles(containerHeight), [containerHeight]);
@@ -124,7 +127,7 @@ export function DiscoveryCard({ item, isActive, onLike, onView, containerHeight 
           isInteractive
           style={styles.glassInfoButton}
         >
-          <Info size={24} color="white" />
+          <Info size={24} color={themeColors.foreground} />
         </GlassView>
       </Pressable>
 
@@ -269,4 +272,3 @@ const createStyles = (containerHeight: number) => StyleSheet.create({
     fontWeight: '500',
   },
 });
-

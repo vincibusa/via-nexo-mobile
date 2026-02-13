@@ -18,6 +18,7 @@ import type { DiscoveryItem } from '../../../lib/types/discovery';
 import { useAuth } from '../../../lib/contexts/auth';
 import { THEME } from '../../../lib/theme';
 import { useFavorites } from '../../../lib/contexts/favorites';
+import { useColorScheme } from 'nativewind';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,7 +32,9 @@ export default function DiscoveryScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const viewedItemsRef = useRef<Set<string>>(new Set());
-  const themeColors = THEME.dark;
+  const { colorScheme } = useColorScheme();
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const themeColors = THEME[themeMode];
   const isFocused = useIsFocused();
 
   // Full screen height for immersive video experience
@@ -194,12 +197,13 @@ export default function DiscoveryScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-black" edges={[]}>
+    <SafeAreaView className="flex-1 bg-background" edges={[]}>
       <FlatList
         ref={flatListRef}
         data={discoveryItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        style={{ backgroundColor: themeColors.background }}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={availableHeight}
@@ -227,7 +231,6 @@ export default function DiscoveryScreen() {
     </SafeAreaView>
   );
 }
-
 
 
 
