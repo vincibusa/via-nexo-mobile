@@ -14,8 +14,10 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { THEME } from '../../lib/theme';
-import { useSettings } from '../../lib/contexts/settings';
+import { GlassSurface, GlassView } from '../glass';
 import { useColorScheme } from 'nativewind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getFloatingTabBarScrollPadding } from '../../lib/layout/floating-tab-bar';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -74,17 +76,17 @@ const SUGGESTIONS: Suggestion[] = [
 export function ChatAITab() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
+  const insets = useSafeAreaInsets();
 
   // Animation values for pulse effect
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.8);
 
   // Get dynamic colors for icons
-  const effectiveTheme = settings?.theme === 'system'
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
+  const scrollBottomPadding = getFloatingTabBarScrollPadding(insets.bottom, 16);
 
   // Pulse animation for sparkles icon
   useEffect(() => {
@@ -126,42 +128,56 @@ export function ChatAITab() {
     <ScrollView
       className="flex-1"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 24 }}
+      contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
     >
       {/* Main AI Chat Card */}
       <View className="px-4 pt-4">
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/chat-search?mode=free' as any)}
-          activeOpacity={0.8}
-          className="bg-primary/10 rounded-2xl overflow-hidden border border-primary/20"
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'extraLight' : 'light'}
+          style={{ borderRadius: 18, padding: 1.5 }}
         >
-          <View className="flex-row items-center gap-4 p-5">
-            <Animated.View style={animatedIconStyle}>
-              <View className="rounded-full bg-primary/20 p-4">
-                <Sparkles size={28} color={themeColors.primary} />
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/chat-search?mode=free' as any)}
+            activeOpacity={0.8}
+            className="rounded-2xl overflow-hidden border border-primary/20 bg-primary/10"
+          >
+            <View className="flex-row items-center gap-4 p-5">
+              <Animated.View style={animatedIconStyle}>
+                <View className="rounded-full bg-primary/20 p-4">
+                  <Sparkles size={28} color={themeColors.primary} />
+                </View>
+              </Animated.View>
+              <View className="flex-1">
+                <Text className="text-xl font-bold mb-1">Chiedi all'AI</Text>
+                <Text className="text-sm text-muted-foreground leading-relaxed">
+                  Descrivi cosa cerchi e ti guideremo alla serata perfetta
+                </Text>
               </View>
-            </Animated.View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold mb-1">Chiedi all'AI</Text>
-              <Text className="text-sm text-muted-foreground leading-relaxed">
-                Descrivi cosa cerchi e ti guideremo alla serata perfetta
-              </Text>
+              <ChevronRight size={24} color={themeColors.mutedForeground} />
             </View>
-            <ChevronRight size={24} color={themeColors.mutedForeground} />
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </GlassSurface>
       </View>
 
       {/* Quick location search */}
       <View className="px-4 mt-6">
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/chat-search?mode=free' as any)}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-3 bg-muted/40 rounded-xl px-4 py-3"
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'light' : 'regular'}
+          tint={isDark ? 'dark' : 'light'}
+          style={{ borderRadius: 14, padding: 0 }}
         >
-          <MapPin size={18} color={themeColors.mutedForeground} />
-          <Text className="flex-1 text-muted-foreground">Cerca vicino a me...</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/chat-search?mode=free' as any)}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-3 bg-muted/20 rounded-xl px-4 py-3"
+          >
+            <MapPin size={18} color={themeColors.mutedForeground} />
+            <Text className="flex-1 text-muted-foreground">Cerca vicino a me...</Text>
+          </TouchableOpacity>
+        </GlassSurface>
       </View>
 
       {/* Suggestions Section */}
@@ -171,18 +187,24 @@ export function ChatAITab() {
           {SUGGESTIONS.map((suggestion) => {
             const IconComponent = suggestion.icon;
             return (
-              <TouchableOpacity
+              <GlassView
                 key={suggestion.id}
-                onPress={() => handleSuggestionPress(suggestion)}
-                activeOpacity={0.7}
-                className="flex-row items-center gap-3 bg-muted/30 rounded-xl px-4 py-3.5"
+                intensity={isDark ? 'light' : 'regular'}
+                tint={isDark ? 'dark' : 'light'}
+                style={{ borderRadius: 14 }}
               >
-                <View className="w-9 h-9 rounded-full bg-muted/60 items-center justify-center">
-                  <IconComponent size={18} color={themeColors.foreground} />
-                </View>
-                <Text className="flex-1 font-medium">{suggestion.text}</Text>
-                <ChevronRight size={18} color={themeColors.mutedForeground} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleSuggestionPress(suggestion)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-3 bg-muted/20 rounded-xl px-4 py-3.5"
+                >
+                  <View className="w-9 h-9 rounded-full bg-muted/50 items-center justify-center">
+                    <IconComponent size={18} color={themeColors.foreground} />
+                  </View>
+                  <Text className="flex-1 font-medium">{suggestion.text}</Text>
+                  <ChevronRight size={18} color={themeColors.mutedForeground} />
+                </TouchableOpacity>
+              </GlassView>
             );
           })}
         </View>
@@ -190,13 +212,20 @@ export function ChatAITab() {
 
       {/* Tips section */}
       <View className="mt-8 px-4">
-        <View className="bg-muted/20 rounded-2xl p-4">
-          <Text className="font-semibold mb-2">Suggerimento</Text>
-          <Text className="text-sm text-muted-foreground leading-relaxed">
-            Puoi essere specifico! Prova: "Ristorante giapponese con tavoli all'aperto"
-            o "Locale tranquillo per lavorare con wifi veloce"
-          </Text>
-        </View>
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'light' : 'regular'}
+          tint={isDark ? 'dark' : 'light'}
+          style={{ borderRadius: 16, padding: 0 }}
+        >
+          <View className="bg-muted/20 rounded-2xl p-4">
+            <Text className="font-semibold mb-2">Suggerimento</Text>
+            <Text className="text-sm text-muted-foreground leading-relaxed">
+              Puoi essere specifico! Prova: "Ristorante giapponese con tavoli all'aperto"
+              o "Locale tranquillo per lavorare con wifi veloce"
+            </Text>
+          </View>
+        </GlassSurface>
       </View>
     </ScrollView>
   );

@@ -20,9 +20,8 @@ import * as Location from 'expo-location';
 import type { ChatConversationWithMessages } from '../../lib/types/chat-history';
 import { Button } from '../../components/ui/button';
 import { Text } from '../../components/ui/text';
-import { cn } from '../../lib/utils';
 import { THEME } from '../../lib/theme';
-import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 interface Message {
   id: string;
@@ -51,12 +50,13 @@ const QUICK_SUGGESTIONS = [
 export default function ChatSearchScreen() {
   const { session } = useAuth();
   const params = useLocalSearchParams();
-  const { settings } = useSettings();
+  const { colorScheme } = useColorScheme();
   const mode = (params.mode as 'guided' | 'free') || 'free';
   const conversationId = params.conversation_id as string;
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -1003,7 +1003,13 @@ export default function ChatSearchScreen() {
         <ChatBookingConfirmation
           visible={!!selectedEventForBooking && !!bookingIntent}
           event={selectedEventForBooking}
-          bookingState={bookingIntent?.state || 'selected'}
+          bookingState={
+            bookingIntent?.state === 'confirmed'
+              ? 'confirmed'
+              : bookingIntent?.state === 'confirming'
+                ? 'confirming'
+                : 'selected'
+          }
           onConfirm={handleBookingConfirm}
           onCancel={handleBookingCancel}
           onClose={() => {

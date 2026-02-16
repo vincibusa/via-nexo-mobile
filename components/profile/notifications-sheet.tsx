@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { THEME } from '../../lib/theme';
 import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../glass';
 
 interface Notification {
   id: string;
@@ -81,10 +82,10 @@ export function NotificationsSheet({ isOpen, onClose }: NotificationsSheetProps)
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.5}
+        opacity={effectiveTheme === 'dark' ? 0.5 : 0.28}
       />
     ),
-    []
+    [effectiveTheme]
   );
 
   const fetchNotifications = useCallback(async () => {
@@ -353,70 +354,82 @@ export function NotificationsSheet({ isOpen, onClose }: NotificationsSheetProps)
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       backgroundStyle={{
-        backgroundColor: themeColors.card,
+        backgroundColor: 'transparent',
       }}
       handleIndicatorStyle={{
         backgroundColor: themeColors.mutedForeground,
       }}
     >
       <BottomSheetView style={{ flex: 1 }}>
-        <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-          <View className="px-4 pt-2 pb-4 border-b border-border">
-            <View className="flex-row justify-between items-center">
-              <View className="flex-1">
-                <Text className="text-lg font-semibold text-foreground">
-                  Notifiche
-                </Text>
-                <Text className="text-sm text-muted-foreground mt-1">
-                  {unreadCount > 0 ? `${unreadCount} non lette` : 'Tutte lette'} • {totalCount} totali
-                </Text>
+        <GlassSurface
+          variant="modal"
+          intensity={effectiveTheme === 'dark' ? 'regular' : 'light'}
+          tint={effectiveTheme === 'dark' ? 'prominent' : 'extraLight'}
+          style={{
+            flex: 1,
+            borderRadius: 0,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            borderWidth: 0,
+          }}
+        >
+          <SafeAreaView className="flex-1 bg-transparent" edges={['top', 'bottom']}>
+            <View className="px-4 pt-2 pb-4 border-b border-border">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-1">
+                  <Text className="text-lg font-semibold text-foreground">
+                    Notifiche
+                  </Text>
+                  <Text className="text-sm text-muted-foreground mt-1">
+                    {unreadCount > 0 ? `${unreadCount} non lette` : 'Tutte lette'} • {totalCount} totali
+                  </Text>
+                </View>
+
+                <TouchableOpacity onPress={onClose} hitSlop={10} className="ml-4">
+                  <X size={24} color={themeColors.foreground} />
+                </TouchableOpacity>
               </View>
 
-              <TouchableOpacity onPress={onClose} hitSlop={10} className="ml-4">
-                <X size={24} color={themeColors.foreground} />
-              </TouchableOpacity>
+              {unreadCount > 0 && (
+                <TouchableOpacity
+                  onPress={markAllAsRead}
+                  className="mt-3 px-3 py-1.5 bg-primary rounded-lg self-start"
+                >
+                  <Text className="text-primary-foreground text-sm font-medium">
+                    Segna tutte come lette
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
-            {unreadCount > 0 && (
-              <TouchableOpacity
-                onPress={markAllAsRead}
-                className="mt-3 px-3 py-1.5 bg-primary rounded-lg self-start"
-              >
-                <Text className="text-primary-foreground text-sm font-medium">
-                  Segna tutte come lette
+            {loading ? (
+              <View className="flex-1 py-8 items-center justify-center">
+                <ActivityIndicator size="large" color={themeColors.foreground} />
+              </View>
+            ) : notifications.length === 0 ? (
+              <View className="flex-1 items-center justify-center p-8">
+                <Bell size={64} color={themeColors.mutedForeground} />
+                <Text className="text-lg font-medium text-muted-foreground mb-2">
+                  Nessuna notifica
                 </Text>
-              </TouchableOpacity>
+                <Text className="text-muted-foreground text-center">
+                  Quando riceverai nuove notifiche, le vedrai qui
+                </Text>
+              </View>
+            ) : (
+              <BottomSheetFlatList
+                data={notifications}
+                renderItem={renderNotification}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              />
             )}
-          </View>
-
-          {loading ? (
-            <View className="flex-1 py-8 items-center justify-center">
-              <ActivityIndicator size="large" color={themeColors.foreground} />
-            </View>
-          ) : notifications.length === 0 ? (
-            <View className="flex-1 items-center justify-center p-8">
-              <Bell size={64} color={themeColors.mutedForeground} />
-              <Text className="text-lg font-medium text-muted-foreground mb-2">
-                Nessuna notifica
-              </Text>
-              <Text className="text-muted-foreground text-center">
-                Quando riceverai nuove notifiche, le vedrai qui
-              </Text>
-            </View>
-          ) : (
-            <BottomSheetFlatList
-              data={notifications}
-              renderItem={renderNotification}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingBottom: 20 }}
-            />
-          )}
-        </SafeAreaView>
+          </SafeAreaView>
+        </GlassSurface>
       </BottomSheetView>
     </BottomSheet>
   );
 }
-
 
 
 

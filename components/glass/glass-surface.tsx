@@ -10,6 +10,37 @@ import { StyleSheet } from 'react-native';
 import { GlassView } from './glass-view';
 import type { GlassSurfaceProps } from '../../lib/glass/types';
 import { useColorScheme } from 'nativewind';
+import type { GlassIntensity, GlassTint } from '../../lib/glass/types';
+
+function getModalLightIntensity(intensity: GlassIntensity): GlassIntensity {
+  switch (intensity) {
+    case 'ultraDark':
+      return 'prominent';
+    case 'prominent':
+      return 'dark';
+    case 'dark':
+      return 'regular';
+    case 'regular':
+      return 'medium';
+    case 'medium':
+      return 'light';
+    default:
+      return 'light';
+  }
+}
+
+function getModalLightTint(tint: GlassTint): GlassTint {
+  switch (tint) {
+    case 'extraLight':
+      return 'dark';
+    case 'light':
+      return 'dark';
+    case 'prominent':
+      return 'light';
+    default:
+      return tint;
+  }
+}
 
 /**
  * GlassSurface Component
@@ -44,18 +75,28 @@ export function GlassSurface({
 
   // Set defaults based on variant
   // Modal uses iOS Control Center style (prominent glassmorphism)
-  const defaultIntensity = intensity || (variant === 'modal' ? 'prominent' : 'light');
-  const defaultTint = tint || (variant === 'modal' ? (isDark ? 'prominent' : 'light') : 'extraLight');
+  const baseIntensity = intensity || (variant === 'modal' ? 'prominent' : 'light');
+  const defaultIntensity =
+    variant === 'modal' && !isDark
+      ? getModalLightIntensity(baseIntensity)
+      : baseIntensity;
+  const baseTint = tint || (variant === 'modal' ? (isDark ? 'prominent' : 'light') : 'extraLight');
+  const defaultTint =
+    variant === 'modal' && !isDark
+      ? getModalLightTint(baseTint)
+      : baseTint;
 
   const modalThemeStyle =
     variant === 'modal'
       ? (isDark ? styles.modalDark : styles.modalLight)
       : null;
+  const lightContrastStyle = !isDark && variant !== 'modal' ? styles.lightContrast : null;
 
   // Apply dimmed opacity if requested
   const surfaceStyle = [
     variantStyles[variant],
     modalThemeStyle,
+    lightContrastStyle,
     dimmed && styles.dimmed,
     style,
   ];
@@ -147,7 +188,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   modalLight: {
-    borderColor: 'rgba(15, 23, 42, 0.12)',
-    shadowOpacity: 0.2,
+    borderColor: 'rgba(15, 23, 42, 0.16)',
+    shadowOpacity: 0.04,
+    backgroundColor: 'transparent',
+  },
+  lightContrast: {
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
 import { TrendingUp } from 'lucide-react-native';
+import { GlassView } from '../glass/glass-view';
 
 export interface TrendingSearch {
   query: string;
@@ -12,9 +13,10 @@ interface TrendingSearchesProps {
   data: TrendingSearch[];
   onSelect: (query: string) => void;
   isLoading?: boolean;
+  isDark?: boolean;
 }
 
-export function TrendingSearches({ data, onSelect, isLoading }: TrendingSearchesProps) {
+export function TrendingSearches({ data, onSelect, isLoading, isDark = true }: TrendingSearchesProps) {
   if (isLoading) {
     return (
       <View className="px-4 py-4">
@@ -43,16 +45,22 @@ export function TrendingSearches({ data, onSelect, isLoading }: TrendingSearches
       </View>
       <View className="flex-row flex-wrap gap-2">
         {data.map((item, index) => (
-          <TouchableOpacity
+          <GlassView
             key={index}
-            onPress={() => onSelect(item.query)}
-            activeOpacity={0.7}
-            className="bg-orange-500/10 px-3 py-1.5 rounded-full"
+            intensity={isDark ? 'light' : 'regular'}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ borderRadius: 999, marginRight: 8, marginBottom: 8 }}
           >
-            <Text className="text-sm font-medium" style={{ color: '#f97316' }}>
-              {item.query}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onSelect(item.query)}
+              activeOpacity={0.7}
+              className="px-3 py-1.5 rounded-full bg-orange-500/10"
+            >
+              <Text className="text-sm font-medium" style={{ color: '#f97316' }}>
+                {item.query}
+              </Text>
+            </TouchableOpacity>
+          </GlassView>
         ))}
       </View>
     </View>

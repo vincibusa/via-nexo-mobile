@@ -15,6 +15,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../lib/contexts/auth';
 import { useSettings } from '../../../lib/contexts/settings';
 import { THEME } from '../../../lib/theme';
+import { useColorScheme } from 'nativewind';
 
 // Import components
 import { RaveIdHeader } from '../../../components/profile/rave-id-header';
@@ -24,18 +25,25 @@ import { NotificationsSheet } from '../../../components/profile/notifications-sh
 import { ManagerToolsSection } from '../../../components/manager/manager-tools-section';
 import { useRaveScore } from '../../../lib/hooks/useRaveScore';
 import { API_CONFIG } from '../../../lib/config';
+import { getFloatingTabBarScrollPadding } from '../../../lib/layout/floating-tab-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { settings } = useSettings();
+  const { colorScheme } = useColorScheme();
   const { user, logout, session } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
-  const isDark = true;
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
+  const isDark = effectiveTheme === 'dark';
+  const contentBottomPadding = getFloatingTabBarScrollPadding(insets.bottom);
 
   // State for refresh
   const [refreshing, setRefreshing] = useState(false);
@@ -115,6 +123,7 @@ export default function ProfileScreen() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: contentBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -142,7 +151,6 @@ export default function ProfileScreen() {
 
       {/* Settings Bottom Sheet */}
       <ProfileSettings
-        isDark={isDark}
         onLogout={handleLogout}
         onNavigate={handleNavigate}
         isOpen={settingsOpen}

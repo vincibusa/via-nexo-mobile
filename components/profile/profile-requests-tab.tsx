@@ -19,9 +19,9 @@ import { useSettings } from '../../lib/contexts/settings';
 import { THEME } from '../../lib/theme';
 import { reservationsService } from '../../lib/services/reservations';
 import type { JoinRequestWithReservation } from '../../lib/types/reservations';
-import { Card, CardContent } from '../ui/card';
 import { Calendar, MapPin, Users } from 'lucide-react-native';
 import { formatDateTime } from '../../lib/utils/date';
+import { GlassSurface } from '../glass';
 
 export function ProfileRequestsTab() {
   const router = useRouter();
@@ -169,8 +169,18 @@ export function ProfileRequestsTab() {
         const event = reservation?.event;
 
         return (
-          <Card className="mb-4">
-            <CardContent className="p-4">
+          <GlassSurface
+            variant="card"
+            intensity={effectiveTheme === 'dark' ? 'regular' : 'light'}
+            tint={effectiveTheme === 'dark' ? 'dark' : 'light'}
+            style={{
+              marginBottom: 16,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: effectiveTheme === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.2)',
+              padding: 16,
+            }}
+          >
               {/* Event Info Header */}
               {event && (
                 <Pressable
@@ -392,8 +402,7 @@ export function ProfileRequestsTab() {
                   )}
                 </Pressable>
               </View>
-            </CardContent>
-          </Card>
+          </GlassSurface>
         );
       }}
     />

@@ -11,6 +11,11 @@ import { useRouter } from 'expo-router';
 import { TrendingSearches, type TrendingSearch } from './trending-searches';
 import { CategoryChips, type Category } from './category-chips';
 import { SearchResultsSkeleton } from './search-skeleton';
+import { GlassView } from '../glass/glass-view';
+import type { Place } from '../../lib/types/suggestion';
+import type { EventListItem } from '../../lib/services/events-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getFloatingTabBarScrollPadding } from '../../lib/layout/floating-tab-bar';
 
 interface User {
   id: string;
@@ -19,27 +24,6 @@ interface User {
   avatar_url?: string;
   bio?: string;
   isFollowing: boolean;
-}
-
-interface Place {
-  id: string;
-  name: string;
-  category: string;
-  cover_image?: string;
-  address: string;
-  city: string;
-  distance_km?: number;
-  verified: boolean;
-}
-
-interface EventListItem {
-  id: string;
-  title: string;
-  event_type: string;
-  start_datetime: string;
-  cover_image?: string;
-  place?: { name: string; city: string };
-  distance_km?: number;
 }
 
 type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
@@ -78,6 +62,7 @@ interface UnifiedSearchViewProps {
   categoriesLoading: boolean;
   onTrendingSelect: (query: string) => void;
   onCategorySelect: (category: Category) => void;
+  isDark: boolean;
 }
 
 export function UnifiedSearchView({
@@ -98,9 +83,12 @@ export function UnifiedSearchView({
   categoriesLoading,
   onTrendingSelect,
   onCategorySelect,
+  isDark,
 }: UnifiedSearchViewProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const scrollBottomPadding = getFloatingTabBarScrollPadding(insets.bottom, 16);
 
   const allLoading = state.users.loading && state.places.loading && state.events.loading;
   const hasUsers = state.users.data.length > 0;
@@ -119,6 +107,7 @@ export function UnifiedSearchView({
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.foreground} />}
       >
         {/* Trending Searches */}
@@ -126,6 +115,7 @@ export function UnifiedSearchView({
           data={trending}
           onSelect={onTrendingSelect}
           isLoading={trendingLoading}
+          isDark={isDark}
         />
 
         {/* Category Chips */}
@@ -133,6 +123,7 @@ export function UnifiedSearchView({
           categories={categories}
           onSelect={onCategorySelect}
           isLoading={categoriesLoading}
+          isDark={isDark}
         />
 
         {/* Recent Searches */}
@@ -146,21 +137,25 @@ export function UnifiedSearchView({
             </View>
             <View className="gap-2">
               {recentSearches.map((recentQuery, index) => (
-                <View
+                <GlassView
                   key={index}
-                  className="flex-row items-center justify-between bg-muted/30 rounded-xl px-4 py-3"
+                  intensity={isDark ? 'light' : 'regular'}
+                  tint={isDark ? 'dark' : 'light'}
+                  style={{ borderRadius: 14 }}
                 >
-                  <TouchableOpacity
-                    onPress={() => onSelectRecentSearch(recentQuery)}
-                    className="flex-1 flex-row items-center gap-3"
-                  >
-                    <Clock size={16} color={themeColors.mutedForeground} />
-                    <Text className="text-base">{recentQuery}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onDeleteRecentSearch(recentQuery)} className="p-2 -mr-2">
-                    <X size={16} color={themeColors.mutedForeground} />
-                  </TouchableOpacity>
-                </View>
+                  <View className="flex-row items-center justify-between px-4 py-3">
+                    <TouchableOpacity
+                      onPress={() => onSelectRecentSearch(recentQuery)}
+                      className="flex-1 flex-row items-center gap-3"
+                    >
+                      <Clock size={16} color={themeColors.mutedForeground} />
+                      <Text className="text-base">{recentQuery}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => onDeleteRecentSearch(recentQuery)} className="p-2 -mr-2">
+                      <X size={16} color={themeColors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                </GlassView>
               ))}
             </View>
           </View>
@@ -203,35 +198,40 @@ export function UnifiedSearchView({
             : state.users.data.length + state.places.data.length + state.events.data.length;
 
           return (
-            <TouchableOpacity
+            <GlassView
               key={tab.id}
-              onPress={() => setActiveFilter(tab.id)}
-              className={cn(
-                'flex-row items-center gap-2 px-4 py-2 rounded-full mr-2',
-                isActive ? 'bg-foreground' : 'bg-muted/50'
-              )}
+              intensity={isDark ? 'light' : 'regular'}
+              tint={isDark ? 'dark' : 'light'}
+              style={{ borderRadius: 999, marginRight: 8 }}
             >
-              <Icon size={14} color={isActive ? themeColors.background : themeColors.foreground} />
-              <Text className={cn(
-                'text-sm font-medium',
-                isActive ? 'text-background' : 'text-foreground'
-              )}>
-                {tab.label}
-              </Text>
-              {count > 0 && (
-                <View className={cn(
-                  'px-1.5 py-0.5 rounded-full min-w-5 items-center',
-                  isActive ? 'bg-background/20' : 'bg-foreground/10'
+              <TouchableOpacity
+                onPress={() => setActiveFilter(tab.id)}
+                className={cn(
+                  'flex-row items-center gap-2 px-4 py-2 rounded-full',
+                  isActive ? 'bg-foreground' : 'bg-muted/40'
                 )}>
-                  <Text className={cn(
-                    'text-xs font-medium',
-                    isActive ? 'text-background' : 'text-foreground'
+                <Icon size={14} color={isActive ? themeColors.background : themeColors.foreground} />
+                <Text className={cn(
+                  'text-sm font-medium',
+                  isActive ? 'text-background' : 'text-foreground'
+                )}>
+                  {tab.label}
+                </Text>
+                {count > 0 && (
+                  <View className={cn(
+                    'px-1.5 py-0.5 rounded-full min-w-5 items-center',
+                    isActive ? 'bg-background/20' : 'bg-foreground/10'
                   )}>
-                    {count > 99 ? '99+' : count}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+                    <Text className={cn(
+                      'text-xs font-medium',
+                      isActive ? 'text-background' : 'text-foreground'
+                    )}>
+                      {count > 99 ? '99+' : count}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </GlassView>
           );
         })}
       </ScrollView>
@@ -240,6 +240,7 @@ export function UnifiedSearchView({
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

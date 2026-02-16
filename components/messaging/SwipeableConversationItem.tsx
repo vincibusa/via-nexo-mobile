@@ -205,7 +205,7 @@ export function SwipeableConversationItem({
 
       {/* Swipeable content */}
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={animatedStyle} className="bg-background">
+        <Animated.View style={animatedStyle} className="bg-transparent">
           <ConversationListItem
             conversation={conversation}
             currentUserId={currentUserId}

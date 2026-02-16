@@ -14,6 +14,8 @@ import { useSettings } from '../../lib/contexts/settings'
 import { THEME } from '../../lib/theme'
 import { Progress } from '../ui/progress'
 import { cn } from '../../lib/utils'
+import { useColorScheme } from 'nativewind'
+import { GlassSurface } from '../glass'
 import type { User } from '../../lib/types/auth'
 import type { RaveScore } from '../../lib/types/rave-score'
 
@@ -49,8 +51,12 @@ export function RaveIdHeader({
   unreadNotificationsCount = 0,
 }: RaveIdHeaderProps) {
   const { settings } = useSettings()
-  const effectiveTheme = settings?.theme === 'system' ? 'dark' : settings?.theme || 'dark'
+  const { colorScheme } = useColorScheme()
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light')
   const themeColors = THEME[effectiveTheme]
+  const isDark = effectiveTheme === 'dark'
 
   const getUserInitials = () => {
     if (!user?.displayName) return 'U'
@@ -107,11 +113,15 @@ export function RaveIdHeader({
       </View>
 
       {/* Profile Card */}
-      <View
-        className="rounded-2xl p-4"
+      <GlassSurface
+        variant="card"
+        intensity={isDark ? 'regular' : 'light'}
+        tint={isDark ? 'dark' : 'light'}
         style={{
-          backgroundColor: themeColors.card,
-          borderColor: themeColors.border,
+          borderRadius: 16,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.2)',
         }}
       >
         <View className="flex-row items-center">
@@ -187,32 +197,46 @@ export function RaveIdHeader({
             </View>
           </View>
         </View>
-      </View>
+      </GlassSurface>
 
       {/* Action Buttons - Only for external profiles */}
       {variant === 'external' && (
         <View className="flex-row gap-2 px-4 mt-4">
-          <Button
-            variant={isFollowing ? 'outline' : 'default'}
-            onPress={onFollowPress}
-            className="flex-1"
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'light' : 'light'}
+            tint={isDark ? 'extraLight' : 'light'}
+            style={{ borderRadius: 12, flex: 1, padding: 0 }}
           >
-            <Text className={cn(
-              'font-semibold',
-              isFollowing ? 'text-foreground' : 'text-primary-foreground'
-            )}>
-              {isFollowing ? 'Seguendo' : 'Segui'}
-            </Text>
-          </Button>
+            <Button
+              variant={isFollowing ? 'outline' : 'default'}
+              onPress={onFollowPress}
+              className="flex-1"
+            >
+              <Text className={cn(
+                'font-semibold',
+                isFollowing ? 'text-foreground' : 'text-primary-foreground'
+              )}>
+                {isFollowing ? 'Seguendo' : 'Segui'}
+              </Text>
+            </Button>
+          </GlassSurface>
 
-          <Button
-            variant="outline"
-            className="flex-1"
-            onPress={onMessagePress}
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'light' : 'light'}
+            tint={isDark ? 'extraLight' : 'light'}
+            style={{ borderRadius: 12, flex: 1, padding: 0 }}
           >
-            <MessageCircle size={16} color={themeColors.foreground} style={{ marginRight: 4 }} />
-            <Text className="font-semibold">Messaggio</Text>
-          </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onPress={onMessagePress}
+            >
+              <MessageCircle size={16} color={themeColors.foreground} style={{ marginRight: 4 }} />
+              <Text className="font-semibold">Messaggio</Text>
+            </Button>
+          </GlassSurface>
         </View>
       )}
     </View>

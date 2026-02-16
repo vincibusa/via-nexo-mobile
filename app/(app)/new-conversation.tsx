@@ -9,8 +9,8 @@ import MessagingService from '../../lib/services/messaging';
 import { API_CONFIG } from '../../lib/config';
 import { Search, X } from 'lucide-react-native';
 import { THEME } from '../../lib/theme';
-import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../../components/glass';
 
 interface User {
   id: string;
@@ -23,7 +23,6 @@ interface User {
 export default function NewConversationScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { settings } = useSettings();
   const { colorScheme } = useColorScheme();
 
   const [following, setFollowing] = useState<User[]>([]);
@@ -33,10 +32,9 @@ export default function NewConversationScreen() {
   const [creating, setCreating] = useState(false);
 
   // Get dynamic colors for icons
-  const effectiveTheme = settings?.theme === 'system'
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
 
   useEffect(() => {
     loadFollowing();
@@ -190,23 +188,30 @@ export default function NewConversationScreen() {
 
       {/* Search Bar */}
       <View className="px-4 py-3">
-        <View className="flex-row items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
-          <Search size={18} color={themeColors.mutedForeground} />
-          <TextInput
-            placeholder="Cerca tra i tuoi seguiti"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={themeColors.mutedForeground}
-            className="flex-1 py-0 text-base text-foreground leading-5"
-            autoCapitalize="none"
-            editable={!loading}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color={themeColors.mutedForeground} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'dark' : 'light'}
+          style={{ borderRadius: 14, padding: 0 }}
+        >
+          <View className="flex-row items-center gap-2 rounded-xl bg-muted/30 px-3 py-2">
+            <Search size={18} color={themeColors.mutedForeground} />
+            <TextInput
+              placeholder="Cerca tra i tuoi seguiti"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={themeColors.mutedForeground}
+              className="flex-1 py-0 text-base text-foreground leading-5"
+              autoCapitalize="none"
+              editable={!loading}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X size={16} color={themeColors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </GlassSurface>
       </View>
 
       {loading ? (

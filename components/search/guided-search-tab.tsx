@@ -4,41 +4,45 @@ import { Card } from '../ui/card';
 import { Search, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { THEME } from '../../lib/theme';
-import { useSettings } from '../../lib/contexts/settings';
+import { GlassSurface } from '../glass';
 import { useColorScheme } from 'nativewind';
 
 export function GuidedSearchTab() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
 
-  // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  const themeColors = THEME[themeMode];
 
   return (
     <View className="flex-1 p-4">
-      <Card className="bg-card">
-        <TouchableOpacity
-          onPress={() => router.push('/(app)/chat-search?mode=guided' as any)}
-          activeOpacity={0.7}
-        >
-          <View className="flex-row items-center gap-4 p-6">
-            <View className="rounded-full bg-primary/10 p-4">
-              <Search size={32} color={themeColors.primary} />
+      <GlassSurface
+        variant="card"
+        intensity={isDark ? 'regular' : 'light'}
+        tint={isDark ? 'extraLight' : 'light'}
+        style={{ borderRadius: 18, padding: 0 }}
+      >
+        <Card className="bg-card/70 border-0">
+          <TouchableOpacity
+            onPress={() => router.push('/(app)/chat-search?mode=guided' as any)}
+            activeOpacity={0.7}
+          >
+            <View className="flex-row items-center gap-4 p-6">
+              <View className="rounded-full bg-primary/10 p-4">
+                <Search size={32} color={themeColors.primary} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-lg font-bold mb-1">Ricerca Guidata</Text>
+                <Text className="text-sm text-muted-foreground leading-relaxed">
+                  Trova rapidamente con filtri: compagnia, mood, budget e orario
+                </Text>
+              </View>
+              <ChevronRight size={24} color={themeColors.mutedForeground} />
             </View>
-            <View className="flex-1">
-              <Text className="text-lg font-bold mb-1">Ricerca Guidata</Text>
-              <Text className="text-sm text-muted-foreground leading-relaxed">
-                Trova rapidamente con filtri: compagnia, mood, budget e orario
-              </Text>
-            </View>
-            <ChevronRight size={24} color={themeColors.mutedForeground} />
-          </View>
-        </TouchableOpacity>
-      </Card>
+          </TouchableOpacity>
+        </Card>
+      </GlassSurface>
 
       {/* Suggerimenti */}
       <View className="mt-8">

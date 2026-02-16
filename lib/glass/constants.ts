@@ -55,36 +55,36 @@ export const TINT_COLORS = {
 // Light mode palette for glass tinting
 export const TINT_COLORS_LIGHT = {
   light: {
-    light: 'rgba(255, 255, 255, 0.5)',
-    medium: 'rgba(255, 255, 255, 0.58)',
-    regular: 'rgba(255, 255, 255, 0.64)',
-    dark: 'rgba(255, 255, 255, 0.7)',
-    prominent: 'rgba(255, 255, 255, 0.76)',
-    ultraDark: 'rgba(255, 255, 255, 0.82)',
+    light: 'rgba(246, 250, 255, 0.14)',
+    medium: 'rgba(246, 250, 255, 0.2)',
+    regular: 'rgba(246, 250, 255, 0.26)',
+    dark: 'rgba(246, 250, 255, 0.32)',
+    prominent: 'rgba(246, 250, 255, 0.38)',
+    ultraDark: 'rgba(246, 250, 255, 0.44)',
   },
   dark: {
-    light: 'rgba(40, 45, 55, 0.1)',
-    medium: 'rgba(35, 40, 50, 0.14)',
-    regular: 'rgba(30, 35, 45, 0.18)',
-    dark: 'rgba(24, 30, 40, 0.24)',
-    prominent: 'rgba(20, 26, 36, 0.3)',
-    ultraDark: 'rgba(16, 22, 32, 0.36)',
+    light: 'rgba(20, 26, 36, 0.09)',
+    medium: 'rgba(20, 26, 36, 0.13)',
+    regular: 'rgba(20, 26, 36, 0.17)',
+    dark: 'rgba(20, 26, 36, 0.22)',
+    prominent: 'rgba(20, 26, 36, 0.27)',
+    ultraDark: 'rgba(20, 26, 36, 0.32)',
   },
   extraLight: {
-    light: 'rgba(255, 255, 255, 0.66)',
-    medium: 'rgba(255, 255, 255, 0.72)',
-    regular: 'rgba(255, 255, 255, 0.78)',
-    dark: 'rgba(255, 255, 255, 0.84)',
-    prominent: 'rgba(255, 255, 255, 0.88)',
-    ultraDark: 'rgba(255, 255, 255, 0.92)',
+    light: 'rgba(255, 255, 255, 0.2)',
+    medium: 'rgba(255, 255, 255, 0.26)',
+    regular: 'rgba(255, 255, 255, 0.32)',
+    dark: 'rgba(255, 255, 255, 0.38)',
+    prominent: 'rgba(255, 255, 255, 0.44)',
+    ultraDark: 'rgba(255, 255, 255, 0.5)',
   },
   prominent: {
-    light: 'rgba(248, 249, 252, 0.78)',
-    medium: 'rgba(244, 246, 250, 0.84)',
-    regular: 'rgba(240, 243, 248, 0.88)',
-    dark: 'rgba(236, 240, 246, 0.92)',
-    prominent: 'rgba(232, 237, 244, 0.94)',
-    ultraDark: 'rgba(228, 234, 242, 0.96)',
+    light: 'rgba(232, 237, 244, 0.28)',
+    medium: 'rgba(232, 237, 244, 0.36)',
+    regular: 'rgba(232, 237, 244, 0.44)',
+    dark: 'rgba(232, 237, 244, 0.52)',
+    prominent: 'rgba(232, 237, 244, 0.6)',
+    ultraDark: 'rgba(232, 237, 244, 0.66)',
   },
 } as const;
 
@@ -127,10 +127,10 @@ export const FALLBACK_COLORS = {
 } as const;
 
 export const FALLBACK_COLORS_LIGHT = {
-  light: 'rgba(255, 255, 255, 0.62)',
-  medium: 'rgba(255, 255, 255, 0.7)',
-  regular: 'rgba(255, 255, 255, 0.78)',
-  dark: 'rgba(246, 248, 252, 0.88)',
+  light: 'rgba(255, 255, 255, 0.26)',
+  medium: 'rgba(255, 255, 255, 0.32)',
+  regular: 'rgba(255, 255, 255, 0.38)',
+  dark: 'rgba(246, 248, 252, 0.46)',
 } as const;
 
 export const FALLBACK_COLORS_BY_THEME = {
@@ -146,7 +146,7 @@ export const FALLBACK_BORDER = {
 
 export const FALLBACK_BORDER_LIGHT = {
   width: 1,
-  color: 'rgba(15, 23, 42, 0.08)',
+  color: 'rgba(15, 23, 42, 0.2)',
 } as const;
 
 export const FALLBACK_BORDER_BY_THEME = {

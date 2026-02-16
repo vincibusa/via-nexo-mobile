@@ -81,8 +81,8 @@ function AnimatedTabIcon({
   inactiveColor: string;
 }) {
   const size = 22;
-  const strokeInactive = 1.9;
-  const strokeActive = 2.2;
+  const strokeInactive = 2.5;
+  const strokeActive = 3;
 
   const animatedIconStyle = useAnimatedStyle(() => {
     const scale = interpolate(
@@ -100,12 +100,11 @@ function AnimatedTabIcon({
   const getIcon = () => {
     const color = focused ? ACTIVE_COLOR : inactiveColor;
     const stroke = focused ? strokeActive : strokeInactive;
-
     switch (routeName) {
       case 'index':
         return <Home size={size} color={color} strokeWidth={stroke} />;
       case 'discovery':
-        return <Play size={size} color={color} strokeWidth={stroke} fill={focused ? ACTIVE_COLOR : 'transparent'} />;
+        return <Play size={size} color={color} strokeWidth={stroke} />;
       case 'messages':
         return <MessageCircle size={size} color={color} strokeWidth={stroke} />;
       case 'profile':
@@ -291,7 +290,7 @@ function AppleLiquidTabBar({
 
   useEffect(() => {
     if (canScrub) {
-      indicatorWidth.value = withSpring(slotWidth * 0.88, APPLE_SPRING_CONFIG);
+      indicatorWidth.value = withSpring(slotWidth * 0.96, APPLE_SPRING_CONFIG);
     }
   }, [slotWidth, canScrub, indicatorWidth]);
 
@@ -306,7 +305,7 @@ function AppleLiquidTabBar({
 
       if (!focused && !event.defaultPrevented) {
         triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
-        navigation.navigate(route.name as never, route.params as never);
+        (navigation as any).navigate(route.name, route.params);
       }
     },
     [isRouteFocused, navigation, triggerHaptic]
@@ -411,6 +410,12 @@ function AppleLiquidTabBar({
       transform: [{ scale }],
     };
   });
+  const searchOrbStyle = isDark
+    ? { ...styles.searchOrb, ...styles.searchSpacing }
+    : { ...styles.searchOrb, ...styles.searchSpacing, ...styles.searchOrbLight };
+  const mainCapsuleStyle = isDark
+    ? styles.mainCapsule
+    : { ...styles.mainCapsule, ...styles.mainCapsuleLight };
 
   return (
     <View pointerEvents="box-none" style={[styles.barRoot, { bottom: bottomOffset }]}>
@@ -419,7 +424,7 @@ function AppleLiquidTabBar({
         <GlassSurface
           variant="bar"
           dimmed={isDimmed}
-          style={[styles.searchOrb, styles.searchSpacing]}
+          style={searchOrbStyle}
         >
           <GestureDetector gesture={searchTap}>
             <Animated.View
@@ -433,7 +438,7 @@ function AppleLiquidTabBar({
                 <Search
                   size={24}
                   color={isRouteFocused(searchRoute.key) ? ACTIVE_COLOR : inactiveColor}
-                  strokeWidth={isRouteFocused(searchRoute.key) ? 2.2 : 1.9}
+                  strokeWidth={isRouteFocused(searchRoute.key) ? 3 : 2.5}
                 />
               </Animated.View>
             </Animated.View>
@@ -446,7 +451,7 @@ function AppleLiquidTabBar({
         <GlassSurface
           variant="bar"
           dimmed={isDimmed}
-          style={styles.mainCapsule}
+          style={mainCapsuleStyle}
         >
           <View
             style={styles.mainCapsuleInner}
@@ -468,7 +473,7 @@ function AppleLiquidTabBar({
                 styles.focusPill,
                 !isDark && styles.focusPillLight,
                 indicatorStyle,
-                { left: CAPSULE_HORIZONTAL_PADDING + slotWidth * 0.06 },
+                { left: CAPSULE_HORIZONTAL_PADDING + slotWidth * 0.02 },
               ]}
             />
 
@@ -513,7 +518,7 @@ export default function TabLayout() {
   const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
   const theme = NAV_THEME[themeMode];
   const isDark = themeMode === 'dark';
-  const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(17, 24, 39, 0.6)';
+  const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(15, 23, 42, 0.8)';
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -587,6 +592,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  searchOrbLight: {
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.14)',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    elevation: 8,
+  },
   searchPressable: {
     width: 72,
     height: 72,
@@ -598,7 +612,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   searchPressableFocusedLight: {
-    backgroundColor: 'rgba(15,23,42,0.08)',
+    backgroundColor: 'rgba(15,23,42,0.13)',
   },
   mainCapsule: {
     flex: 1,
@@ -606,6 +620,15 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 999,
     overflow: 'hidden',
+  },
+  mainCapsuleLight: {
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.14)',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 8,
   },
   mainCapsuleInner: {
     flex: 1,
@@ -623,7 +646,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   focusPillLight: {
-    backgroundColor: 'rgba(15,23,42,0.08)',
+    backgroundColor: 'rgba(15,23,42,0.14)',
   },
   mainItem: {
     height: 56,
@@ -635,9 +658,9 @@ const styles = StyleSheet.create({
   },
   mainItemLabel: {
     marginTop: 3,
-    fontSize: 10,
-    fontWeight: '500',
-    lineHeight: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
     color: 'rgba(255, 255, 255, 0.55)',
   },
   iconWrapper: {

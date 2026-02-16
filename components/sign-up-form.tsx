@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
 import { useColorScheme } from 'nativewind';
-import { cn } from '../lib/utils';
 import { Eye, EyeOff, Check } from 'lucide-react-native';
 import { PasswordStrengthIndicator } from './password-strength-indicator';
 
@@ -93,7 +92,7 @@ export function SignUpForm() {
 
   return (
     <View className="gap-6">
-      <Card className={cn("border-border/0 sm:border-border shadow-none sm:shadow-sm", colorScheme === 'dark' ? 'sm:shadow-white/5' : 'sm:shadow-black/5')}>
+      <Card className="border-0 bg-transparent shadow-none">
         <CardHeader>
           <CardTitle className="text-center text-xl sm:text-left">Crea il tuo account</CardTitle>
           <CardDescription className="text-center sm:text-left">

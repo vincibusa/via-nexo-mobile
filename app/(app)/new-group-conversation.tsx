@@ -17,8 +17,8 @@ import MessagingService from '../../lib/services/messaging';
 import { API_CONFIG } from '../../lib/config';
 import { Search, X, Users, Check } from 'lucide-react-native';
 import { THEME } from '../../lib/theme';
-import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../../components/glass';
 
 interface User {
   id: string;
@@ -31,7 +31,6 @@ interface User {
 export default function NewGroupConversationScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { settings } = useSettings();
   const { colorScheme } = useColorScheme();
 
   const [following, setFollowing] = useState<User[]>([]);
@@ -43,10 +42,9 @@ export default function NewGroupConversationScreen() {
   const [creating, setCreating] = useState(false);
 
   // Get dynamic colors for icons
-  const effectiveTheme = settings?.theme === 'system'
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
 
   useEffect(() => {
     loadFollowing();
@@ -260,40 +258,54 @@ export default function NewGroupConversationScreen() {
       {/* Group Title Input */}
       <View className="px-4 py-3 border-b border-border">
         <Text className="text-sm font-medium mb-2">Nome del gruppo</Text>
-        <TextInput
-          placeholder="Inserisci un nome per il gruppo"
-          value={groupTitle}
-          onChangeText={setGroupTitle}
-          placeholderTextColor={themeColors.mutedForeground}
-          className={`py-2 px-3 rounded-lg border ${
-            groupTitle.trim() ? 'border-primary' : 'border-border'
-          } bg-background text-foreground`}
-          maxLength={50}
-          editable={!creating}
-        />
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'dark' : 'light'}
+          style={{ borderRadius: 12, padding: 0 }}
+        >
+          <TextInput
+            placeholder="Inserisci un nome per il gruppo"
+            value={groupTitle}
+            onChangeText={setGroupTitle}
+            placeholderTextColor={themeColors.mutedForeground}
+            className={`py-2 px-3 rounded-lg border ${
+              groupTitle.trim() ? 'border-primary' : 'border-border'
+            } bg-background/70 text-foreground`}
+            maxLength={50}
+            editable={!creating}
+          />
+        </GlassSurface>
       </View>
 
       {renderSelectedUsers()}
 
       {/* Search Bar */}
       <View className="px-4 py-3">
-        <View className="flex-row items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
-          <Search size={18} color={themeColors.mutedForeground} />
-          <TextInput
-            placeholder="Cerca tra i tuoi seguiti"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={themeColors.mutedForeground}
-            className="flex-1 py-0 text-base text-foreground leading-5"
-            autoCapitalize="none"
-            editable={!loading && !creating}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color={themeColors.mutedForeground} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'dark' : 'light'}
+          style={{ borderRadius: 14, padding: 0 }}
+        >
+          <View className="flex-row items-center gap-2 rounded-xl bg-muted/30 px-3 py-2">
+            <Search size={18} color={themeColors.mutedForeground} />
+            <TextInput
+              placeholder="Cerca tra i tuoi seguiti"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={themeColors.mutedForeground}
+              className="flex-1 py-0 text-base text-foreground leading-5"
+              autoCapitalize="none"
+              editable={!loading && !creating}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X size={16} color={themeColors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </GlassSurface>
       </View>
 
       {loading ? (
@@ -317,17 +329,24 @@ export default function NewGroupConversationScreen() {
 
       {/* Create Group Button */}
       {selectedUsers.length >= 2 && groupTitle.trim() && !creating && (
-        <View className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
-          <TouchableOpacity
-            onPress={createGroupConversation}
-            disabled={creating}
-            className="bg-primary rounded-lg py-3 items-center"
-          >
-            <Text className="text-white font-semibold text-lg">
-              Crea gruppo ({selectedUsers.length + 1} partecipanti)
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'dark' : 'light'}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderRadius: 0, padding: 16 }}
+        >
+          <View className="bg-background/70 border-t border-border">
+            <TouchableOpacity
+              onPress={createGroupConversation}
+              disabled={creating}
+              className="bg-primary rounded-lg py-3 items-center"
+            >
+              <Text className="text-white font-semibold text-lg">
+                Crea gruppo ({selectedUsers.length + 1} partecipanti)
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </GlassSurface>
       )}
 
       {creating && (

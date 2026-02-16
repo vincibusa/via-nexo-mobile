@@ -22,9 +22,10 @@ import { useAuth } from '../../lib/contexts/auth';
 import { webSocketChatService } from '../../lib/services/websocket-chat';
 import messagingService from '../../lib/services/messaging';
 import type { Message } from '../../lib/types/messaging';
-import { useSettings } from '../../lib/contexts/settings';
 import { THEME } from '../../lib/theme';
 import { CheckCircle, Clock, Mic, Paperclip, Search, X } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../../components/glass';
 import { VoiceMessageRecorder } from '../../components/chat/voice-message-recorder';
 import { VoiceMessagePlayer } from '../../components/chat/voice-message-player';
 import { MessageSearch } from '../../components/chat/message-search';
@@ -38,11 +39,10 @@ export default function ChatDetailScreen() {
     conversationId: string;
     userName: string;
   }>();
-  const { settings } = useSettings();
-
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
-  const isDark = true;
+  const { colorScheme } = useColorScheme();
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const themeColors = THEME[themeMode];
+  const isDark = themeMode === 'dark';
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -244,51 +244,58 @@ export default function ChatDetailScreen() {
         className="flex-1"
       >
         {/* Header */}
-        <View className="px-4 py-3 border-b border-border">
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={() => {
-              if (showSearch) {
-                setShowSearch(false);
-              } else {
-                router.back();
-              }
-            }}>
-              <Text className="text-primary">← Back</Text>
-            </TouchableOpacity>
-            <Text className="text-lg font-bold text-foreground">{userName || 'Chat'}</Text>
-            <TouchableOpacity onPress={() => setShowSearch(!showSearch)}>
-              <Search size={20} color={themeColors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'extraLight' : 'light'}
+          style={{ borderRadius: 0, padding: 0 }}
+        >
+          <View className="px-4 py-3 border-b border-border">
+            <View className="flex-row items-center justify-between">
+              <TouchableOpacity onPress={() => {
+                if (showSearch) {
+                  setShowSearch(false);
+                } else {
+                  router.back();
+                }
+              }}>
+                <Text className="text-primary">← Back</Text>
+              </TouchableOpacity>
+              <Text className="text-lg font-bold text-foreground">{userName || 'Chat'}</Text>
+              <TouchableOpacity onPress={() => setShowSearch(!showSearch)}>
+                <Search size={20} color={themeColors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
 
-          {/* Connection Status */}
-          <View className="flex-row items-center mt-2">
-            <View
-              className={`w-2 h-2 rounded-full mr-2 ${
-                isConnected ? 'bg-green-500' : 'bg-destructive'
-              }`}
-            />
-            <Text className="text-xs text-muted-foreground">
-              {isConnected ? 'Connected' : 'Connecting...'}
-            </Text>
-          </View>
-
-          {/* Error Message */}
-          {error && (
-            <Text className="text-destructive text-xs mt-1">{error}</Text>
-          )}
-
-          {/* Typing Indicator */}
-          {typingUsers.length > 0 && !showSearch && (
-            <View className="flex-row items-center mt-1">
+            {/* Connection Status */}
+            <View className="flex-row items-center mt-2">
+              <View
+                className={`w-2 h-2 rounded-full mr-2 ${
+                  isConnected ? 'bg-green-500' : 'bg-destructive'
+                }`}
+              />
               <Text className="text-xs text-muted-foreground">
-                {typingUsers.length === 1
-                  ? `${typingUsers[0].displayName} sta scrivendo...`
-                  : `${typingUsers.length} persone stanno scrivendo...`}
+                {isConnected ? 'Connected' : 'Connecting...'}
               </Text>
             </View>
-          )}
-        </View>
+
+            {/* Error Message */}
+            {error && (
+              <Text className="text-destructive text-xs mt-1">{error}</Text>
+            )}
+
+            {/* Typing Indicator */}
+            {typingUsers.length > 0 && !showSearch && (
+              <View className="flex-row items-center mt-1">
+                <Text className="text-xs text-muted-foreground">
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0].displayName} sta scrivendo...`
+                    : `${typingUsers.length} persone stanno scrivendo...`}
+                </Text>
+              </View>
+            )}
+          </View>
+        </GlassSurface>
 
         {/* Search or Messages */}
         {showSearch ? (
@@ -386,6 +393,12 @@ export default function ChatDetailScreen() {
             )}
 
             {/* Input Area */}
+            <GlassSurface
+              variant="card"
+              intensity={isDark ? 'regular' : 'light'}
+              tint={isDark ? 'dark' : 'light'}
+              style={{ borderRadius: 0, padding: 0 }}
+            >
             <View className="px-4 py-3 border-t border-border">
               {!showVoiceRecorder && (
                 <View className="flex-row items-end gap-2">
@@ -472,6 +485,7 @@ export default function ChatDetailScreen() {
                 </View>
               )}
             </View>
+            </GlassSurface>
           </>
         )}
       </KeyboardAvoidingView>

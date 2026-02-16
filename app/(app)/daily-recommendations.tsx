@@ -7,6 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { ChevronLeft, Sparkles, Heart } from 'lucide-react-native';
 import { THEME } from '../../lib/theme';
+import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../../components/glass';
 import {
   dailyRecommendationsService,
   type Recommendation,
@@ -21,7 +23,10 @@ const HEADER_HEIGHT = 70; // Header height (py-3 + content + border)
 export default function DailyRecommendationsScreen() {
   const router = useRouter();
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const themeColors = THEME.dark;
+  const { colorScheme } = useColorScheme();
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
   const insets = useSafeAreaInsets();
 
   // State
@@ -230,6 +235,12 @@ export default function DailyRecommendationsScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView className="flex-1 bg-background" edges={['top']}>
         {/* Header */}
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'extraLight' : 'light'}
+          style={{ borderRadius: 0, padding: 0 }}
+        >
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
           <View className="flex-row items-center flex-1">
             <Pressable
@@ -256,22 +267,30 @@ export default function DailyRecommendationsScreen() {
           </View>
 
           {/* Liked counter button */}
-          <Pressable
-            onPress={() => bottomSheetRef.current?.expand()}
-            className="flex-row items-center bg-primary/10 px-3 py-2 rounded-full"
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'light' : 'regular'}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ borderRadius: 999, padding: 0 }}
           >
-            <Heart
-              size={18}
-              color={themeColors.primary}
-              fill={likedEvents.length > 0 ? themeColors.primary : 'transparent'}
-            />
-            {likedEvents.length > 0 && (
-              <Text className="ml-1.5 font-bold text-primary">
-                {likedEvents.length}
-              </Text>
-            )}
-          </Pressable>
+            <Pressable
+              onPress={() => bottomSheetRef.current?.expand()}
+              className="flex-row items-center bg-primary/10 px-3 py-2 rounded-full"
+            >
+              <Heart
+                size={18}
+                color={themeColors.primary}
+                fill={likedEvents.length > 0 ? themeColors.primary : 'transparent'}
+              />
+              {likedEvents.length > 0 && (
+                <Text className="ml-1.5 font-bold text-primary">
+                  {likedEvents.length}
+                </Text>
+              )}
+            </Pressable>
+          </GlassSurface>
         </View>
+        </GlassSurface>
 
         {/* Swipe Stack */}
         <View className="flex-1">

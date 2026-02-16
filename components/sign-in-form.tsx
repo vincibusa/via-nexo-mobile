@@ -10,7 +10,6 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Text } from '../components/ui/text';
 import { useAuth } from '../lib/contexts/auth';
-import { cn } from '../lib/utils';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, type TextInput, View } from 'react-native';
@@ -165,7 +164,7 @@ export function SignInForm() {
 
   return (
     <View className="gap-6">
-      <Card className={cn("border-border/0 sm:border-border shadow-none sm:shadow-sm", colorScheme === 'dark' ? 'sm:shadow-white/5' : 'sm:shadow-black/5')}>
+      <Card className="border-0 bg-transparent shadow-none">
         <CardHeader>
           <CardTitle className="text-center text-xl sm:text-left">Accedi al tuo account</CardTitle>
           <CardDescription className="text-center sm:text-left">

@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, FlatList, Alert, RefreshControl, Pressable, TextInput, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { View, FlatList, Alert, RefreshControl, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
@@ -11,8 +11,9 @@ import type { Conversation } from '../../../lib/types/messaging';
 import { MessageCircle, Plus, Search, X } from 'lucide-react-native';
 import { SwipeableConversationItem } from '../../../components/messaging/SwipeableConversationItem';
 import { THEME } from '../../../lib/theme';
-import { useSettings } from '../../../lib/contexts/settings';
 import { useConversationsRealtime } from '../../../lib/hooks/useConversationsRealtime';
+import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../../../components/glass';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,7 +24,8 @@ import Animated, {
 export default function MessagesScreen() {
   const { session, user } = useAuth();
   const router = useRouter();
-  const { settings } = useSettings();
+  const { colorScheme } = useColorScheme();
+  const searchInputRef = useRef<TextInput>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,29 +35,35 @@ export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
 
   // Animation values
   const borderOpacity = useSharedValue(0);
-  const bgOpacity = useSharedValue(0.3);
+  const bgOpacity = useSharedValue(isDark ? 0.3 : 0.12);
+  const borderRgb = isDark ? '148, 163, 184' : '30, 41, 59';
+  const bgRgb = isDark ? '71, 85, 105' : '148, 163, 184';
+  const searchSurfaceStyle = isDark
+    ? styles.searchSurface
+    : { ...styles.searchSurface, ...styles.searchSurfaceLight };
 
   // Animated styles for search bar
   const animatedSearchBarStyle = useAnimatedStyle(() => ({
-    borderColor: `rgba(99, 102, 241, ${borderOpacity.value})`,
-    backgroundColor: `rgba(115, 115, 115, ${bgOpacity.value})`,
+    borderColor: `rgba(${borderRgb}, ${borderOpacity.value})`,
+    backgroundColor: `rgba(${bgRgb}, ${bgOpacity.value})`,
   }));
 
   // Handle focus animation
   useEffect(() => {
     if (isFocused || searchQuery.length > 0) {
-      borderOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
-      bgOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
+      borderOpacity.value = withTiming(isDark ? 0.38 : 0.22, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(isDark ? 0.4 : 0.18, { duration: 200, easing: Easing.out(Easing.ease) });
     } else {
       borderOpacity.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.ease) });
-      bgOpacity.value = withTiming(0.3, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(isDark ? 0.3 : 0.12, { duration: 200, easing: Easing.out(Easing.ease) });
     }
-  }, [isFocused, searchQuery, borderOpacity, bgOpacity]);
+  }, [isDark, isFocused, searchQuery, borderOpacity, bgOpacity]);
 
   // Filter conversations based on search query
   const filteredConversations = useMemo(() => {
@@ -138,6 +146,7 @@ export default function MessagesScreen() {
   const handleCancel = () => {
     setSearchQuery('');
     setIsFocused(false);
+    searchInputRef.current?.blur();
   };
 
   const handleDeleteConversation = (conversation: Conversation) => {
@@ -222,40 +231,55 @@ export default function MessagesScreen() {
 
       {/* Search Bar and New Conversation Button */}
       <View className="px-4 py-3 flex-row items-center gap-3">
-        <Animated.View
-          style={[animatedSearchBarStyle]}
-          className="flex-1 flex-row items-center gap-2 rounded-full px-4 py-3 border"
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'extraLight' : 'light'}
+          style={searchSurfaceStyle}
         >
-          <Search size={18} color={themeColors.mutedForeground} />
-          <TextInput
-            placeholder="Cerca conversazioni"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholderTextColor="#737373"
-            className="flex-1 py-0 text-base text-foreground leading-5"
-            autoCapitalize="none"
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <X size={18} color={themeColors.mutedForeground} />
-            </TouchableOpacity>
-          )}
-        </Animated.View>
+          <Animated.View
+            style={[animatedSearchBarStyle]}
+            className="flex-row items-center gap-2 rounded-full px-4 py-3 border"
+          >
+            <Search size={18} color={themeColors.mutedForeground} />
+            <TextInput
+              ref={searchInputRef}
+              placeholder="Cerca conversazioni"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholderTextColor={themeColors.mutedForeground}
+              className="flex-1 py-0 text-base text-foreground leading-5"
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={18} color={themeColors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </Animated.View>
+        </GlassSurface>
         {(isFocused || searchQuery.length > 0) && (
           <TouchableOpacity onPress={handleCancel}>
             <Text className="text-base font-medium text-primary">Annulla</Text>
           </TouchableOpacity>
         )}
         {!(isFocused || searchQuery.length > 0) && (
-          <TouchableOpacity
-            onPress={handleNewConversation}
-            className="w-10 h-10 items-center justify-center rounded-xl bg-primary"
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'regular' : 'light'}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ borderRadius: 12, padding: 0 }}
           >
-            <Plus size={22} color={themeColors.primaryForeground} />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleNewConversation}
+              className="w-10 h-10 items-center justify-center rounded-xl bg-primary"
+            >
+              <Plus size={22} color={themeColors.primaryForeground} />
+            </TouchableOpacity>
+          </GlassSurface>
         )}
       </View>
 
@@ -302,3 +326,17 @@ export default function MessagesScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  searchSurface: {
+    flex: 1,
+    borderRadius: 999,
+    padding: 4,
+    borderWidth: 0,
+    borderColor: 'rgba(255,255,255,0.12)',
+    height: 52,
+  },
+  searchSurfaceLight: {
+    borderColor: 'rgba(15,23,42,0.08)',
+  },
+});

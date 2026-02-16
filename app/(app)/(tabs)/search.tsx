@@ -1,24 +1,24 @@
-import { View, TextInput, TouchableOpacity } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../../../components/ui/text';
-import { useAuth } from '../../../lib/contexts/auth';
 import { cn } from '../../../lib/utils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, X } from 'lucide-react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { API_CONFIG } from '../../../lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatAITab } from '../../../components/search/chatai-tab';
-import { TrendingSearches, type TrendingSearch } from '../../../components/search/trending-searches';
-import { CategoryChips, type Category } from '../../../components/search/category-chips';
+import type { TrendingSearch } from '../../../components/search/trending-searches';
+import type { Category } from '../../../components/search/category-chips';
+import { GlassSurface } from '../../../components/glass';
 import { THEME } from '../../../lib/theme';
-import { useSettings } from '../../../lib/contexts/settings';
 import type { Place } from '../../../lib/types/suggestion';
 import type { EventListItem } from '../../../lib/services/events-list';
 import { placesListService } from '../../../lib/services/places-list';
 import { eventsListService } from '../../../lib/services/events-list';
 import * as Location from 'expo-location';
 import { UnifiedSearchView } from '../../../components/search/unified-search-view';
+import { useColorScheme } from 'nativewind';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -58,8 +58,7 @@ const RECENT_SEARCHES_KEY = 'recent_user_searches';
 const MAX_RECENT_SEARCHES = 10;
 
 export default function SearchScreen() {
-  const { user } = useAuth();
-  const router = useRouter();
+  const { colorScheme } = useColorScheme();
   const searchInputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -81,28 +80,37 @@ export default function SearchScreen() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Animation values
+  const isDark = colorScheme === 'dark';
+  const themeMode = isDark ? 'dark' : 'light';
   const borderOpacity = useSharedValue(0);
-  const bgOpacity = useSharedValue(0.3);
+  const bgOpacity = useSharedValue(isDark ? 0.3 : 0.12);
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  const themeColors = THEME[themeMode];
+  const searchSurfaceStyle = isDark
+    ? styles.searchSurface
+    : { ...styles.searchSurface, ...styles.searchSurfaceLight };
+  const tabsSurfaceStyle = isDark
+    ? styles.tabsSurface
+    : { ...styles.tabsSurface, ...styles.tabsSurfaceLight };
+  const borderRgb = isDark ? '148, 163, 184' : '30, 41, 59';
+  const bgRgb = isDark ? '71, 85, 105' : '148, 163, 184';
 
   // Animated styles for search bar
   const animatedSearchBarStyle = useAnimatedStyle(() => ({
-    borderColor: `rgba(99, 102, 241, ${borderOpacity.value})`,
-    backgroundColor: `rgba(115, 115, 115, ${bgOpacity.value})`,
+    borderColor: `rgba(${borderRgb}, ${borderOpacity.value})`,
+    backgroundColor: `rgba(${bgRgb}, ${bgOpacity.value})`,
   }));
 
   // Handle focus animation
   useEffect(() => {
     if (isFocused || searchQuery.length > 0) {
-      borderOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
-      bgOpacity.value = withTiming(0.4, { duration: 200, easing: Easing.out(Easing.ease) });
+      borderOpacity.value = withTiming(isDark ? 0.38 : 0.22, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(isDark ? 0.4 : 0.18, { duration: 200, easing: Easing.out(Easing.ease) });
     } else {
       borderOpacity.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.ease) });
-      bgOpacity.value = withTiming(0.3, { duration: 200, easing: Easing.out(Easing.ease) });
+      bgOpacity.value = withTiming(isDark ? 0.3 : 0.12, { duration: 200, easing: Easing.out(Easing.ease) });
     }
-  }, [isFocused, searchQuery, borderOpacity, bgOpacity]);
+  }, [isDark, isFocused, searchQuery, borderOpacity, bgOpacity]);
 
   // Load trending and categories on mount
   useEffect(() => {
@@ -115,7 +123,7 @@ export default function SearchScreen() {
       setTrendingLoading(true);
       const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEARCH_TRENDING}`);
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { trending?: TrendingSearch[] };
         setTrending(data.trending || []);
       }
     } catch (error) {
@@ -130,7 +138,7 @@ export default function SearchScreen() {
       setCategoriesLoading(true);
       const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEARCH_CATEGORIES}`);
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as { categories?: Category[] };
         setCategories(data.categories || []);
       }
     } catch (error) {
@@ -437,29 +445,36 @@ export default function SearchScreen() {
         <View className="px-4 py-3">
           {SEARCH_TABS[SEARCH_TABS.findIndex(t => t.id === activeTab)]?.hasSearch && (
             <View className="flex-row items-center gap-3">
-              <Animated.View
-                style={[animatedSearchBarStyle]}
-                className="flex-1 flex-row items-center gap-2 rounded-full px-4 py-3 border"
+              <GlassSurface
+                variant="card"
+                intensity={isDark ? 'regular' : 'light'}
+                tint={isDark ? 'extraLight' : 'light'}
+                style={searchSurfaceStyle}
               >
-                <Search size={18} color={themeColors.mutedForeground} />
-                <TextInput
-                  ref={searchInputRef}
-                  placeholder="Cerca luoghi, eventi, persone..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  placeholderTextColor="#737373"
-                  className="flex-1 py-0 text-base text-foreground leading-5"
-                  autoCapitalize="none"
-                  returnKeyType="search"
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <X size={18} color={themeColors.mutedForeground} />
-                  </TouchableOpacity>
-                )}
-              </Animated.View>
+                <Animated.View
+                  style={animatedSearchBarStyle}
+                  className="flex-1 flex-row items-center gap-2 rounded-full px-4 py-3 border"
+                >
+                  <Search size={18} color={themeColors.mutedForeground} />
+                  <TextInput
+                    ref={searchInputRef}
+                    placeholder="Cerca luoghi, eventi, persone..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    placeholderTextColor={themeColors.mutedForeground}
+                    className="flex-1 py-0 text-base text-foreground leading-5"
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <X size={18} color={themeColors.mutedForeground} />
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              </GlassSurface>
               {(isFocused || searchQuery.length > 0) && (
                 <TouchableOpacity onPress={handleCancel}>
                   <Text className="text-base font-medium text-primary">Annulla</Text>
@@ -470,28 +485,35 @@ export default function SearchScreen() {
         </View>
 
         {/* Tab Navigation */}
-        <View className="flex-row border-b border-border/50">
-          {SEARCH_TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => setActiveTab(tab.id)}
-              className={cn(
-                'flex-1 items-center justify-center py-3 border-b-2',
-                activeTab === tab.id
-                  ? 'border-foreground'
-                  : 'border-transparent'
-              )}
-            >
-              <Text
-                className={cn(
-                  'text-sm font-semibold',
-                  activeTab === tab.id ? 'text-foreground' : 'text-muted-foreground'
-                )}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View className="px-4 pb-1">
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'regular' : 'light'}
+            tint={isDark ? 'extraLight' : 'light'}
+            style={tabsSurfaceStyle}
+          >
+            <View className="flex-row">
+              {SEARCH_TABS.map((tab) => (
+                <TouchableOpacity
+                  key={tab.id}
+                  onPress={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'flex-1 items-center justify-center py-3 rounded-full',
+                    activeTab === tab.id ? 'bg-foreground/10' : 'bg-transparent'
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      'text-sm font-semibold',
+                      activeTab === tab.id ? 'text-foreground' : 'text-muted-foreground'
+                    )}
+                  >
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </GlassSurface>
         </View>
 
         {/* Content */}
@@ -514,6 +536,7 @@ export default function SearchScreen() {
             categoriesLoading={categoriesLoading}
             onTrendingSelect={handleTrendingSelect}
             onCategorySelect={handleCategorySelect}
+            isDark={isDark}
           />
         ) : (
           <ChatAITab />
@@ -522,3 +545,26 @@ export default function SearchScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  searchSurface: {
+    flex: 1,
+    borderRadius: 999,
+    padding: 4,
+    borderWidth: 0,
+    borderColor: 'rgba(255,255,255,0.12)',
+    height: 52,
+  },
+  searchSurfaceLight: {
+    borderColor: 'rgba(15,23,42,0.08)',
+  },
+  tabsSurface: {
+    borderRadius: 999,
+    padding: 4,
+    borderWidth: 0,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  tabsSurfaceLight: {
+    borderColor: 'rgba(15,23,42,0.08)',
+  },
+});

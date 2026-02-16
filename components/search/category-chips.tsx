@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
+import { GlassView } from '../glass/glass-view';
 
 export interface Category {
   id: string;
@@ -13,9 +14,10 @@ interface CategoryChipsProps {
   categories: Category[];
   onSelect: (category: Category) => void;
   isLoading?: boolean;
+  isDark?: boolean;
 }
 
-export function CategoryChips({ categories, onSelect, isLoading }: CategoryChipsProps) {
+export function CategoryChips({ categories, onSelect, isLoading, isDark = true }: CategoryChipsProps) {
   if (isLoading) {
     return (
       <View className="py-4">
@@ -48,15 +50,21 @@ export function CategoryChips({ categories, onSelect, isLoading }: CategoryChips
         contentContainerStyle={{ paddingHorizontal: 16 }}
       >
         {categories.map((category) => (
-          <TouchableOpacity
+          <GlassView
             key={category.id}
-            onPress={() => onSelect(category)}
-            activeOpacity={0.7}
-            className="bg-muted/50 px-4 py-2.5 rounded-full mr-2 flex-row items-center gap-2"
+            intensity={isDark ? 'light' : 'regular'}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ borderRadius: 999, marginRight: 8 }}
           >
-            <Text className="text-base">{category.icon}</Text>
-            <Text className="font-medium text-sm">{category.name}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onSelect(category)}
+              activeOpacity={0.7}
+              className="bg-muted/30 px-4 py-2.5 rounded-full flex-row items-center gap-2"
+            >
+              <Text className="text-base">{category.icon}</Text>
+              <Text className="font-medium text-sm">{category.name}</Text>
+            </TouchableOpacity>
+          </GlassView>
         ))}
       </ScrollView>
     </View>

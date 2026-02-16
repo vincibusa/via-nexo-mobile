@@ -7,8 +7,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
+import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../glass';
 
 export function TypingIndicator() {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const dot1 = useSharedValue(0);
   const dot2 = useSharedValue(0);
   const dot3 = useSharedValue(0);
@@ -64,11 +68,18 @@ export function TypingIndicator() {
 
   return (
     <View className="mb-3 flex-row justify-start">
-      <View className="max-w-[80%] flex-row gap-1 rounded-2xl border border-border bg-card px-4 py-3">
-        <Animated.View style={dot1Style} className="h-2 w-2 rounded-full bg-muted-foreground" />
-        <Animated.View style={dot2Style} className="h-2 w-2 rounded-full bg-muted-foreground" />
-        <Animated.View style={dot3Style} className="h-2 w-2 rounded-full bg-muted-foreground" />
-      </View>
+      <GlassSurface
+        variant="card"
+        intensity={isDark ? 'regular' : 'light'}
+        tint={isDark ? 'dark' : 'light'}
+        style={{ maxWidth: '80%', borderRadius: 16, padding: 0 }}
+      >
+        <View className="flex-row gap-1 px-4 py-3">
+          <Animated.View style={dot1Style} className="h-2 w-2 rounded-full bg-muted-foreground" />
+          <Animated.View style={dot2Style} className="h-2 w-2 rounded-full bg-muted-foreground" />
+          <Animated.View style={dot3Style} className="h-2 w-2 rounded-full bg-muted-foreground" />
+        </View>
+      </GlassSurface>
     </View>
   );
 }

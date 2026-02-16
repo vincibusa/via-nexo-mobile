@@ -16,7 +16,8 @@ export function ChatInput({
   disabled = false,
 }: ChatInputProps) {
   const { colorScheme } = useColorScheme();
-  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  const isDark = colorScheme === 'dark';
+  const themeColors = THEME[isDark ? 'dark' : 'light'];
 
   const [message, setMessage] = useState('');
 
@@ -28,12 +29,12 @@ export function ChatInput({
   };
 
   return (
-    <View className="flex-row items-center gap-2 border-t border-border bg-background p-4">
+    <View className="flex-row items-center gap-2 bg-background p-4">
       <TextInput
         value={message}
         onChangeText={setMessage}
         placeholder={placeholder}
-        className="flex-1 rounded-full border border-border bg-card px-4 py-3 text-base text-foreground placeholder:text-muted-foreground"
+        className="flex-1 rounded-full bg-muted px-4 py-3 text-base text-foreground placeholder:text-muted-foreground"
         multiline
         maxLength={500}
         editable={!disabled}

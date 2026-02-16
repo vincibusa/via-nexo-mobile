@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { View, ActivityIndicator, RefreshControl } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import * as Location from 'expo-location';
 import { useFiltersStore } from '../../lib/stores/filters-store';
 import { placesListService } from '../../lib/services/places-list';
@@ -9,7 +9,6 @@ import { PlaceCard } from '../places/place-card';
 import { Text } from '../ui/text';
 import { API_CONFIG } from '../../lib/config';
 import { THEME } from '../../lib/theme';
-import { useSettings } from '../../lib/contexts/settings';
 import { useColorScheme } from 'nativewind';
 
 type PlaceWithExtras = Place & { distance_km?: number; events_count?: number };
@@ -19,9 +18,8 @@ interface PlacesTabProps {
 }
 
 export function PlacesTab({ query }: PlacesTabProps) {
-  const { placesFilters, setPlacesFilters } = useFiltersStore();
+  const { placesFilters } = useFiltersStore();
   const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
   const [places, setPlaces] = useState<PlaceWithExtras[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -31,10 +29,8 @@ export function PlacesTab({ query }: PlacesTabProps) {
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   // Get dynamic colors for icons - use settings theme if available, otherwise use colorScheme
-  const effectiveTheme = settings?.theme === 'system' 
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const themeColors = THEME[themeMode];
 
   // Get user location
   useEffect(() => {
@@ -132,7 +128,7 @@ export function PlacesTab({ query }: PlacesTabProps) {
   }, [fetchPlaces]);
 
   // Render item
-  const renderItem = useCallback(({ item }: { item: PlaceWithExtras }) => {
+  const renderItem: ListRenderItem<PlaceWithExtras> = useCallback(({ item }) => {
     return (
       <View className="flex-1 p-1">
         <PlaceCard place={item} variant="grid" />
@@ -177,12 +173,17 @@ export function PlacesTab({ query }: PlacesTabProps) {
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           numColumns={2}
-          estimatedItemSize={220}
           contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8, paddingBottom: 16 }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.8}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={themeColors.foreground}
+              colors={[themeColors.primary]}
+            />
+          }
           ListFooterComponent={renderFooter}
           ListEmptyComponent={renderEmpty}
         />

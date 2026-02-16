@@ -22,9 +22,10 @@ import { useSettings } from '../../lib/contexts/settings';
 import { usePushNotifications } from '../../lib/hooks/usePushNotifications';
 import Constants from 'expo-constants';
 import { THEME } from '../../lib/theme';
+import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../glass';
 
 interface ProfileSettingsProps {
-  isDark: boolean;
   onLogout: () => void;
   onNavigate: (screen: string) => void;
   isOpen: boolean;
@@ -32,17 +33,21 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({
-  isDark,
   onLogout,
   onNavigate,
   isOpen,
   onClose,
 }: ProfileSettingsProps) {
   const { settings, toggleNotifications } = useSettings();
+  const { colorScheme } = useColorScheme();
   const { hasPermission, requestPermission } = usePushNotifications();
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  const themeColors = THEME[isDark ? 'dark' : 'light'];
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const isDark = effectiveTheme === 'dark';
+  const themeColors = THEME[effectiveTheme];
 
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['60%'], []);
@@ -128,10 +133,10 @@ export function ProfileSettings({
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.5}
+        opacity={isDark ? 0.5 : 0.28}
       />
     ),
-    []
+    [isDark]
   );
 
   return (
@@ -143,111 +148,124 @@ export function ProfileSettings({
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       backgroundStyle={{
-        backgroundColor: themeColors.card,
+        backgroundColor: 'transparent',
       }}
       handleIndicatorStyle={{
         backgroundColor: themeColors.mutedForeground,
       }}
     >
       <BottomSheetView style={{ flex: 1 }}>
-        {/* Header */}
-        <View
-          className="flex-row items-center justify-between px-4 py-3 border-b"
-          style={{ borderBottomColor: themeColors.border }}
+        <GlassSurface
+          variant="modal"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'prominent' : 'extraLight'}
+          style={{
+            flex: 1,
+            borderRadius: 0,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            borderWidth: 0,
+          }}
         >
-          <Text className="text-lg font-semibold" style={{ color: themeColors.foreground }}>
-            Impostazioni
-          </Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <X size={24} color={themeColors.foreground} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {/* Settings Items */}
-          <View className="px-4 py-2">
-            {settingsItems.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <View
-                  key={index}
-                  className={`flex-row items-center justify-between py-4 ${
-                    index !== settingsItems.length - 1
-                      ? 'border-b'
-                      : ''
-                  }`}
-                  style={{
-                    borderBottomColor: index !== settingsItems.length - 1 ? themeColors.border : 'transparent',
-                  }}
-                >
-                  <View className="flex-row items-center flex-1">
-                    <View
-                      className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: themeColors.muted }}
-                    >
-                      <Icon size={20} color={themeColors.foreground} />
-                    </View>
-                    <Text style={{ color: themeColors.foreground }}>
-                      {item.label}
-                    </Text>
-                  </View>
-
-                  {item.type === 'switch' ? (
-                    <Switch
-                      value={item.value as boolean}
-                      onValueChange={item.onToggle}
-                    />
-                  ) : (
-                    <TouchableOpacity onPress={item.onPress}>
-                      <View className="flex-row items-center">
-                        {item.value && (
-                          <Text className="mr-2" style={{ color: themeColors.mutedForeground }}>
-                            {item.value}
-                          </Text>
-                        )}
-                        <ChevronRight
-                          size={20}
-                          color={themeColors.mutedForeground}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Logout button */}
-          <View className="px-4 py-4">
-            <TouchableOpacity
-              onPress={() => {
-                onClose();
-                onLogout();
-              }}
-              className="p-4 rounded-lg flex-row items-center justify-center bg-destructive/10"
-            >
-              <LogOut size={20} color={themeColors.destructive} />
-              <Text
-                className="ml-2 font-medium text-destructive"
-              >
-                Logout
-              </Text>
+          {/* Header */}
+          <View
+            className="flex-row items-center justify-between px-4 py-3 border-b"
+            style={{ borderBottomColor: themeColors.border }}
+          >
+            <Text className="text-lg font-semibold" style={{ color: themeColors.foreground }}>
+              Impostazioni
+            </Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <X size={24} color={themeColors.foreground} />
             </TouchableOpacity>
           </View>
 
-          {/* App version */}
-          <View
-            className="px-4 py-4 border-t"
-            style={{ borderTopColor: themeColors.border }}
-          >
-            <Text
-              className="text-center text-sm"
-              style={{ color: themeColors.mutedForeground }}
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            {/* Settings Items */}
+            <View className="px-4 py-2">
+              {settingsItems.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <View
+                    key={index}
+                    className={`flex-row items-center justify-between py-4 ${
+                      index !== settingsItems.length - 1
+                        ? 'border-b'
+                        : ''
+                    }`}
+                    style={{
+                      borderBottomColor: index !== settingsItems.length - 1 ? themeColors.border : 'transparent',
+                    }}
+                  >
+                    <View className="flex-row items-center flex-1">
+                      <View
+                        className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                        style={{ backgroundColor: themeColors.muted }}
+                      >
+                        <Icon size={20} color={themeColors.foreground} />
+                      </View>
+                      <Text style={{ color: themeColors.foreground }}>
+                        {item.label}
+                      </Text>
+                    </View>
+
+                    {item.type === 'switch' ? (
+                      <Switch
+                        value={item.value as boolean}
+                        onValueChange={item.onToggle}
+                      />
+                    ) : (
+                      <TouchableOpacity onPress={item.onPress}>
+                        <View className="flex-row items-center">
+                          {item.value && (
+                            <Text className="mr-2" style={{ color: themeColors.mutedForeground }}>
+                              {item.value}
+                            </Text>
+                          )}
+                          <ChevronRight
+                            size={20}
+                            color={themeColors.mutedForeground}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Logout button */}
+            <View className="px-4 py-4">
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="p-4 rounded-lg flex-row items-center justify-center bg-destructive/10"
+              >
+                <LogOut size={20} color={themeColors.destructive} />
+                <Text
+                  className="ml-2 font-medium text-destructive"
+                >
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* App version */}
+            <View
+              className="px-4 py-4 border-t"
+              style={{ borderTopColor: themeColors.border }}
             >
-              Versione App {appVersion}
-            </Text>
-          </View>
-        </ScrollView>
+              <Text
+                className="text-center text-sm"
+                style={{ color: themeColors.mutedForeground }}
+              >
+                Versione App {appVersion}
+              </Text>
+            </View>
+          </ScrollView>
+        </GlassSurface>
       </BottomSheetView>
     </BottomSheet>
   );

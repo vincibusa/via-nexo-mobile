@@ -8,9 +8,20 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Calendar, QrCode } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { useSettings } from '../../lib/contexts/settings';
+import { THEME } from '../../lib/theme';
+import { GlassSurface } from '../glass';
 
 export function ManagerToolsSection() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const { settings } = useSettings();
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light');
+  const themeColors = THEME[effectiveTheme];
+  const isDark = effectiveTheme === 'dark';
 
   const tools = [
     {
@@ -31,7 +42,17 @@ export function ManagerToolsSection() {
 
   return (
     <View className="px-4 pb-4">
-      <View className="bg-card rounded-xl p-4 border border-border">
+      <GlassSurface
+        variant="card"
+        intensity={isDark ? 'regular' : 'light'}
+        tint={isDark ? 'dark' : 'light'}
+        style={{
+          borderRadius: 12,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.2)',
+        }}
+      >
         {/* Section Header */}
         <Text className="text-lg font-semibold text-foreground mb-3">
           Strumenti Manager
@@ -45,7 +66,8 @@ export function ManagerToolsSection() {
               <TouchableOpacity
                 key={tool.id}
                 onPress={() => router.push(tool.route as any)}
-                className="flex-row items-center bg-muted rounded-lg p-3 active:opacity-70"
+                className="flex-row items-center rounded-lg p-3 active:opacity-70"
+                style={{ backgroundColor: themeColors.muted }}
               >
                 {/* Icon */}
                 <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-3">
@@ -68,7 +90,7 @@ export function ManagerToolsSection() {
             );
           })}
         </View>
-      </View>
+      </GlassSurface>
     </View>
   );
 }

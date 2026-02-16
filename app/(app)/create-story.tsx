@@ -29,8 +29,8 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { useColorScheme } from 'nativewind';
-import { useSettings } from '../../lib/contexts/settings';
 import { THEME } from '../../lib/theme';
+import { GlassSurface } from '../../components/glass';
 import { uploadService, UploadProgress } from '../../lib/services/upload';
 import { API_CONFIG } from '../../lib/config';
 
@@ -87,13 +87,9 @@ export default function CreateStoryScreen() {
   const { user, session } = useAuth();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
-  const { settings } = useSettings();
-  
-  // Get effective theme
-  const effectiveTheme = settings?.theme === 'system'
-    ? (colorScheme === 'dark' ? 'dark' : 'light')
-    : (settings?.theme === 'dark' ? 'dark' : 'light');
-  const themeColors = THEME[effectiveTheme];
+  const themeMode = colorScheme === 'dark' ? 'dark' : 'light';
+  const isDark = themeMode === 'dark';
+  const themeColors = THEME[themeMode];
   
   const [image, setImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -717,40 +713,54 @@ export default function CreateStoryScreen() {
           )}
 
           {/* Camera Option */}
-          <TouchableOpacity
-            onPress={openCamera}
-            className="w-full flex-row items-center gap-4 rounded-lg border border-border bg-muted/30 p-6"
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'regular' : 'light'}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ width: '100%', borderRadius: 14, padding: 0 }}
           >
-            <Camera size={24} className="text-foreground" />
-            <View className="flex-1">
-              <Text className="text-base font-semibold">
-                Scatta una foto
-              </Text>
-              <Text className="text-sm text-muted-foreground">
-                Usa la fotocamera del tuo telefono
-              </Text>
-            </View>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={openCamera}
+              className="w-full flex-row items-center gap-4 rounded-lg border border-border bg-muted/20 p-6"
+            >
+              <Camera size={24} className="text-foreground" />
+              <View className="flex-1">
+                <Text className="text-base font-semibold">
+                  Scatta una foto
+                </Text>
+                <Text className="text-sm text-muted-foreground">
+                  Usa la fotocamera del tuo telefono
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </GlassSurface>
 
           {/* Gallery Option */}
-          <TouchableOpacity
-            onPress={pickImage}
-            className="w-full flex-row items-center gap-4 rounded-lg border border-border bg-muted/30 p-6"
+          <GlassSurface
+            variant="card"
+            intensity={isDark ? 'regular' : 'light'}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ width: '100%', borderRadius: 14, padding: 0 }}
           >
-            <View className="h-6 w-6 items-center justify-center rounded bg-primary">
-              <Text className="text-xs font-bold text-primary-foreground">
-                📁
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-base font-semibold">
-                Scegli dalla galleria
-              </Text>
-              <Text className="text-sm text-muted-foreground">
-                Seleziona una foto dal tuo dispositivo
-              </Text>
-            </View>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={pickImage}
+              className="w-full flex-row items-center gap-4 rounded-lg border border-border bg-muted/20 p-6"
+            >
+              <View className="h-6 w-6 items-center justify-center rounded bg-primary">
+                <Text className="text-xs font-bold text-primary-foreground">
+                  📁
+                </Text>
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-semibold">
+                  Scegli dalla galleria
+                </Text>
+                <Text className="text-sm text-muted-foreground">
+                  Seleziona una foto dal tuo dispositivo
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </GlassSurface>
 
           {/* Info */}
           <View className="mt-6 rounded-lg bg-muted/30 p-4">

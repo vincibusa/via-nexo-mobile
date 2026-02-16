@@ -4,6 +4,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import type { Conversation } from '../../lib/types/messaging';
+import { useColorScheme } from 'nativewind';
+import { GlassSurface } from '../glass';
 
 interface ConversationListItemProps {
   conversation: Conversation;
@@ -16,6 +18,8 @@ export function ConversationListItem({
   onPress,
   currentUserId,
 }: ConversationListItemProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const otherUser = conversation.other_user;
   const lastMessage = conversation.last_message;
   const isGroupChat = conversation.is_group || conversation.type === 'group';
@@ -64,54 +68,63 @@ export function ConversationListItem({
   };
 
   return (
-    <Pressable
-      onPress={onPress}
-      className="flex-row items-center p-4 border-b border-border active:bg-muted"
-    >
-      <View className="relative mr-3">
-        <Avatar alt={displayName} className="w-16 h-16">
-          {isGroupChat && conversation.group_image_url ? (
-            <AvatarImage source={{ uri: conversation.group_image_url }} />
-          ) : !isGroupChat && otherUser?.avatarUrl ? (
-            <AvatarImage source={{ uri: otherUser.avatarUrl }} />
-          ) : null}
-          <AvatarFallback>
-            <Text className="text-lg font-semibold">
-              {isGroupChat ? '👥' : getInitials(otherUser?.displayName || otherUser?.email)}
-            </Text>
-          </AvatarFallback>
-        </Avatar>
-      </View>
+    <View className="px-3 py-1">
+      <GlassSurface
+        variant="card"
+        intensity={isDark ? 'regular' : 'light'}
+        tint={isDark ? 'dark' : 'dark'}
+        style={{ borderRadius: 16, padding: 0, borderWidth: 0 }}
+      >
+        <Pressable
+          onPress={onPress}
+          className="flex-row items-center p-4 active:bg-muted/30"
+        >
+          <View className="relative mr-3">
+            <Avatar alt={displayName} className="w-16 h-16">
+              {isGroupChat && conversation.group_image_url ? (
+                <AvatarImage source={{ uri: conversation.group_image_url }} />
+              ) : !isGroupChat && otherUser?.avatarUrl ? (
+                <AvatarImage source={{ uri: otherUser.avatarUrl }} />
+              ) : null}
+              <AvatarFallback>
+                <Text className="text-lg font-semibold">
+                  {isGroupChat ? '👥' : getInitials(otherUser?.displayName || otherUser?.email)}
+                </Text>
+              </AvatarFallback>
+            </Avatar>
+          </View>
 
-      <View className="flex-1 justify-center">
-        <View className="flex-row items-center justify-between mb-1">
-          <Text className="text-base font-semibold flex-1" numberOfLines={1}>
-            {displayName}
-          </Text>
-          {lastMessage && (
-            <Text className="text-xs text-muted-foreground ml-2">
-              {formatTime(lastMessage.created_at)}
-            </Text>
-          )}
-        </View>
-
-        <View className="flex-row items-center">
-          <Text
-            className={`text-sm flex-1 ${conversation.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-            numberOfLines={1}
-          >
-            {formatMessagePreview()}
-          </Text>
-
-          {conversation.unread_count > 0 && (
-            <View className="bg-primary rounded-full min-w-[20px] h-5 items-center justify-center px-1.5 ml-2">
-              <Text className="text-xs font-semibold text-primary-foreground">
-                {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+          <View className="flex-1 justify-center">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-base font-semibold flex-1" numberOfLines={1}>
+                {displayName}
               </Text>
+              {lastMessage && (
+                <Text className="text-xs text-muted-foreground ml-2">
+                  {formatTime(lastMessage.created_at)}
+                </Text>
+              )}
             </View>
-          )}
-        </View>
-      </View>
-    </Pressable>
+
+            <View className="flex-row items-center">
+              <Text
+                className={`text-sm flex-1 ${conversation.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                numberOfLines={1}
+              >
+                {formatMessagePreview()}
+              </Text>
+
+              {conversation.unread_count > 0 && (
+                <View className="bg-primary rounded-full min-w-[20px] h-5 items-center justify-center px-1.5 ml-2">
+                  <Text className="text-xs font-semibold text-primary-foreground">
+                    {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Pressable>
+      </GlassSurface>
+    </View>
   );
 }

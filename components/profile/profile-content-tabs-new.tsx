@@ -26,6 +26,8 @@ import { useAuth } from '../../lib/contexts/auth'
 import { Calendar, Clock, MapPin, Ticket, Image as ImageIcon, Bell } from 'lucide-react-native'
 import { isEventPast } from '../../lib/utils/date'
 import { ProfileRequestsTab } from './profile-requests-tab'
+import { useColorScheme } from 'nativewind'
+import { GlassSurface } from '../glass'
 import type { ManagerEvent } from '../../lib/types/manager'
 
 interface Story {
@@ -67,6 +69,7 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
   const [activeTab, setActiveTab] = useState<'reservations' | 'stories' | 'requests' | 'events'>('reservations')
   const { width } = useWindowDimensions()
   const { settings } = useSettings()
+  const { colorScheme } = useColorScheme()
   const { user, session } = useAuth()
   const router = useRouter()
 
@@ -100,8 +103,11 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
     }
   }, [isExternalProfile, user])
 
-  const effectiveTheme = settings?.theme === 'system' ? 'dark' : settings?.theme || 'dark'
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : (settings?.theme === 'dark' ? 'dark' : 'light')
   const themeColors = THEME[effectiveTheme]
+  const isDark = effectiveTheme === 'dark'
 
   // Calculate grid dimensions (2 columns with padding)
   const horizontalPadding = 16
@@ -286,11 +292,18 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
           marginBottom: gap,
         }}
       >
-        <View
-          className="flex-1 rounded-xl border overflow-hidden relative"
+        <GlassSurface
+          variant="card"
+          intensity={isDark ? 'regular' : 'light'}
+          tint={isDark ? 'dark' : 'light'}
           style={{
-            borderColor: themeColors.border,
-            backgroundColor: themeColors.card,
+            flex: 1,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.2)',
+            overflow: 'hidden',
+            position: 'relative',
+            padding: 0,
           }}
         >
           {/* Full image background */}
@@ -455,7 +468,7 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
               </View>
             </>
           )}
-        </View>
+        </GlassSurface>
       </TouchableOpacity>
     )
   }
@@ -520,10 +533,15 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
   return (
     <View className="mt-6">
       {/* Modern Segmented Control Style Tabs */}
-      <View
-        className="mx-4 mb-6 rounded-xl overflow-hidden"
+      <GlassSurface
+        variant="card"
+        intensity={isDark ? 'light' : 'light'}
+        tint={isDark ? 'extraLight' : 'light'}
         style={{
-          backgroundColor: themeColors.muted,
+          marginHorizontal: 16,
+          marginBottom: 24,
+          borderRadius: 12,
+          overflow: 'hidden',
           padding: 4,
         }}
       >
@@ -594,7 +612,7 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
             )
           })}
         </View>
-      </View>
+      </GlassSurface>
 
       {/* Content */}
       {activeTab === 'requests' ? (

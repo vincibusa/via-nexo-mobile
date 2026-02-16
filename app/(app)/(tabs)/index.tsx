@@ -22,6 +22,7 @@ import { HomeMap } from '../../../components/home/home-map';
 import { HomeStories } from '../../../components/home/home-stories';
 import { HomeOverlay } from '../../../components/home/home-overlay';
 import { useHomeData } from '../../../lib/hooks/useHomeData';
+import { getFloatingTabBarScrollPadding } from '../../../lib/layout/floating-tab-bar';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -71,7 +72,7 @@ export default function HomeScreen() {
     router.push(`/place/${place.id}` as any);
   };
 
-  const contentBottomPadding = insets.bottom + 96;
+  const contentBottomPadding = getFloatingTabBarScrollPadding(insets.bottom);
   const overlayBottomOffset = 120;
 
   // Show loading state
