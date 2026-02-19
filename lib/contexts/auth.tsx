@@ -28,7 +28,7 @@ interface AuthContextType {
   biometricSupported: boolean;
   biometricType: 'face' | 'fingerprint' | 'iris' | null;
   login: (email: string, password: string) => Promise<{ error?: string }>;
-  signup: (email: string, password: string, displayName?: string) => Promise<{ error?: string }>;
+  signup: (email: string, password: string, displayName?: string, gender?: string, dateOfBirth?: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   enableBiometrics: (email: string, password: string) => Promise<{ error?: string }>;
   disableBiometrics: () => Promise<void>;
@@ -419,9 +419,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signup = async (email: string, password: string, displayName?: string) => {
+  const signup = async (email: string, password: string, displayName?: string, gender?: string, dateOfBirth?: string) => {
     try {
-      const { data, error } = await authService.signup(email, password, displayName);
+      const { data, error } = await authService.signup(email, password, displayName, gender, dateOfBirth);
 
       if (error) {
         return { error: error.message };

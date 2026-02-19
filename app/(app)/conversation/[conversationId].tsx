@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, Alert, NativeScrollEvent, NativeSyntheticEvent, Image, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, FlatList, KeyboardAvoidingView, Platform, Alert, NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator } from 'react-native';
 import { useAuth } from '../../../lib/contexts/auth';
@@ -9,13 +9,18 @@ import imageMessageService from '../../../lib/services/image-message';
 import voiceMessageService from '../../../lib/services/voice-message';
 import type { Message, Conversation } from '../../../lib/types/messaging';
 import { MediaChatBubble } from '../../../components/chat/MediaChatBubble';
+import { SquircleAvatar } from '../../../components/ui/squircle-avatar';
 import { EnhancedChatInput } from '../../../components/chat/EnhancedChatInput';
 import { Text } from '../../../components/ui/text';
 import { THEME } from '../../../lib/theme';
 import { useSettings } from '../../../lib/contexts/settings';
 import { useMessagesRealtime } from '../../../lib/hooks/useMessagesRealtime';
 import { getAuthenticatedClient } from '../../../lib/supabase/client';
-import { ChevronLeft, User } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { GlassView } from '../../../components/glass/glass-view';
+import { GlassView as ExpoGlassView } from 'expo-glass-effect';
+import { TINT_COLORS_BY_THEME } from '../../../lib/glass/constants';
 
 export default function ConversationScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
@@ -23,6 +28,8 @@ export default function ConversationScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const { settings } = useSettings();
+  const { colorScheme } = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -32,8 +39,13 @@ export default function ConversationScreen() {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const shouldScrollToBottomRef = useRef(true);
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  // Get effective theme based on user settings
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : settings?.theme === 'dark'
+    ? 'dark'
+    : 'light';
+  const themeColors = THEME[effectiveTheme];
 
   // Get other user info for header
   const otherUser = conversation?.other_user;
@@ -137,12 +149,14 @@ export default function ConversationScreen() {
         const otherParticipant = participants?.find(p => p.user_id !== user.id);
         const currentParticipant = participants?.find(p => p.user_id === user.id);
 
-        // For group chats, get the event image
+        // For group chats, get the event image and event_id
         let groupImageUrl: string | undefined;
+        let eventId: string | undefined;
         if (convData.is_group || convData.type === 'group') {
           const { data: eventGroupChat } = await supabase
             .from('event_group_chats')
             .select(`
+              event_id,
               events (
                 cover_image_url
               )
@@ -150,10 +164,11 @@ export default function ConversationScreen() {
             .eq('conversation_id', conversationId)
             .single();
 
-          if (eventGroupChat?.events) {
-            const event = Array.isArray(eventGroupChat.events)
-              ? eventGroupChat.events[0]
-              : eventGroupChat.events;
+          if (eventGroupChat) {
+            eventId = eventGroupChat.event_id;
+            const event = eventGroupChat.events
+              ? (Array.isArray(eventGroupChat.events) ? eventGroupChat.events[0] : eventGroupChat.events)
+              : null;
             groupImageUrl = event?.cover_image_url;
           }
         }
@@ -191,6 +206,7 @@ export default function ConversationScreen() {
           is_muted: currentParticipant?.is_muted || false,
           other_user: otherUserProfile,
           group_image_url: groupImageUrl,
+          event_id: eventId,
         });
       } catch (error) {
         console.error('Error fetching conversation:', error);
@@ -361,6 +377,15 @@ export default function ConversationScreen() {
     router.push(`/profile/${userId}`);
   };
 
+  const handleHeaderPress = () => {
+    if (!conversation) return;
+    if (isGroupChat && conversation.event_id) {
+      router.push({ pathname: `/(app)/event/${conversation.event_id}` as any, params: { fromChat: '1' } });
+    } else if (!isGroupChat && conversation.other_user?.id) {
+      router.push(`/(app)/profile/${conversation.other_user.id}` as any);
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender_id === user?.id;
 
@@ -394,48 +419,76 @@ export default function ConversationScreen() {
     );
   };
 
-  // Custom header component
-  const renderHeaderTitle = () => {
-    // Determine which image to show
-    const avatarUrl = isGroupChat
-      ? conversation?.group_image_url
-      : otherUser?.avatarUrl;
+  const avatarUrl = isGroupChat
+    ? conversation?.group_image_url
+    : otherUser?.avatarUrl;
+  const avatarInitial = (isGroupChat ? 'G' : (otherUser?.displayName || headerTitle || '?')[0] ?? '?').toUpperCase();
 
-    return (
-      <View className="flex-row items-center gap-3">
-        {avatarUrl ? (
-          <Image
-            source={{ uri: avatarUrl }}
-            className="w-9 h-9 rounded-full"
-          />
-        ) : (
-          <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
-            {isGroupChat ? (
-              <Text className="text-sm">👥</Text>
-            ) : (
-              <User size={18} color={themeColors.mutedForeground} />
-            )}
-          </View>
-        )}
-        <View>
-          <Text className="text-base font-semibold text-foreground">
-            {headerTitle}
-          </Text>
-        </View>
-      </View>
+  const headerHeight = insets.top + 50;
+
+  // ExpoGlassView nativo su iOS - stesso effetto dei pulsanti Home Overlay (Liquid Glass)
+  const glassTintColor = TINT_COLORS_BY_THEME[effectiveTheme].extraLight.regular;
+  const GlassButton = ({ children, style }: { children: React.ReactNode; style?: object }) =>
+    Platform.OS === 'ios' ? (
+      <ExpoGlassView
+        glassEffectStyle="regular"
+        tintColor={glassTintColor}
+        isInteractive
+        style={style}
+      >
+        {children}
+      </ExpoGlassView>
+    ) : (
+      <GlassView intensity="regular" tint="extraLight" isInteractive style={style}>
+        {children}
+      </GlassView>
     );
-  };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerBackTitle: '',
-          headerBackTitleVisible: false,
-          headerTitle: renderHeaderTitle,
-        }}
-      />
+    <View className="flex-1 bg-background">
+      <Stack.Screen options={{ headerShown: false, title: 'Chat' }} />
+      <SafeAreaView className="flex-1" edges={['bottom']}>
+
+      {/* Back button staccato - Liquid Glass come Home Overlay */}
+      <Pressable
+        onPress={() => router.back()}
+        hitSlop={10}
+        style={[styles.headerBackWrap, { top: insets.top + 6 }]}
+      >
+        <GlassButton style={styles.headerBackGlass}>
+          <ChevronLeft size={22} color={themeColors.foreground} />
+        </GlassButton>
+      </Pressable>
+
+      {/* Header bar - Liquid Glass, solo titolo, tap → profilo o evento */}
+      <Pressable
+        onPress={handleHeaderPress}
+        style={[styles.headerGlass, { top: insets.top + 6 }]}
+      >
+        <GlassButton style={styles.headerGlassInner}>
+          <View style={styles.headerRow}>
+            <Text style={[styles.headerTitle, { color: themeColors.foreground }]} numberOfLines={1}>
+              {headerTitle}
+            </Text>
+          </View>
+        </GlassButton>
+      </Pressable>
+
+      {/* Avatar staccato - View semplice (GlassButton aggiunge padding che nasconde l'avatar) */}
+      <Pressable
+        onPress={handleHeaderPress}
+        hitSlop={10}
+        style={[styles.headerAvatarWrap, { top: insets.top + 6 }]}
+      >
+        <View style={styles.headerAvatarContainer}>
+          <SquircleAvatar
+            size={44}
+            source={avatarUrl ? { uri: avatarUrl } : undefined}
+            fallback={<Text style={styles.headerAvatarText}>{avatarInitial}</Text>}
+            backgroundColor="#2CA5E0"
+          />
+        </View>
+      </Pressable>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -460,7 +513,7 @@ export default function ConversationScreen() {
                 contentContainerStyle={{
                   paddingHorizontal: 16,
                   paddingTop: 16,
-                  paddingBottom: 8,
+                  paddingBottom: 8 + headerHeight,
                 }}
                 ListHeaderComponent={renderHeader}
                 onEndReached={handleLoadMore}
@@ -481,12 +534,105 @@ export default function ConversationScreen() {
               onSendText={handleSendMessage}
               onSendImages={handleSendImages}
               onSendVoice={handleSendVoice}
-              placeholder="Scrivi un messaggio..."
+              placeholder="Messaggio"
               disabled={sending}
             />
           </>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  headerBackWrap: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 101,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBackGlass: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 9,
+  },
+  headerGlass: {
+    position: 'absolute',
+    left: 72,
+    right: 72,
+    height: 44,
+    zIndex: 100,
+    overflow: 'hidden',
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 9,
+  },
+  headerAvatarWrap: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 101,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarGlass: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 9,
+  },
+  headerAvatarContainer: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    padding: 0,
+  },
+  headerGlassInner: {
+    flex: 1,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    flex: 1,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  headerAvatarText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});

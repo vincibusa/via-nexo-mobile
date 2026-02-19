@@ -10,6 +10,7 @@
     "clean": "rm -rf .expo node_modules"
   },
   "dependencies": {
+    "@expo/ui": "~0.2.0-beta.9",
     "@gorhom/bottom-sheet": "^5.2.6",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",

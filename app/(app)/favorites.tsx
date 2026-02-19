@@ -10,16 +10,23 @@ import { Heart } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 import { THEME } from '../../lib/theme';
 import { useSettings } from '../../lib/contexts/settings';
+import { useColorScheme } from 'nativewind';
 
 export default function FavoritesScreen() {
   const { settings } = useSettings();
+  const { colorScheme } = useColorScheme();
   const { places, events, isLoading, removeFavorite, refreshFavorites } = useFavorites();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'places' | 'events'>('places');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  // Get effective theme based on user settings
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : settings?.theme === 'dark'
+    ? 'dark'
+    : 'light';
+  const themeColors = THEME[effectiveTheme];
 
   const onRefresh = async () => {
     setRefreshing(true);

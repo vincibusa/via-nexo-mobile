@@ -1,10 +1,15 @@
 import React from 'react'
-import { View, ScrollView, TouchableOpacity } from 'react-native'
+import { View, TouchableOpacity } from 'react-native'
 import { Text } from '../ui/text'
 import { Progress } from '../ui/progress'
 import { useSettings } from '../../lib/contexts/settings'
 import { THEME } from '../../lib/theme'
 import type { RaveScore } from '../../lib/types/rave-score'
+import {
+  translatePresenceLabel,
+  translateTrustLabel,
+  translateCrewLabel,
+} from '../../lib/i18n/rave-score-labels'
 
 interface RaveScoreCardsProps {
   score: RaveScore | null
@@ -34,25 +39,21 @@ export function RaveScoreCards({
   }
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      className="px-4 mb-6"
-      contentContainerStyle={{ gap: 12 }}
-    >
-      {/* Presence Card */}
+    <View className="px-4 mb-6 flex-row gap-3">
+      {/* Presenza */}
       <TouchableOpacity
         onPress={onPresencePress}
         activeOpacity={0.7}
         style={{
+          flex: 1,
           backgroundColor: themeColors.card,
           borderColor: themeColors.border,
         }}
-        className="rounded-3xl border p-5 w-32 justify-between"
+        className="rounded-3xl border p-4 justify-between"
       >
         <View>
           <Text className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
-            Presence
+            Presenza
           </Text>
 
           <Progress
@@ -68,23 +69,26 @@ export function RaveScoreCards({
 
           <Text className="text-xs text-muted-foreground">{score.presence.checkIns90d} check-in</Text>
 
-          <Text className="text-xs font-semibold text-blue-400 mt-2">{score.presence.label}</Text>
+          <Text className="text-xs font-semibold text-blue-400 mt-2">
+            {translatePresenceLabel(score.presence.label)}
+          </Text>
         </View>
       </TouchableOpacity>
 
-      {/* Trust Card */}
+      {/* Fiducia */}
       <TouchableOpacity
         onPress={onTrustPress}
         activeOpacity={0.7}
         style={{
+          flex: 1,
           backgroundColor: themeColors.card,
           borderColor: themeColors.border,
         }}
-        className="rounded-3xl border p-5 w-32 justify-between"
+        className="rounded-3xl border p-4 justify-between"
       >
         <View>
           <Text className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
-            Trust
+            Fiducia
           </Text>
 
           <Text className="text-2xl font-bold text-foreground mb-1">
@@ -92,7 +96,7 @@ export function RaveScoreCards({
           </Text>
 
           <Text className="text-xs text-muted-foreground mb-3">
-            {score.trust.breakdown.shows} show
+            {score.trust.breakdown.shows} presenze
           </Text>
 
           <Text
@@ -106,27 +110,30 @@ export function RaveScoreCards({
                     : '#ef4444',
             }}
           >
-            {score.trust.label}
+            {translateTrustLabel(score.trust.label)}
           </Text>
         </View>
       </TouchableOpacity>
 
-      {/* Crew Card */}
+      {/* Gruppo */}
       <TouchableOpacity
         onPress={onCrewPress}
         activeOpacity={0.7}
         style={{
+          flex: 1,
           backgroundColor: themeColors.card,
           borderColor: themeColors.border,
         }}
-        className="rounded-3xl border p-5 w-32 justify-between"
+        className="rounded-3xl border p-4 justify-between"
       >
         <View>
           <Text className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
-            Crew
+            Gruppo
           </Text>
 
-          <Text className="text-xl font-bold text-foreground mb-1">{score.crew.label}</Text>
+          <Text className="text-xl font-bold text-foreground mb-1">
+            {translateCrewLabel(score.crew.label)}
+          </Text>
 
           <Text className="text-xs text-muted-foreground mb-3">
             {score.crew.hostedShows} persone
@@ -137,6 +144,6 @@ export function RaveScoreCards({
           </Text>
         </View>
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   )
 }

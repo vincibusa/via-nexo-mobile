@@ -8,9 +8,9 @@ import {
   View,
   ScrollView,
   RefreshControl,
-  SafeAreaView,
   Text,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../lib/contexts/auth';
 import { useSettings } from '../../../lib/contexts/settings';
@@ -26,7 +26,6 @@ import { ManagerToolsSection } from '../../../components/manager/manager-tools-s
 import { useRaveScore } from '../../../lib/hooks/useRaveScore';
 import { API_CONFIG } from '../../../lib/config';
 import { getFloatingTabBarScrollPadding } from '../../../lib/layout/floating-tab-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -119,7 +118,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className={`flex-1 bg-background`}>
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -133,7 +132,6 @@ export default function ProfileScreen() {
           />
         }
       >
-        {/* RAVE ID Header with Profile Card */}
         <RaveIdHeader
           user={user}
           raveScore={raveScore}
@@ -142,10 +140,8 @@ export default function ProfileScreen() {
           unreadNotificationsCount={unreadNotificationsCount}
         />
 
-        {/* Manager Tools Section - only visible for managers */}
         {user?.role === 'manager' && <ManagerToolsSection />}
 
-        {/* Content Tabs - Eventi Prenotati / Archivio Storie */}
         <ProfileContentTabsNew />
       </ScrollView>
 

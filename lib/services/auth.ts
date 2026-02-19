@@ -43,10 +43,10 @@ class AuthService {
     });
   }
 
-  async signup(email: string, password: string, displayName?: string) {
+  async signup(email: string, password: string, displayName?: string, gender?: string, dateOfBirth?: string) {
     return this.request<SignupResponse>(API_CONFIG.ENDPOINTS.SIGNUP, {
       method: 'POST',
-      body: JSON.stringify({ email, password, displayName }),
+      body: JSON.stringify({ email, password, displayName, gender, date_of_birth: dateOfBirth }),
     });
   }
 

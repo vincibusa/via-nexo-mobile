@@ -1,11 +1,12 @@
 import { View, Pressable } from 'react-native';
 import { Text } from '../ui/text';
-import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { SquircleAvatar } from '../ui/squircle-avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import type { Conversation } from '../../lib/types/messaging';
 import { useColorScheme } from 'nativewind';
 import { GlassSurface } from '../glass';
+import { THEME } from '../../lib/theme';
 
 interface ConversationListItemProps {
   conversation: Conversation;
@@ -20,6 +21,7 @@ export function ConversationListItem({
 }: ConversationListItemProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const themeColors = THEME[isDark ? 'dark' : 'light'];
   const otherUser = conversation.other_user;
   const lastMessage = conversation.last_message;
   const isGroupChat = conversation.is_group || conversation.type === 'group';
@@ -79,19 +81,24 @@ export function ConversationListItem({
           onPress={onPress}
           className="flex-row items-center p-4 active:bg-muted/30"
         >
-          <View className="relative mr-3">
-            <Avatar alt={displayName} className="w-16 h-16">
-              {isGroupChat && conversation.group_image_url ? (
-                <AvatarImage source={{ uri: conversation.group_image_url }} />
-              ) : !isGroupChat && otherUser?.avatarUrl ? (
-                <AvatarImage source={{ uri: otherUser.avatarUrl }} />
-              ) : null}
-              <AvatarFallback>
+          <View className="relative mr-3" style={{ padding: 0 }}>
+            <SquircleAvatar
+              width={64}
+              height={64}
+              source={
+                isGroupChat && conversation.group_image_url
+                  ? { uri: conversation.group_image_url }
+                  : !isGroupChat && otherUser?.avatarUrl
+                    ? { uri: otherUser.avatarUrl }
+                    : undefined
+              }
+              fallback={
                 <Text className="text-lg font-semibold">
                   {isGroupChat ? '👥' : getInitials(otherUser?.displayName || otherUser?.email)}
                 </Text>
-              </AvatarFallback>
-            </Avatar>
+              }
+              backgroundColor={themeColors.muted}
+            />
           </View>
 
           <View className="flex-1 justify-center">

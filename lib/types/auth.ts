@@ -5,6 +5,8 @@ export interface User {
   displayName?: string;
   avatarUrl?: string;
   bio?: string;
+  gender?: string;
+  age?: number;
   website?: string;
   postsCount?: number;
   followersCount?: number;

@@ -1,13 +1,17 @@
 /**
  * Enhanced Chat Input Component
- * Supports text, images, and voice messages with WhatsApp-style interactions
+ * Liquid Glass style come l'header - paperclip, emoji, mic/send
  */
 
-import { useState, useCallback } from 'react';
-import { View, TextInput, Pressable, Alert } from 'react-native';
-import { Send, ImagePlus, Camera, X } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import { View, TextInput, Pressable, Alert, StyleSheet, Platform, Text, Dimensions } from 'react-native';
+import { Send, Paperclip, Camera, ImagePlus } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
+import { useSettings } from '../../lib/contexts/settings';
 import { THEME } from '../../lib/theme';
+import { TINT_COLORS_BY_THEME } from '../../lib/glass/constants';
+import { GlassView } from '../glass/glass-view';
+import { GlassView as ExpoGlassView } from 'expo-glass-effect';
 import { WhatsAppVoiceRecorder } from './WhatsAppVoiceRecorder';
 import { ImagePickerPreview } from './ImagePickerPreview';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,6 +19,29 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 const MAX_IMAGES = 10;
+
+function InputPill ({
+  children,
+  glassTintColor,
+}: {
+  children: React.ReactNode;
+  glassTintColor: string;
+}) {
+  return Platform.OS === 'ios' ? (
+    <ExpoGlassView
+      glassEffectStyle="regular"
+      tintColor={glassTintColor}
+      isInteractive
+      style={styles.pill}
+    >
+      {children}
+    </ExpoGlassView>
+  ) : (
+    <GlassView intensity="regular" tint="extraLight" isInteractive style={styles.pill}>
+      {children}
+    </GlassView>
+  );
+}
 
 interface EnhancedChatInputProps {
   onSendText: (message: string) => void;
@@ -32,23 +59,27 @@ export function EnhancedChatInput({
   disabled = false,
 }: EnhancedChatInputProps) {
   const { colorScheme } = useColorScheme();
-  const themeColors = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  const { settings } = useSettings();
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : settings?.theme === 'dark'
+    ? 'dark'
+    : 'light';
+  const themeColors = THEME[effectiveTheme];
+  const glassTintColor = TINT_COLORS_BY_THEME[effectiveTheme].extraLight.regular;
 
   const [message, setMessage] = useState('');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isSendingImages, setIsSendingImages] = useState(false);
   const [imageProgress, setImageProgress] = useState<{ completed: number; total: number } | undefined>();
-  const [showMediaOptions, setShowMediaOptions] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [showAttachmentDropdown, setShowAttachmentDropdown] = useState(false);
 
   const hasText = message.trim().length > 0;
   const hasImages = selectedImages.length > 0;
 
   const handleRecordingStateChange = useCallback((recording: boolean) => {
     setIsVoiceRecording(recording);
-    if (recording) {
-      setShowMediaOptions(false); // Hide media options when recording
-    }
   }, []);
 
   const handleSendText = useCallback(() => {
@@ -84,7 +115,6 @@ export function EnhancedChatInput({
           const combined = [...prev, ...newImages];
           return combined.slice(0, MAX_IMAGES);
         });
-        setShowMediaOptions(false);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
@@ -118,7 +148,6 @@ export function EnhancedChatInput({
           }
           return [...prev, result.assets[0].uri];
         });
-        setShowMediaOptions(false);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
@@ -134,7 +163,6 @@ export function EnhancedChatInput({
 
   const handleCancelImages = useCallback(() => {
     setSelectedImages([]);
-    setShowMediaOptions(false);
   }, []);
 
   const handleSendImages = useCallback(async () => {
@@ -171,10 +199,25 @@ export function EnhancedChatInput({
     // Recording was cancelled, nothing to do
   }, []);
 
-  const toggleMediaOptions = useCallback(() => {
-    setShowMediaOptions(prev => !prev);
+  const openAttachmentDropdown = useCallback(() => {
+    if (disabled) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowAttachmentDropdown(true);
+  }, [disabled]);
+
+  const closeAttachmentDropdown = useCallback(() => {
+    setShowAttachmentDropdown(false);
   }, []);
+
+  const handlePickImagesFromDropdown = useCallback(() => {
+    closeAttachmentDropdown();
+    handlePickImages();
+  }, [closeAttachmentDropdown, handlePickImages]);
+
+  const handleTakePhotoFromDropdown = useCallback(() => {
+    closeAttachmentDropdown();
+    handleTakePhoto();
+  }, [closeAttachmentDropdown, handleTakePhoto]);
 
   // If images are selected, show the image preview
   if (hasImages) {
@@ -191,62 +234,117 @@ export function EnhancedChatInput({
   }
 
   return (
-    <View className="border-t border-border bg-background">
-      {/* Media options overlay */}
-      {showMediaOptions && (
-        <Animated.View
-          entering={FadeIn.duration(150)}
-          exiting={FadeOut.duration(150)}
-          className="flex-row gap-4 px-4 py-3 border-b border-border"
-        >
+    <View style={styles.wrapper} pointerEvents="box-none">
+      {/* Dropdown overlay */}
+      {showAttachmentDropdown && (
+        <>
           <Pressable
-            onPress={handleTakePhoto}
-            className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-primary"
+            onPress={closeAttachmentDropdown}
+            style={styles.dropdownBackdrop}
+            pointerEvents="auto"
+          />
+          <Animated.View
+            entering={FadeIn.duration(150)}
+            exiting={FadeOut.duration(150)}
+            style={styles.dropdown}
           >
-            <Camera size={18} color={themeColors.primaryForeground} />
-          </Pressable>
-          <Pressable
-            onPress={handlePickImages}
-            className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-secondary"
-          >
-            <ImagePlus size={18} color={themeColors.foreground} />
-          </Pressable>
-          <View className="flex-1" />
-          <Pressable
-            onPress={toggleMediaOptions}
-            className="p-2"
-          >
-            <X size={20} color={themeColors.mutedForeground} />
-          </Pressable>
-        </Animated.View>
+            {Platform.OS === 'ios' ? (
+              <ExpoGlassView
+                glassEffectStyle="regular"
+                tintColor={glassTintColor}
+                isInteractive
+                style={styles.dropdownGlass}
+              >
+                <Pressable
+                  onPress={handlePickImagesFromDropdown}
+                  style={({ pressed }) => [
+                    styles.dropdownItem,
+                    styles.dropdownItemFirst,
+                    pressed && { backgroundColor: themeColors.muted },
+                  ]}
+                >
+                  <View style={[styles.dropdownItemIconWrap, { backgroundColor: themeColors.muted }]}>
+                    <ImagePlus size={20} color={themeColors.foreground} />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: themeColors.foreground }]}>
+                    Libreria foto
+                  </Text>
+                </Pressable>
+                <View style={[styles.dropdownDivider, { backgroundColor: themeColors.border }]} />
+                <Pressable
+                  onPress={handleTakePhotoFromDropdown}
+                  style={({ pressed }) => [
+                    styles.dropdownItem,
+                    styles.dropdownItemLast,
+                    pressed && { backgroundColor: themeColors.muted },
+                  ]}
+                >
+                  <View style={[styles.dropdownItemIconWrap, { backgroundColor: themeColors.muted }]}>
+                    <Camera size={20} color={themeColors.foreground} />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: themeColors.foreground }]}>
+                    Scatta foto
+                  </Text>
+                </Pressable>
+              </ExpoGlassView>
+            ) : (
+              <GlassView intensity="regular" tint="extraLight" isInteractive style={styles.dropdownGlass}>
+                <Pressable
+                  onPress={handlePickImagesFromDropdown}
+                  style={({ pressed }) => [
+                    styles.dropdownItem,
+                    styles.dropdownItemFirst,
+                    pressed && { backgroundColor: themeColors.muted },
+                  ]}
+                >
+                  <View style={[styles.dropdownItemIconWrap, { backgroundColor: themeColors.muted }]}>
+                    <ImagePlus size={20} color={themeColors.foreground} />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: themeColors.foreground }]}>
+                    Libreria foto
+                  </Text>
+                </Pressable>
+                <View style={[styles.dropdownDivider, { backgroundColor: themeColors.border }]} />
+                <Pressable
+                  onPress={handleTakePhotoFromDropdown}
+                  style={({ pressed }) => [
+                    styles.dropdownItem,
+                    styles.dropdownItemLast,
+                    pressed && { backgroundColor: themeColors.muted },
+                  ]}
+                >
+                  <View style={[styles.dropdownItemIconWrap, { backgroundColor: themeColors.muted }]}>
+                    <Camera size={20} color={themeColors.foreground} />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: themeColors.foreground }]}>
+                    Scatta foto
+                  </Text>
+                </Pressable>
+              </GlassView>
+            )}
+          </Animated.View>
+        </>
       )}
 
-      {/* Main input row */}
-      <View className="flex-row items-center gap-2 p-4">
-        {/* Media button - hidden when recording */}
+      {/* Liquid Glass pill - come header */}
+      <InputPill glassTintColor={glassTintColor}>
         {!isVoiceRecording && (
           <Pressable
-            onPress={toggleMediaOptions}
+            onPress={openAttachmentDropdown}
             disabled={disabled}
-            className={`h-10 w-10 items-center justify-center rounded-full ${
-              showMediaOptions ? 'bg-primary' : 'bg-muted'
-            }`}
+            style={styles.iconButton}
           >
-            <ImagePlus
-              size={20}
-              color={showMediaOptions ? themeColors.primaryForeground : themeColors.foreground}
-            />
+            <Paperclip size={22} color={themeColors.mutedForeground} />
           </Pressable>
         )}
 
-        {/* Text input - hidden when recording */}
         {!isVoiceRecording && (
           <TextInput
             value={message}
             onChangeText={setMessage}
             placeholder={placeholder}
             placeholderTextColor={themeColors.mutedForeground}
-            className="flex-1 rounded-full border border-border bg-card px-4 py-2.5 text-base text-foreground"
+            style={[styles.input, { color: themeColors.foreground }]}
             multiline
             maxLength={500}
             editable={!disabled}
@@ -255,18 +353,16 @@ export function EnhancedChatInput({
           />
         )}
 
-        {/* Send button - visible only when has text AND not recording */}
         {hasText && !isVoiceRecording && (
           <Pressable
             onPress={handleSendText}
             disabled={disabled}
-            className="h-12 w-12 items-center justify-center rounded-full bg-primary"
+            style={[styles.sendButton, { backgroundColor: themeColors.primary }]}
           >
             <Send size={20} color={themeColors.primaryForeground} />
           </Pressable>
         )}
 
-        {/* Voice recorder - ALWAYS in the same position, visible when no text OR recording */}
         {!hasText && (
           <WhatsAppVoiceRecorder
             onRecordingComplete={handleVoiceRecordingComplete}
@@ -275,7 +371,109 @@ export function EnhancedChatInput({
             disabled={disabled}
           />
         )}
-      </View>
+      </InputPill>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    paddingBottom: 8,
+    backgroundColor: 'transparent',
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: -Dimensions.get('window').height,
+    left: -Dimensions.get('window').width,
+    width: Dimensions.get('window').width * 2,
+    height: Dimensions.get('window').height * 2,
+    backgroundColor: 'transparent',
+  },
+  dropdown: {
+    position: 'absolute',
+    bottom: 90,
+    left: 20,
+    width: 220,
+    overflow: 'hidden',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  dropdownGlass: {
+    overflow: 'hidden',
+    borderRadius: 20,
+    padding: 8,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  dropdownItemFirst: {
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+  },
+  dropdownItemLast: {
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  dropdownItemIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdownDivider: {
+    height: 1,
+    marginVertical: 4,
+    marginHorizontal: 12,
+    borderRadius: 1,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minHeight: 44,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 9,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    maxHeight: 120,
+  },
+});

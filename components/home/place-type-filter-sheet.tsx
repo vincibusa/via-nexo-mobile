@@ -13,7 +13,6 @@ import { PlaceTypeGrid } from './place-type-grid';
 import { useFiltersStore } from '../../lib/stores/filters-store';
 import { PlaceTypeValue } from '../../lib/constants/place-types';
 import { GlassSurface } from '../glass/glass-surface';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -54,10 +53,7 @@ function SheetBackdrop({
         style={[StyleSheet.absoluteFill, animatedStyle]}
         pointerEvents={isVisible ? 'auto' : 'none'}
       >
-        {/* Blur layer - più leggero */}
-        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-
-        {/* Dark overlay - più leggero */}
+        {/* Dark overlay - stronger for better darkening */}
         <View style={styles.backdrop} />
       </Animated.View>
     </TouchableWithoutFeedback>
@@ -132,7 +128,8 @@ export function PlaceTypeFilterSheet({
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
-          slideAnimatedStyle
+          slideAnimatedStyle,
+          { zIndex: 1000 }
         ]}
         pointerEvents="box-none"
       >
@@ -185,8 +182,8 @@ export function PlaceTypeFilterSheet({
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Overlay più leggero
-    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)', // Stronger dark overlay like CreateMenuSheet
+    zIndex: 999,
   },
   transparentHandleArea: {
     backgroundColor: 'transparent',

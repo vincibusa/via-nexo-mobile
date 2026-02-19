@@ -12,10 +12,11 @@ import { Text } from '../components/ui/text';
 import { useAuth } from '../lib/contexts/auth';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
-import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, TextInput, TouchableOpacity, View } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { Eye, EyeOff, Check } from 'lucide-react-native';
 import { PasswordStrengthIndicator } from './password-strength-indicator';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export function SignUpForm() {
   const { colorScheme } = useColorScheme();
@@ -28,6 +29,9 @@ export function SignUpForm() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [gender, setGender] = React.useState('');
+  const [dateOfBirth, setDateOfBirth] = React.useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [error, setError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -53,6 +57,30 @@ export function SignUpForm() {
       return;
     }
 
+    if (!gender) {
+      setError('Seleziona il tuo sesso');
+      return;
+    }
+
+    if (!dateOfBirth) {
+      setError('Inserisci la tua data di nascita');
+      return;
+    }
+
+    // Validate age >= 18
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      setError('Devi essere maggiorenne per registrarti');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Le password non coincidono');
       return;
@@ -67,7 +95,7 @@ export function SignUpForm() {
     setIsLoading(true);
 
     try {
-      const result = await signup(email, password, displayName || undefined);
+      const result = await signup(email, password, displayName || undefined, gender, dateOfBirth.toISOString());
       if (result.error) {
         setError(result.error);
       } else {
@@ -118,6 +146,79 @@ export function SignUpForm() {
                 returnKeyType="next"
                 onSubmitEditing={onDisplayNameSubmitEditing}
               />
+            </View>
+            {/* Gender Selection */}
+            <View className="gap-1.5">
+              <Label>Sesso</Label>
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => setGender('Maschio')}
+                  disabled={isLoading}
+                  className={`flex-1 py-3 px-4 rounded-xl border ${
+                    gender === 'Maschio'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-muted'
+                  }`}
+                >
+                  <Text
+                    className={`text-center ${
+                      gender === 'Maschio' ? 'text-primary font-semibold' : 'text-foreground'
+                    }`}
+                  >
+                    Maschio
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setGender('Femmina')}
+                  disabled={isLoading}
+                  className={`flex-1 py-3 px-4 rounded-xl border ${
+                    gender === 'Femmina'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-muted'
+                  }`}
+                >
+                  <Text
+                    className={`text-center ${
+                      gender === 'Femmina' ? 'text-primary font-semibold' : 'text-foreground'
+                    }`}
+                  >
+                    Femmina
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {/* Date of Birth */}
+            <View className="gap-1.5">
+              <Label>Data di nascita</Label>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                disabled={isLoading}
+                className="bg-muted px-4 py-3.5 rounded-xl"
+              >
+                <Text className={dateOfBirth ? 'text-foreground' : 'text-muted-foreground'}>
+                  {dateOfBirth
+                    ? new Date(dateOfBirth).toLocaleDateString('it-IT', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                    : 'Tocca per selezionare'}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dateOfBirth ? new Date(dateOfBirth) : new Date()}
+                  mode="date"
+                  display="default"
+                  maximumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(false);
+                    if (selectedDate) {
+                      setDateOfBirth(selectedDate);
+                    }
+                  }}
+                />
+              )}
             </View>
             <View className="gap-1.5">
               <Label htmlFor="email">Email</Label>

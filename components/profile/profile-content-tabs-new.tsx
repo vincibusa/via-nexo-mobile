@@ -14,6 +14,8 @@ import {
   ActivityIndicator,
   Animated,
   InteractionManager,
+  Platform,
+  StyleSheet,
 } from 'react-native'
 import { Text } from '../ui/text'
 import { useSettings } from '../../lib/contexts/settings'
@@ -28,6 +30,9 @@ import { isEventPast } from '../../lib/utils/date'
 import { ProfileRequestsTab } from './profile-requests-tab'
 import { useColorScheme } from 'nativewind'
 import { GlassSurface } from '../glass'
+import { GlassView } from '../glass/glass-view'
+import { GlassView as ExpoGlassView } from 'expo-glass-effect'
+import { TINT_COLORS_BY_THEME } from '../../lib/glass/constants'
 import type { ManagerEvent } from '../../lib/types/manager'
 
 interface Story {
@@ -109,11 +114,28 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
   const themeColors = THEME[effectiveTheme]
   const isDark = effectiveTheme === 'dark'
 
-  // Calculate grid dimensions (2 columns with padding)
+  const glassTintColor = TINT_COLORS_BY_THEME[effectiveTheme].extraLight.regular
+  const GlassCard = ({ children, style }: { children: React.ReactNode; style?: object }) =>
+    Platform.OS === 'ios' ? (
+      <ExpoGlassView
+        glassEffectStyle="regular"
+        tintColor={glassTintColor}
+        isInteractive
+        style={style}
+      >
+        {children}
+      </ExpoGlassView>
+    ) : (
+      <GlassView intensity="regular" tint="extraLight" isInteractive style={style}>
+        {children}
+      </GlassView>
+    )
+
+  // Calculate grid dimensions (2 columns) - rectangular squircle-style cards
   const horizontalPadding = 16
   const gap = 12
   const itemWidth = (width - horizontalPadding * 2 - gap) / 2
-  const itemHeight = itemWidth * 0.75
+  const itemHeight = itemWidth * (16 / 9) // 9:16 portrait
 
   // Fetch reservations
   const fetchReservations = useCallback(async () => {
@@ -292,40 +314,38 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
           marginBottom: gap,
         }}
       >
-        <GlassSurface
-          variant="card"
-          intensity={isDark ? 'regular' : 'light'}
-          tint={isDark ? 'dark' : 'light'}
-          style={{
-            flex: 1,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.2)',
-            overflow: 'hidden',
-            position: 'relative',
-            padding: 0,
-          }}
-        >
-          {/* Full image background */}
+        <View style={{ flex: 1, position: 'relative', borderRadius: 20, overflow: 'hidden' }}>
+          <GlassCard
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.2)',
+                overflow: 'hidden',
+              },
+            ]}
+          >
+            <View />
+          </GlassCard>
           {item.image ? (
             <Image
               source={{ uri: item.image }}
-              className="absolute inset-0 w-full h-full"
+              style={StyleSheet.absoluteFillObject}
               resizeMode="cover"
             />
           ) : (
-            <View className="absolute inset-0 items-center justify-center bg-muted">
-              <Calendar size={32} color={themeColors.mutedForeground} />
-            </View>
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: themeColors.muted },
+              ]}
+            />
           )}
-
-          {/* Date badge overlay in top-left for reservations and events */}
-          {isReservationOrEvent && item.dateInfo && (
+          {item.dateInfo && isReservationOrEvent && (
             <View
               className="absolute top-2 left-2 rounded-md px-2 py-1 items-center z-10"
-              style={{
-                backgroundColor: themeColors.background + 'E6', // 90% opacity
-              }}
+              style={{ backgroundColor: themeColors.background + 'E6' }}
             >
               <Text
                 className="text-sm font-bold leading-tight"
@@ -341,14 +361,10 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
               </Text>
             </View>
           )}
-
-          {/* Past event badge overlay in top-right for reservations and events */}
-          {isReservationOrEvent && item.isPast && (
+          {item.isPast && (
             <View
               className="absolute top-2 right-2 rounded-md px-2 py-1 z-10"
-              style={{
-                backgroundColor: themeColors.muted + 'E6', // 90% opacity
-              }}
+              style={{ backgroundColor: themeColors.muted + 'E6' }}
             >
               <Text
                 className="text-[8px] font-semibold uppercase"
@@ -358,117 +374,56 @@ export function ProfileContentTabsNew({ userId }: ProfileContentTabsNewProps = {
               </Text>
             </View>
           )}
-
-          {/* Gradient overlay at bottom for text readability */}
           {isReservationOrEvent && (
-            <>
-              {/* Gradient overlay using multiple Views for smooth transition */}
-              <View
-                className="absolute bottom-0 left-0 right-0 h-20"
-                style={{
-                  backgroundColor: 'transparent',
-                }}
+            <View
+              pointerEvents="none"
+              className="absolute bottom-0 left-0 right-0 h-16"
+              style={{
+                backgroundColor: themeColors.background,
+                opacity: 0.75,
+              }}
+            />
+          )}
+          <View
+            className="absolute bottom-0 left-0 right-0 z-10"
+            style={{ paddingTop: 8, paddingBottom: 8, paddingHorizontal: 8 }}
+          >
+            {item.title && (
+              <Text
+                className="text-xs font-semibold mb-1"
+                style={{ color: themeColors.foreground }}
+                numberOfLines={1}
               >
-                {/* Gradient layers */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 20,
-                    backgroundColor: themeColors.background,
-                    opacity: 0.9,
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    height: 20,
-                    backgroundColor: themeColors.background,
-                    opacity: 0.7,
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 40,
-                    left: 0,
-                    right: 0,
-                    height: 20,
-                    backgroundColor: themeColors.background,
-                    opacity: 0.4,
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 60,
-                    left: 0,
-                    right: 0,
-                    height: 20,
-                    backgroundColor: themeColors.background,
-                    opacity: 0.1,
-                  }}
-                />
-              </View>
-
-              {/* Content overlay */}
-              <View
-                className="absolute bottom-0 left-0 right-0"
-                style={{
-                  paddingTop: 8,
-                  paddingBottom: 8,
-                  paddingHorizontal: 8,
-                }}
-              >
-                {/* Title */}
-                {item.title && (
+                {item.title}
+              </Text>
+            )}
+            <View className="gap-1">
+              {item.dateInfo && (
+                <View className="flex-row items-center">
+                  <Clock size={10} color={themeColors.mutedForeground} />
                   <Text
-                    className="text-xs font-semibold mb-1"
-                    style={{ color: themeColors.foreground }}
+                    className="text-[10px] ml-1"
+                    style={{ color: themeColors.mutedForeground }}
+                  >
+                    {item.dateInfo.time}
+                  </Text>
+                </View>
+              )}
+              {item.subtitle && (
+                <View className="flex-row items-center">
+                  <MapPin size={10} color={themeColors.mutedForeground} />
+                  <Text
+                    className="text-[10px] ml-1 flex-1"
+                    style={{ color: themeColors.mutedForeground }}
                     numberOfLines={1}
                   >
-                    {item.title}
+                    {item.subtitle}
                   </Text>
-                )}
-
-                {/* Details row */}
-                <View className="gap-1">
-                  {/* Time */}
-                  {item.dateInfo && (
-                    <View className="flex-row items-center">
-                      <Clock size={10} color={themeColors.mutedForeground} />
-                      <Text
-                        className="text-[10px] ml-1"
-                        style={{ color: themeColors.mutedForeground }}
-                      >
-                        {item.dateInfo.time}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Place */}
-                  {item.subtitle && (
-                    <View className="flex-row items-center">
-                      <MapPin size={10} color={themeColors.mutedForeground} />
-                      <Text
-                        className="text-[10px] ml-1 flex-1"
-                        style={{ color: themeColors.mutedForeground }}
-                        numberOfLines={1}
-                      >
-                        {item.subtitle}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              </View>
-            </>
-          )}
-        </GlassSurface>
+              )}
+            </View>
+          </View>
+        </View>
       </TouchableOpacity>
     )
   }

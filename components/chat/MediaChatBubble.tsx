@@ -12,6 +12,7 @@ import { THEME } from '../../lib/theme';
 import { VoiceMessagePlayer } from './voice-message-player';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { Play, User } from 'lucide-react-native';
+import { SquircleAvatar } from '../ui/squircle-avatar';
 
 type MessageType = 'text' | 'image' | 'voice';
 
@@ -80,11 +81,7 @@ export function MediaChatBubble({
   };
 
   const renderTextMessage = () => (
-    <Text
-      className={`text-base ${
-        isUser ? 'text-primary-foreground' : 'text-foreground'
-      }`}
-    >
+    <Text className="text-base text-[#111111]">
       {message}
     </Text>
   );
@@ -188,22 +185,21 @@ export function MediaChatBubble({
     }
   };
 
-  // Different bubble styles for different message types
+  // Telegram-style bubble colors and tail
   const getBubbleStyle = () => {
     const baseStyle = isUser
-      ? 'bg-primary'
-      : 'border border-border bg-card';
+      ? 'bg-[#EFFDDE]'  // Telegram light green for sent
+      : 'bg-white';    // Telegram white for received
+    const tailClass = isUser ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm';
 
     switch (messageType) {
       case 'image':
-        // Images have less padding
-        return `${baseStyle} p-1`;
+        return `${baseStyle} ${tailClass} p-1`;
       case 'voice':
-        // Voice messages keep normal padding but with min width
-        return `${baseStyle} px-2 py-2 min-w-[200px]`;
+        return `${baseStyle} ${tailClass} px-2 py-2 min-w-[200px]`;
       case 'text':
       default:
-        return `${baseStyle} px-4 py-3`;
+        return `${baseStyle} ${tailClass} px-4 py-3`;
     }
   };
 
@@ -220,17 +216,13 @@ export function MediaChatBubble({
     if (!showAvatar) return null;
 
     return (
-      <Pressable onPress={handleAvatarPress} className="mr-2 self-end mb-1">
-        {sender?.avatarUrl ? (
-          <Image
-            source={{ uri: sender.avatarUrl }}
-            className="w-8 h-8 rounded-full"
-          />
-        ) : (
-          <View className="w-8 h-8 rounded-full bg-muted items-center justify-center">
-            <User size={16} color={themeColors.mutedForeground} />
-          </View>
-        )}
+      <Pressable onPress={handleAvatarPress} className="mr-2 self-end mb-1" style={{ padding: 0 }}>
+        <SquircleAvatar
+          size={32}
+          source={sender?.avatarUrl ? { uri: sender.avatarUrl } : undefined}
+          fallback={<User size={16} color={themeColors.mutedForeground} />}
+          backgroundColor={themeColors.muted}
+        />
       </Pressable>
     );
   };
@@ -278,9 +270,7 @@ export function MediaChatBubble({
             <Text
               className={`mt-1 text-xs ${
                 messageType === 'image' ? 'px-2 pb-1' : ''
-              } ${
-                isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
-              }`}
+              } ${isUser ? 'text-[#6BA37A]' : 'text-[#999999]'}`}
             >
               {formatTimestamp(timestamp)}
             </Text>
@@ -289,11 +279,7 @@ export function MediaChatBubble({
           {/* Caption for images (if message text exists) */}
           {messageType === 'image' && message && message.trim() !== '' && (
             <View className="px-2 pb-2">
-              <Text
-                className={`text-sm ${
-                  isUser ? 'text-primary-foreground' : 'text-foreground'
-                }`}
-              >
+              <Text className="text-sm text-[#111111]">
                 {message}
               </Text>
             </View>

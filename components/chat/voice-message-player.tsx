@@ -43,8 +43,8 @@ function Waveform({
     return Math.max(4, Math.min(16, height));
   });
 
-  const activeColor = isOwnMessage ? 'rgba(255, 255, 255, 0.9)' : themeColors.primary;
-  const inactiveColor = isOwnMessage ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.2)';
+  const activeColor = isOwnMessage ? '#6BA37A' : themeColors.primary;
+  const inactiveColor = isOwnMessage ? 'rgba(107, 163, 122, 0.4)' : 'rgba(0, 0, 0, 0.2)';
 
   return (
     <View className="flex-row items-center gap-0.5 h-4 flex-1 mx-2">
@@ -272,18 +272,18 @@ export function VoiceMessagePlayer({
   // Calculate remaining time
   const remainingTime = duration > 0 ? (duration * 1000) - position : 0;
 
-  // Icon colors
-  const iconColor = isOwnMessage ? 'white' : themeColors.foreground;
+  // Icon colors - Telegram: dark on light green for sent, theme for received
+  const iconColor = isOwnMessage ? '#111111' : themeColors.foreground;
 
   if (error) {
     return (
       <View className="flex-row items-center py-1">
         <View className={`h-10 w-10 rounded-full items-center justify-center ${
-          isOwnMessage ? 'bg-white/20' : 'bg-muted'
+          isOwnMessage ? 'bg-[#6BA37A]/20' : 'bg-muted'
         }`}>
           <Play size={20} color={iconColor} />
         </View>
-        <Text className={`text-sm ml-3 ${isOwnMessage ? 'text-white/80' : 'text-muted-foreground'}`}>
+        <Text className={`text-sm ml-3 ${isOwnMessage ? 'text-[#111111]' : 'text-muted-foreground'}`}>
           Errore caricamento audio
         </Text>
       </View>
@@ -294,11 +294,11 @@ export function VoiceMessagePlayer({
     return (
       <View className="flex-row items-center py-1">
         <View className={`h-10 w-10 rounded-full items-center justify-center ${
-          isOwnMessage ? 'bg-white/20' : 'bg-muted'
+          isOwnMessage ? 'bg-[#6BA37A]/20' : 'bg-muted'
         }`}>
           <ActivityIndicator size="small" color={iconColor} />
         </View>
-        <Text className={`text-sm ml-3 ${isOwnMessage ? 'text-white/80' : 'text-muted-foreground'}`}>
+        <Text className={`text-sm ml-3 ${isOwnMessage ? 'text-[#111111]' : 'text-muted-foreground'}`}>
           Caricamento...
         </Text>
       </View>
@@ -307,11 +307,11 @@ export function VoiceMessagePlayer({
 
   return (
     <View className="flex-row items-center py-1 min-w-[240px]">
-      {/* Play/Pause Button - WhatsApp Style */}
+      {/* Play/Pause Button - Telegram style for sent, theme for received */}
       <TouchableOpacity
         onPress={togglePlayPause}
         className={`h-10 w-10 rounded-full items-center justify-center ${
-          isOwnMessage ? 'bg-white/20' : 'bg-primary/10'
+          isOwnMessage ? 'bg-[#6BA37A]/20' : 'bg-primary/10'
         }`}
         activeOpacity={0.7}
       >
@@ -332,7 +332,7 @@ export function VoiceMessagePlayer({
 
       {/* Time Display */}
       <Text className={`text-xs font-mono ml-2 min-w-[38px] ${
-        isOwnMessage ? 'text-white/90' : 'text-foreground'
+        isOwnMessage ? 'text-[#111111]' : 'text-foreground'
       }`}>
         {isPlaying || isPaused ? formatTime(remainingTime) : formatTime(duration * 1000)}
       </Text>
@@ -342,12 +342,12 @@ export function VoiceMessagePlayer({
         <TouchableOpacity
           onPress={cyclePlaybackRate}
           className={`ml-2 h-6 w-6 rounded-full items-center justify-center ${
-            isOwnMessage ? 'bg-white/20' : 'bg-muted'
+            isOwnMessage ? 'bg-[#6BA37A]/20' : 'bg-muted'
           }`}
           activeOpacity={0.7}
         >
           <Text className={`text-[10px] font-semibold ${
-            isOwnMessage ? 'text-white' : 'text-foreground'
+            isOwnMessage ? 'text-[#111111]' : 'text-foreground'
           }`}>
             {playbackRate.toFixed(1)}x
           </Text>
@@ -362,7 +362,7 @@ export function VoiceMessagePlayer({
           activeOpacity={0.7}
         >
           <Text className={`text-[10px] font-medium ${
-            isOwnMessage ? 'text-white/60' : 'text-muted-foreground'
+            isOwnMessage ? 'text-[#6BA37A]' : 'text-muted-foreground'
           }`}>
             {playbackRate.toFixed(1)}x
           </Text>

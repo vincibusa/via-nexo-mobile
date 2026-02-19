@@ -17,14 +17,21 @@ import { Reservation, reservationsService } from '../../../lib/services/reservat
 import { ReservationCard } from '../../../components/reservations/reservation-card';
 import { QRCodeModal } from '../../../components/reservations/qr-code-modal';
 import { useAuth } from '../../../lib/contexts/auth';
+import { useColorScheme } from 'nativewind';
 
 export default function ReservationsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { settings } = useSettings();
-  
-  // Use dark theme (single theme for the app)
-  const themeColors = THEME.dark;
+  const { colorScheme } = useColorScheme();
+
+  // Get effective theme based on user settings
+  const effectiveTheme = settings?.theme === 'system'
+    ? (colorScheme === 'dark' ? 'dark' : 'light')
+    : settings?.theme === 'dark'
+    ? 'dark'
+    : 'light';
+  const themeColors = THEME[effectiveTheme];
   
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);

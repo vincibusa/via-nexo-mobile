@@ -178,7 +178,7 @@ export default function NewConversationScreen() {
           headerRight: () => (
             <TouchableOpacity
               onPress={() => router.push('/(app)/new-group-conversation' as any)}
-              className="mr-4"
+              className="mr-2 py-2 px-3 items-center justify-center"
             >
               <Text className="text-primary font-semibold">Gruppo</Text>
             </TouchableOpacity>
